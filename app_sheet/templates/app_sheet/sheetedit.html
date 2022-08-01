@@ -1,0 +1,27 @@
+{% extends "app_sheet/layout.html" %}
+
+{% block content %}
+
+<h2>&nbsp;</h2>
+<h2>Sheet Editor</h2>
+
+<p>
+    {{ sheet }}
+</p>
+
+{% if sheet %}
+    <p>
+        <i>Owner: </i> {{ sheet.owner }}
+        &#x2022;
+        <i>Created: </i> {{ sheet.created }}
+        &#x2022;
+        <i>Last Modified: </i> {{ sheet.modified }}
+    </p>
+    <textarea id="w3review" name="w3review" rows="20" cols="120">
+        {{ sheet.content }}
+    </textarea>
+{% else %}
+    <p>No character sheet was specified</p>
+{% endif %}
+
+{% endblock %}
