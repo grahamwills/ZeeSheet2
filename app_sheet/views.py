@@ -3,7 +3,7 @@ from datetime import datetime
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, get_object_or_404
 
-from app_sheet.models import CharacterSheetDefinition
+from .models import CharacterSheetDefinition
 
 
 def home(request):
