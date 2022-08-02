@@ -1,0 +1,19 @@
+
+
+{# sheets are passed in, grouped into sections #}
+
+<h2>{{ title }}</h2>
+
+    {% if sheets %}
+        {% for group in sheets %}
+            <h3>{{ group.name }}</h3>
+            <ul>
+            {% for item in group.items %}
+                <li>{{ item.name }}</li>
+            {%  endfor %}
+            </ul>
+        {%  endfor %}
+    {% else %}
+        <p>None</p>
+    {% endif %}
+

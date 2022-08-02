@@ -1,21 +1,40 @@
 from datetime import datetime
+from typing import List, Dict
 
-from django.http import HttpResponse, HttpRequest
+from django.http import HttpRequest
 from django.shortcuts import render, get_object_or_404
 
 from .models import Sheet
 
+def _group_sheets(field, **kwargs) -> List[Dict]:
+    keys = Sheet.objects.filter(**kwargs).values_list(field, flat=True).distinct()
+    print('keys =', keys)
+    result = []
+    for key in keys:
+        query = {field:key}
+        items = Sheet.objects.filter(**kwargs).filter(**query)
+        result.append({'name':key, 'items':items})
+    print('result =', result)
+    return result
+
 
 def home(request):
     """Renders the home page."""
-    assert isinstance(request, HttpRequest)
+    user = request.user
+    if not user.is_authenticated:
+        user = None
+    content = {
+        'title': 'Home Page',
+        'year': datetime.now().year,
+        'mine': _group_sheets('system', owner=user),
+        'templates': _group_sheets('system', is_template=True, is_shared=True),
+        'shared': _group_sheets('system', is_shared=True),
+    }
+
     return render(
         request,
         'app_sheet/index.html',
-        {
-            'title': 'Home Page',
-            'year': datetime.now().year,
-        }
+        content
     )
 
 
@@ -61,7 +80,3 @@ def sheet_edit(request, sheet_id):
             'year': datetime.now().year,
         }
     )
-
-
-def markdown_view(request):
-    return HttpResponse("This is where the markdown component will go")
