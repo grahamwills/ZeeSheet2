@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import List, Dict
 
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
-from django.views.generic.edit import FormView
+from django.urls import reverse_lazy
+
+from rst.validate import prettify
 
 from .forms import SampleForm
 from .models import Sheet
@@ -68,7 +70,7 @@ def about(request):
 
 
 
-def show_sheet(request, sheet_id):
+def show_sheet(request, sheet_id, content:str=None):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
         request,
@@ -79,4 +81,24 @@ def show_sheet(request, sheet_id):
             'year': datetime.now().year,
         }
     )
+
+def action_dispatcher(request, sheet_id):
+    # No matter what we do after, we need to store the text from the form as the current content
+    csd = get_object_or_404(Sheet, pk=sheet_id)
+    csd.content = request.POST['sheet']
+
+    if 'save' in request.POST:
+        # Save the content to saved
+        csd.saved = csd.content
+    if 'revert' in request.POST:
+        # Copy the content from the saved data
+        csd.content = csd.saved
+    if 'validate' in request.POST:
+        # Check that the definition si good and rpettify it
+        csd.content = prettify(csd.content)
+
+    # Save the sheet and show it again!
+    csd.save()
+    url = reverse_lazy('sheet', kwargs={'sheet_id':sheet_id})
+    return HttpResponseRedirect(url)
 

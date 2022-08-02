@@ -7,6 +7,7 @@ class Sheet(models.Model):
     name = models.CharField(verbose_name='Character Name', max_length=64)
     created = models.DateField(verbose_name='Date Created', auto_now_add=True)
     modified = models.DateField(verbose_name='Date Last Modified', auto_now=True)
-    content = models.TextField(verbose_name='Sheet Definition')
+    content = models.TextField(verbose_name='Definition Under Edit')
+    saved = models.TextField(verbose_name='Saved Definition')
     is_shared= models.BooleanField(default=False, verbose_name='Share this sheet?')
     is_template = models.BooleanField(default=False, verbose_name='Is this a template?')
