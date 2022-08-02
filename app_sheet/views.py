@@ -66,14 +66,11 @@ def about(request):
     )
 
 
-def sheet_edit(request, sheet_id):
+def show_sheet(request, sheet_id):
     csd = get_object_or_404(Sheet, pk=sheet_id)
-    print(csd)
-    print(csd.pk)
-    print(csd.content)
     return render(
         request,
-        'app_sheet/sheetedit.html',
+        'app_sheet/show_sheet.html',
         {
             'title': 'Sheet',
             'sheet': csd,
