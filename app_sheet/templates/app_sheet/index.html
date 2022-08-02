@@ -3,19 +3,13 @@
 {% load static %}
 {% block content %}
     <div class="main-container">
-        <div class="cloud-image">
-            <img src="{% static "app/img/successCloudNew.svg" %}"/>
-        </div>
         <div class="content">
-            <div class="tweet-container">
-                <a href="http://twitter.com/intent/tweet/?text=I%20just%20created%20a%20new%20Python%20Django%20website%20on%20Azure%20using%20Github%20Actions&hashtags=GithubActions%20%40Azure">
-                    <img src="{% static "app/img/tweetThis.svg" %}"/>
-                </a>
-            </div>
+            <h1>ZeeSheet</h1>
             <div class="content-body">
-                <div class="success-text">Success!</div>
-                <div class="description line-1"> GitHub workflow has been successfully setup</div>
-                <div class="description line-2"> Your Python Django app is up and running on Azure</div>
+                <p>
+                    Welcome to ZeeSheet; an online tool for creating PDF character sheets from
+                    a structured text source.
+                </p>
             </div>
         </div>
     </div>
@@ -31,5 +25,4 @@
             {% include 'app_sheet/list_sheets.html' with title='Shared' sheets=shared %}
         </div>
     </div>
-
 {% endblock %}

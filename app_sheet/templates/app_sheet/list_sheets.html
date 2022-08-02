@@ -1,19 +1,21 @@
-
-
 {# sheets are passed in, grouped into sections #}
 
 <h2>{{ title }}</h2>
 
+<div class="main-scrollable">
     {% if sheets %}
         {% for group in sheets %}
-            <h3>{{ group.name }}</h3>
-            <ul>
-            {% for item in group.items %}
-                <li>{{ item.name }}</li>
-            {%  endfor %}
-            </ul>
-        {%  endfor %}
+            <div class="list-heading">{{ group.name }}</div>
+            <div class="list-sheets">
+                <ul>
+                    {% for item in group.items %}
+                        <li class="text-primary"><a href="{% url 'sheet' item.id %}">{{ item.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
     {% else %}
         <p>None</p>
     {% endif %}
+</div>
 

@@ -12,36 +12,17 @@ body {
 }
 
 .main-container {
-    height: 400px;
     width: 100%;
     background-color: #1d539d;
     color: white;
-    padding-top: 30px;
     box-sizing: border-box;
     overflow-y: hidden;
     overflow-x: hidden;
     font-family: "Segoe UI";
-    padding: 80px;
-    margin-bottom: 30px;
-}
-
-.cloud-image {
-    width: 350px;
-    height: 150px;
-    padding-bottom: 20px;
-    margin: auto;
-}
-
-    .cloud-image img {
-        width: 100%;
-        height: 100%;
-    }
-
-.success-text {
-    padding-bottom: 20px;
-    font-size: 45px;
-    line-height: 54px;
-    text-align: center;
+    padding: 10px;
+    padding-top: 0;
+    margin-bottom: 20px;
+    margin-top: 80px;
 }
 
 .description {
@@ -52,26 +33,10 @@ body {
 
 .content {
     box-sizing: border-box;
-    max-width: 450px;
     position: relative;
     margin: auto;
 }
 
-.tweet-container {
-    height: 30px;
-    width: 30px;
-    min-width: 30px;
-    min-height: 50px;
-    margin: 0 20px;
-    position: absolute;
-    left: -55px;
-    top: 80px;
-}
-
-    .tweet-container img {
-        width: 100%;
-        height: 100%;
-    }
 
 .content-body {
     min-width: 400px;
@@ -79,4 +44,56 @@ body {
 
 .col-md-4 {
     color: black;
+}
+
+h2 {
+    font-size: 200%;
+}
+
+h3 {
+    font-size: 150%;
+    color: #1d539d
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin-left: 1em;
+}
+
+li {
+    padding-left: .33em;
+}
+
+.list-sheets {
+    padding: 5px;
+}
+
+.list-heading {
+    font-size: 150%;
+    color: #1d539d
+}
+
+.main-scrollable, .main-scrollable2 {
+    overflow: auto;
+    border: 1px solid black;
+    padding: 5px;
+    background: oldlace;
+    height: calc(100vh - 300px);
+}
+
+.main-scrollable2 {
+    background: white;
+    height: calc(100vh - 160px);
+}
+
+footer, .smallgray {
+    font-size: 66%;
+    color: grey;
+    padding: 0;
+    margin: 5px;
+}
+
+div.CodeMirror {
+    height:100%;
 }

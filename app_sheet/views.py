@@ -3,18 +3,19 @@ from typing import List, Dict
 
 from django.http import HttpRequest
 from django.shortcuts import render, get_object_or_404
+from django.views.generic.edit import FormView
 
+from .forms import SampleForm
 from .models import Sheet
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
     keys = Sheet.objects.filter(**kwargs).values_list(field, flat=True).distinct()
-    print('keys =', keys)
     result = []
     for key in keys:
         query = {field:key}
         items = Sheet.objects.filter(**kwargs).filter(**query)
+        items = list(items) * 40
         result.append({'name':key, 'items':items})
-    print('result =', result)
     return result
 
 
@@ -66,6 +67,7 @@ def about(request):
     )
 
 
+
 def show_sheet(request, sheet_id):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
@@ -77,3 +79,4 @@ def show_sheet(request, sheet_id):
             'year': datetime.now().year,
         }
     )
+
