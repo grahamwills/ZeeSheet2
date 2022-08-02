@@ -1,0 +1,168 @@
+      Power Name: Bull Rush Attack
+    Power Action: Standard
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Bull Rush Attack}} {{target=}}{{attack=[[1d20+7]] vs. Fortitude}} {{damage=You can push the target 1 square and then shift 1 square into the space it left.}} {{emote=You hurl yourself at your foe and push it back.}}
+
+
+      Power Name: Grab Attack
+    Power Action: Standard
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Grab Attack}} {{target=}}{{attack=[[1d20+7]] vs. Reflex}} {{requirement=You must have a hand free.}} {{damage=You grab the target until the end of your next turn. You can end the grab as a free action.}} {{emote=You reach out and grasp your foe, preventing it from moving.}}
+
+
+      Power Name: Hand of Radiance
+    Power Action: Standard
+     Power Range: Up to three creatures within 10
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Hand of Radiance}} {{target=Up to three creatures within 10}}{{attack=[[1d20+8]] [[1d20+8]] [[1d20+8]] vs. Reflex}} {{damage=[[1d4+4]] radiant damage.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Divine •  Implement •  Radiant}} {{emote=Tendrils of radiance streak from your fingertips across the battlefield. The beams strike your enemies, raining sparks of light on impact.}}
+
+
+      Power Name: Melee Basic Attack
+    Power Action: Standard
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Melee Basic Attack}} {{target=}}{{attack=[[1d20+11]] vs. AC}} {{damage=[[1d8+5]] damage.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Weapon}} {{emote=You resort to the simple attack you learned when you first picked up a melee weapon.}}
+
+
+      Power Name: Ranged Basic Attack
+    Power Action: Standard
+     Power Range: One creature within weapon
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Ranged Basic Attack}} {{target=One creature within weapon}}{{attack=[[1d20+4]] vs. AC}} {{damage=[[1d4+1]] damage.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Weapon}} {{emote=You resort to the simple attack you learned when you first picked up a ranged weapon.}}
+
+
+      Power Name: Weight of Earth
+    Power Action: Standard
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Weight of Earth}} {{target=}}{{attack=[[1d20+11]] vs. AC}} {{damage=[[1d8+5]] damage, and the target is slowed until the end of your next turn.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Primal •  Weapon}} {{emote=Your attack sends the primal energy of earth flowing into your enemy, slowing its movement.}}
+
+
+      Power Name: Opportunity Attack
+    Power Action: Opportunity
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Opportunity Attack}} {{target=}} {{trigger=An enemy that you can see either leaves a square adjacent to you or uses a ranged or an area power while adjacent to you.}} {{effect=You make a melee basic attack against the target.}} {{emote=Your foe drops its guard for a moment, and you exploit the opportunity.}}
+
+
+      Power Name: Warden's Fury
+    Power Action: Immediate Interrupt
+     Power Range: 
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Warden's Fury}} {{target=}}{{attack=[[1d20+11]] vs. Fortitude}} {{trigger=An enemy marked by you makes an attack that does not include you as a target}} {{damage=[[1d8+5]] damage, and the target grants combat advantage to you and your allies until the end of your next turn.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Primal •  Weapon}} {{emote=You lash out with nature's wrath at a foe that has attacked your ally and diminish its defenses.}}
+
+
+      Power Name: Warden's Grasp
+    Power Action: Immediate Reaction
+     Power Range: The triggering enemy in close burst 5
+     Power Usage: At-Will
+macro:
+&{template:dnd4epower} {{atwill=yes}} {{name=Warden's Grasp}} {{target=The triggering enemy in close burst 5}} {{trigger=An enemy marked by you that is within 5 squares of you makes an attack that does not include you as a target}} {{effect=You slide the target 1 square. The target is slowed and cannot shift until the end of its turn.}} {{keywords=Primal}} {{emote=Spectral vines clutch at a foe that has attacked your ally, impeding your enemy's movement.}}
+
+
+      Power Name: Form of Mountain's Thunder Attack
+    Power Action: Standard
+     Power Range: Each enemy you can see in close burst 1
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Form of Mountain's Thunder Attack}} {{target=Each enemy you can see in close burst 1}}{{attack=[[1d20+11]] [[1d20+11]] [[1d20+11]] [[1d20+11]] vs. Reflex}} {{requirement=The Form of Mountain's Thunder power must be active in order to use this power.}} {{damage=[[1d8+5]] thunder damage, and you knock the target prone.}} {{miss=Half damage.}} {{effect=Each enemy marked by you takes  5 lightning damage}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Lightning •  Polymorph •  Primal •  Thunder •  Weapon}}
+
+
+      Power Name: Knives of the Soul
+    Power Action: Standard
+     Power Range: One or two creatures within 5
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Knives of the Soul}} {{target=One or two creatures within 5}}{{attack=[[1d20+8]] [[1d20+8]] vs. Reflex}} {{damage=[[2d10+4]] force damage, or [[2d12+4]] force damage if you target only one creature. You push the target 1 square.}} {{effect=You take 5 damage.}} {{covenant of malediction=The number of squares you push the target equals your Constitution modifier.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Divine •  Force •  Implement}} {{emote=Two translucent blades burst out of your body and streak toward your enemies. You stagger from the unleashed power.}}
+
+
+      Power Name: Second Wind
+    Power Action: Standard
+     Power Range: Personal
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Second Wind}} {{target=Personal}} {{effect=Spend a healing surge and gain a +2 bonus to all defenses until the start of your next turn.}} {{emote=You take a moment to catch your breath and gather your strength.}}
+
+
+      Power Name: Wildblood Frenzy
+    Power Action: Standard
+     Power Range: 
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Wildblood Frenzy}} {{target=}}{{attack=[[1d20+11]] [[1d20+11]] vs. AC}} {{damage=[[1d8+5]] [[1d8+5]] damage.}} {{effect=Make the attack one more time against the same target or a different one.}} {{wildblood=The attack deals extra damage equal to your Wisdom modifier.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Primal •  Weapon}} {{emote=Primal power boils in your blood, and you surge into a frenzy, making two powerful attacks.}}
+
+
+      Power Name: Voyage of the Ancients
+    Power Action: Free
+     Power Range: Personal
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Voyage of the Ancients}} {{target=Personal}} {{trigger=You hit an enemy with a close or area attack}} {{effect=You teleport 3 squares. Choose a single enemy you hit with the attack. You and one ally you can see gain combat advantage against that enemy until the end of your next turn.}} {{keywords=Teleportation}} {{emote=Using the cover of your assault, you vanish and leave a bewildered foe in your wake.}}
+
+
+      Power Name: Demand Justice
+    Power Action: Immediate Interrupt
+     Power Range: The triggering creature within 10
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Demand Justice}} {{target=The triggering creature within 10}} {{trigger=A creature within 10 squares of you makes a saving throw}} {{effect=The target rerolls the saving throw and must use the new result.}} {{keywords=Divine}} {{emote=Whether an ally labors under a deadly effect or a foe seeks to escape the just end wrought by your magic, you tilt fate in your favor.}}
+
+
+      Power Name: Guardian's Counter
+    Power Action: Immediate Interrupt
+     Power Range: Close burst 2
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Guardian's Counter}} {{target=Close burst 2}} {{trigger=An ally within 2 squares of you is hit by an attack and you are not included in the attack.}} {{effect=You and the ally shift up to 2 squares as a free action, swapping positions. You become the target of the triggering attack, in place of the ally. After the attack is resolved, you can make a basic attack against the attacker.}} {{keywords=Martial}} {{emote=Seeing a friend in danger, you step up to take the attack meant for your ally-and then you strike back.}}
+
+
+      Power Name: Pursuit of the Hunter
+    Power Action: Immediate Reaction
+     Power Range: Personal
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Pursuit of the Hunter}} {{target=Personal}} {{trigger=An enemy within 2 squares of you moves on its turn}} {{effect=You shift 3 squares. Until the end of your next turn, you deal 1d6 extra damage to the triggering enemy when you hit it, and you don't take the –2 penalty to attack rolls for attacking it when it has cover or concealment.}} {{emote=Your prey tries to maneuver away, but there is no escape.}}
+
+
+      Power Name: Wrath of the Destroyer
+    Power Action: Immediate Reaction
+     Power Range: Personal
+     Power Usage: Encounter
+macro:
+&{template:dnd4epower} {{encounter=yes}} {{name=Wrath of the Destroyer}} {{target=Personal}} {{trigger=A bloodied enemy attacks you or your ally adjacent to you}} {{effect=You either make a melee basic attack against the triggering enemy or charge it. If your attack hits, the enemy is also dazed until the end of your next turn.}} {{emote=The destroyer aspect responds with deadly force to an attack, taking your battered enemy aback with your savagery.}}
+
+
+      Power Name: Silent Malediction
+    Power Action: Standard
+     Power Range: 
+     Power Usage: Daily
+macro:
+&{template:dnd4epower} {{daily=yes}} {{name=Silent Malediction}} {{target=}}{{attack=[[1d20+8]] vs. Fortitude}} {{damage=[[2d6+4]] thunder damage, and the target is stunned (save ends).}} {{miss=Half damage, and the target is dazed until the end of your next turn.}} {{effect=You are dazed until the end of your next turn.}} {{special=+2 to damage rolls against bloodied targets - Gauntlets of Blood (heroic tier).}} {{keywords=Divine •  Implement •  Thunder}} {{emote=You enter a trance as your lips move. Your enemies don't hear what you're saying because of the thunder rumbling around them.}}
+
+
+      Power Name: Form of Mountain's Thunder
+    Power Action: Minor
+     Power Range: Personal
+     Power Usage: Daily
+macro:
+&{template:dnd4epower} {{daily=yes}} {{name=Form of Mountain's Thunder}} {{target=Personal}} {{effect=You assume the guardian form of mountain's thunder until the end of the encounter. While you are in this form, you gain resist 3 to all damage and a +1 bonus to AC. Once per round when you hit an enemy with a melee attack, each enemy marked by you takes  4 thunder damage}} {{keywords=Lightning •  Polymorph •  Primal •  Thunder}} {{emote=You transform to take on a protective shell of rock and earth, shielding you and allowing you to call thunder and lightning to strike your foes.}}
+
+
+      Power Name: Endure Pain
+    Power Action: Immediate Interrupt
+     Power Range: Personal
+     Power Usage: Daily
+macro:
+&{template:dnd4epower} {{daily=yes}} {{name=Endure Pain}} {{target=Personal}} {{trigger=You are hit by an attack}} {{effect=Until the end of your next turn, you gain  8 resistance to all damage}} {{emote=You grin and bear it, shrugging off the pain of a new wound.}}
+
+

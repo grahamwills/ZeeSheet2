@@ -3,7 +3,7 @@ from datetime import datetime
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, get_object_or_404
 
-from .models import CharacterSheetDefinition
+from .models import Sheet
 
 
 def home(request):
@@ -48,7 +48,10 @@ def about(request):
 
 
 def sheet_edit(request, sheet_id):
-    csd = get_object_or_404(CharacterSheetDefinition, pk=sheet_id)
+    csd = get_object_or_404(Sheet, pk=sheet_id)
+    print(csd)
+    print(csd.pk)
+    print(csd.content)
     return render(
         request,
         'app_sheet/sheetedit.html',
