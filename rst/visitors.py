@@ -10,6 +10,9 @@ IGNORE_TAGS = {'document'}
 # processing tree; no action is taken when they are entered or departed from
 NO_ACTION_TAGS = {'title', 'bullet_list', 'list_item', 'definition_list', 'term'}
 
+# These items as out ancestors determine that text is the title of a block
+BLOCK_TITLE_ANCESTRY = {'paragraph', 'section • paragraph', 'definition_list_item • term'}
+
 
 def _tag(node: docutils.nodes.Node):
     return getattr(node, 'tagname')
@@ -78,24 +81,22 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elif p == 'bullet_list • list_item':
             pass
         else:
-            self.error(node, 'Surprising paragraph ancestors')
+            self.error(node, 'Unexpected paragraph encountered')
 
     # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         p = self.start(node)
         text = node.astext().replace('\n', ' ')
-        if p == 'paragraph' or p == 'section • paragraph':
-            self.current_block.title = text
+        if p in BLOCK_TITLE_ANCESTRY:
+            self.current_block.add_to_title(Element.from_text(text))
+        elif p == 'section • title':
+            self.current_section.add_to_title(Element.from_text(text))
         elif p == 'list_item • paragraph':
             run = Run()
-            run.elements.append(Element(text))
+            run.elements.append(Element.from_text(text))
             self.current_block.append(run)
-        elif p == 'definition_list_item • term':
-            self.current_block.title = text
-        elif p == 'section • title':
-            self.current_section.title = text
         else:
-            self.error(node, "Surprising text ancestors")
+            self.error(node, 'Unexpected text encountered')
 
     # Other methods ####################################################################
 

@@ -18,6 +18,10 @@ class Element:
     def as_str(self):
         return self.value
 
+    @classmethod
+    def from_text(cls, text):
+        return cls(text)
+
 
 @dataclass
 class Run:
@@ -45,7 +49,7 @@ class Run:
 
 @dataclass
 class Block:
-    title: str = None
+    title: Run = None
     items: List[Run] = field(default_factory=list)
 
     def append(self, run: Run):
@@ -62,12 +66,12 @@ class Block:
         return self.items[item]
 
     def structure_str(self):
-        pre = f"[{self.title}: " if self.title else '[ '
+        pre = f"[{self.title.as_str()}: " if self.title else '[ '
         return pre + ' \u2022 '.join(s.structure_str() for s in self.items) + ']'
 
     def add_lines_to(self, lines):
         if self.title:
-            lines.append(self.title)
+            lines.append(self.title.as_str())
             lines.append('')
         if self.items:
             for item in self.items:
@@ -77,10 +81,15 @@ class Block:
     def empty(self):
         return self.title is None and not self.items
 
+    def add_to_title(self, element: Element):
+        if not self.title:
+            self.title = Run()
+        self.title.append(element)
+
 
 @dataclass
 class Section:
-    title: str = None
+    title: Run = None
     blocks: List[Block] = field(default_factory=list)
 
     def append(self, block: Block):
@@ -97,17 +106,23 @@ class Section:
         return self.blocks[item]
 
     def structure_str(self):
-        pre = f"<{self.title}: " if self.title else '<'
+        pre = f"<{self.title.as_str()}: " if self.title else '<'
         return pre + ' '.join(s.structure_str() for s in self.blocks) + '>'
 
     def add_lines_to(self, lines):
         if self.title:
-            lines.append(self.title)
-            lines.append('-' * len(self.title))
+            title = self.title.as_str()
+            lines.append(title)
+            lines.append('-' * len(title))
             lines.append('')
         for b in self.blocks:
             b.add_lines_to(lines)
         lines.append('')
+
+    def add_to_title(self, element: Element):
+        if not self.title:
+            self.title = Run()
+        self.title.append(element)
 
     def empty(self):
         return self.title is None and \
