@@ -7,7 +7,6 @@ from django.urls import reverse_lazy
 
 from rst.validate import prettify
 
-from .forms import SampleForm
 from .models import Sheet
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
@@ -16,7 +15,6 @@ def _group_sheets(field, **kwargs) -> List[Dict]:
     for key in keys:
         query = {field:key}
         items = Sheet.objects.filter(**kwargs).filter(**query)
-        items = list(items) * 40
         result.append({'name':key, 'items':items})
     return result
 

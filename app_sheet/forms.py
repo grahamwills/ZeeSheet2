@@ -18,7 +18,3 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                widget=forms.PasswordInput({
                                    'class': 'form-control',
                                    'placeholder':'Password'}))
-
-class SampleForm(forms.Form):
-    foo = CodeMirrorField(label="Foo", required=True,
-                          config_name="restructuredtext")
