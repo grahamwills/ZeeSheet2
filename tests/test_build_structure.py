@@ -13,7 +13,7 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Empty'][0]
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
-        self.assertEqual('<>', sheet.structure_str())
+        self.assertEqual('<[ ]>', sheet.structure_str())
 
     def test_one_line(self):
         source = self.items['One Line'][0]
