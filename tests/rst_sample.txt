@@ -172,3 +172,21 @@ title with *italic* text
 
 - item with **bold** text
 ################################################
+
+
+
+
+
+
+# Wrapping Test ##############################
+*title* which is a very long piece of accompanying text that we should absolutely wrap of a block (remember the text is a very long piece of accompanying text that we should absolutely wrap)
+
+- item with **bold** text and a very long piece of accompanying text that we should absolutely wrap
+################################################
+*title* which is a very long piece of accompanying text that we should
+absolutely wrap of a block (remember the text is a very long piece of
+accompanying text that we should absolutely wrap)
+
+- item with **bold** text and a very long piece of accompanying text that we
+  should absolutely wrap
+################################################

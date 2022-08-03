@@ -59,3 +59,13 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual('', sheet.combined_issues())
         self.assertEqual("<[title with ‖italic⊣emp‖ text: item with ‖bold⊣str‖ text]>",
                          sheet.structure_str())
+
+    def test_wrapping_text(self):
+        source = self.items['Wrapping Test'][0]
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        expected = "<[title⊣emp‖ which is a very long piece of accompanying text that we should " \
+                   "absolutely wrap of a block (remember the text is a very long piece of accompanying " \
+                   "text that we should absolutely wrap): item with ‖bold⊣str‖ text and a very long piece " \
+                   "of accompanying text that we should absolutely wrap]>"
+        self.assertEqual(expected, sheet.structure_str())
