@@ -11,6 +11,10 @@ IGNORE_TAGS = {'document'}
 NO_ACTION_TAGS = {'title', 'bullet_list', 'list_item', 'definition_list', 'term'}
 
 
+def _tag(node: docutils.nodes.Node):
+    return getattr(node, 'tagname')
+
+
 class StructureBuilder(docutils.nodes.NodeVisitor):
     def __init__(self, document):
         super().__init__(document)
@@ -35,11 +39,11 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def unknown_visit(self, node: docutils.nodes.Node) -> None:
         """Handle a visit for node type we do not explicitly handle"""
-        tag = node.tagname
+        tag = _tag(node)
         if tag in IGNORE_TAGS:
             return
-        if not tag in NO_ACTION_TAGS:
-            self.error(node, f"{node.tagname} tag not supported")
+        if tag not in NO_ACTION_TAGS:
+            self.error(node, f"{tag} tag not supported")
         self.start(node)
 
     def unknown_departure(self, node) -> None:
@@ -76,7 +80,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Surprising paragraph ancestors')
 
-
+    # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         p = self.start(node)
         text = node.astext().replace('\n', ' ')
@@ -97,11 +101,11 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def start(self, node: docutils.nodes.Node, n: int = 2) -> str:
         current = self._processing(n)
-        self.process_stack.append(node.tagname)
+        self.process_stack.append(_tag(node))
         return current
 
     def finish(self, node: docutils.nodes.Node):
-        what = node.tagname
+        what = _tag(node)
         was = self.process_stack.pop()
         if was != what:
             message = f"Expected to be finishing {what}, but was processing {was}"

@@ -78,7 +78,6 @@ class Block:
         return self.title is None and not self.items
 
 
-
 @dataclass
 class Section:
     title: str = None
@@ -112,7 +111,7 @@ class Section:
 
     def empty(self):
         return self.title is None and \
-        (not self.blocks or len(self.blocks) == 1 and self.blocks[0].empty())
+               (not self.blocks or len(self.blocks) == 1 and self.blocks[0].empty())
 
 
 class Issue(NamedTuple):
