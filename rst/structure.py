@@ -31,7 +31,7 @@ class Run:
         return self.elements[item]
 
     def structure_str(self):
-        return ' \u2022; '.join(s.structure_str() for s in self.elements) + ']'
+        return ' | '.join(s.structure_str() for s in self.elements)
 
 
 @dataclass
@@ -54,7 +54,7 @@ class Block:
 
     def structure_str(self):
         pre = f"[{self.title}: " if self.title else '[ '
-        return pre + ', '.join(s.structure_str() for s in self.runs) + ']'
+        return pre + ' \u2022 '.join(s.structure_str() for s in self.runs) + ']'
 
 
 @dataclass
@@ -108,4 +108,4 @@ class Sheet:
         return ' '.join(s.structure_str() for s in self.sections)
 
     def combined_issues(self):
-        return ' \u2020 '.join(s.message for s in self.issues)
+        return ' \u2022 '.join(s.message for s in self.issues)

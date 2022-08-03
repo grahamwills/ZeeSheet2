@@ -22,7 +22,7 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual('',  sheet.combined_issues())
         self.assertEqual("<[hello world: ]>", sheet.structure_str())
 
-    def test_two_sections(self):
+    def test_two_blocks(self):
         source = dedent('''
             one
             header
@@ -32,3 +32,35 @@ class BasicBlocks(unittest.TestCase):
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
         self.assertEqual("<[one header: ] [and another: ]>", sheet.structure_str())
+
+    def test_blocks_with_items_as_bullets(self):
+        source = dedent('''
+              name
+              
+              - first
+              - second
+              
+              address
+              
+              * street
+              * city
+              * country
+          ''')
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())
+
+    def test_blocks_with_items_as_definitions(self):
+        source = dedent('''
+              name
+               - first
+               - second
+
+              address
+               * street
+               * city
+               * country
+          ''')
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())

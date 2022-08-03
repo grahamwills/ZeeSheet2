@@ -18,7 +18,10 @@ def build_structure(text:str) -> structure.Sheet:
     """Parses the text and builds the basic structure out of it"""
     document = _parse_rst(text)
     main_visitor = visitors.StructureBuilder(document)
-    document.walkabout(main_visitor)
+    try:
+        document.walkabout(main_visitor)
+    except Exception as ex:
+        main_visitor.sheet.issues.append(structure.Issue(-1, True, str(ex)))
     return main_visitor.sheet
 
 def prettify(text:str)-> Tuple[str, List[str]]:
