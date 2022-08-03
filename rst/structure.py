@@ -8,19 +8,30 @@ WARNING_DIRECTIVE = '.. WARNING::'
 @dataclass
 class Element:
     value: str
+    modifier: str
 
     def __str__(self):
         return f"Element[{self.value}]"
 
-    def structure_str(self):
-        return self.value
+    def debug_str(self):
+        if self.modifier:
+            return self.value + '\u22a3' + self.modifier[:3]
+        else:
+            return self.value
 
     def as_str(self):
-        return self.value
+        if self.modifier == 'strong':
+            return '**' + self.value + '**'
+        elif self.modifier == 'emphasis':
+            return '*' + self.value + '*'
+        elif self.modifier is None:
+            return self.value
+        else:
+            raise ValueError('Unknown Element modifier: ' + self.modifier)
 
     @classmethod
-    def from_text(cls, text):
-        return cls(text)
+    def from_text(cls, text: str, modifier: str):
+        return cls(text, modifier)
 
 
 @dataclass
@@ -40,17 +51,25 @@ class Run:
     def __getitem__(self, item):
         return self.elements[item]
 
-    def structure_str(self):
-        return ' | '.join(s.structure_str() for s in self.elements)
+    def debug_str(self):
+        return '\u2016'.join(s.debug_str() for s in self.elements)
 
     def as_str(self) -> str:
         return ''.join(s.as_str() for s in self.elements)
 
+    def empty(self) -> bool:
+        return len(self.elements) == 0
+
+    def tidy(self) -> None:
+        # Nothing needed
+        pass
+
+
 
 @dataclass
 class Block:
-    title: Run = None
-    items: List[Run] = field(default_factory=list)
+    title: Run = field(default_factory=lambda: Run())
+    items: List[Run] = field(default_factory=lambda: [Run()])
 
     def append(self, run: Run):
         self.items.append(run)
@@ -65,9 +84,9 @@ class Block:
     def __getitem__(self, item):
         return self.items[item]
 
-    def structure_str(self):
-        pre = f"[{self.title.as_str()}: " if self.title else '[ '
-        return pre + ' \u2022 '.join(s.structure_str() for s in self.items) + ']'
+    def debug_str(self):
+        pre = f"[{self.title.debug_str()}: " if self.title else '[ '
+        return pre + ' \u2022 '.join(s.debug_str() for s in self.items) + ']'
 
     def add_lines_to(self, lines):
         if self.title:
@@ -79,18 +98,27 @@ class Block:
             lines.append('')
 
     def empty(self):
-        return self.title is None and not self.items
+        return self.title.empty() and len(self.items) == 1 and self.items[0].empty()
 
     def add_to_title(self, element: Element):
-        if not self.title:
-            self.title = Run()
         self.title.append(element)
+
+    def add_to_content(self, element: Element):
+        self.items[-1].append(element)
+
+    def tidy(self) -> None:
+        self.title.tidy()
+        for s in self.items:
+            s.tidy()
+        if self.items[-1].empty():
+            del self.items[-1]
+
 
 
 @dataclass
 class Section:
-    title: Run = None
-    blocks: List[Block] = field(default_factory=list)
+    title: Run = field(default_factory=lambda: Run())
+    blocks: List[Block] = field(default_factory=lambda: [Block()])
 
     def append(self, block: Block):
         self.blocks.append(block)
@@ -105,9 +133,9 @@ class Section:
     def __getitem__(self, item):
         return self.blocks[item]
 
-    def structure_str(self):
+    def debug_str(self):
         pre = f"<{self.title.as_str()}: " if self.title else '<'
-        return pre + ' '.join(s.structure_str() for s in self.blocks) + '>'
+        return pre + ' '.join(s.debug_str() for s in self.blocks) + '>'
 
     def add_lines_to(self, lines):
         if self.title:
@@ -120,13 +148,18 @@ class Section:
         lines.append('')
 
     def add_to_title(self, element: Element):
-        if not self.title:
-            self.title = Run()
         self.title.append(element)
 
     def empty(self):
-        return self.title is None and \
-               (not self.blocks or len(self.blocks) == 1 and self.blocks[0].empty())
+        return self.title.empty() and len(self.blocks) == 1 and self.blocks[0].empty()
+
+    def tidy(self) -> None:
+        self.title.tidy()
+        for s in self.blocks:
+            s.tidy()
+        if self.blocks[-1].empty():
+            del self.blocks[-1]
+
 
 
 class Issue(NamedTuple):
@@ -143,7 +176,7 @@ class Issue(NamedTuple):
 
 @dataclass
 class Sheet:
-    sections: List[Section] = field(default_factory=list)
+    sections: List[Section] = field(default_factory=lambda: [Section()])
     issues: List[Issue] = field(default_factory=list)
 
     def append(self, section: Section):
@@ -160,7 +193,7 @@ class Sheet:
         return self.sections[item]
 
     def structure_str(self):
-        return ' '.join(s.structure_str() for s in self.sections)
+        return ' '.join(s.debug_str() for s in self.sections)
 
     def combined_issues(self):
         return ' \u2022 '.join(s.message for s in self.issues)
@@ -190,3 +223,9 @@ class Sheet:
         while lines and lines[-1] == '':
             lines = lines[:-1]
         return '\n'.join(lines)
+
+    def tidy(self) -> None:
+        for s in self.sections:
+            s.tidy()
+        if self.sections[-1].empty():
+            del self.sections[-1]

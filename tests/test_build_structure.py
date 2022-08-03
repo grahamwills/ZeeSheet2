@@ -1,7 +1,8 @@
 import unittest
-from . import util
+
 from rst.validate import build_structure
-from textwrap import dedent
+from . import util
+
 
 class BasicBlocks(unittest.TestCase):
 
@@ -12,25 +13,25 @@ class BasicBlocks(unittest.TestCase):
     def test_empty(self):
         source = self.items['Empty'][0]
         sheet = build_structure(source)
-        self.assertEqual('',  sheet.combined_issues())
+        self.assertEqual('', sheet.combined_issues())
         self.assertEqual('<[ ]>', sheet.structure_str())
 
     def test_one_line(self):
         source = self.items['One Line'][0]
         sheet = build_structure(source)
-        self.assertEqual('',  sheet.combined_issues())
+        self.assertEqual('', sheet.combined_issues())
         self.assertEqual("<[hello: ]>", sheet.structure_str())
 
     def test_two_lines(self):
         source = self.items['Two Lines'][0]
         sheet = build_structure(source)
-        self.assertEqual('',  sheet.combined_issues())
+        self.assertEqual('', sheet.combined_issues())
         self.assertEqual("<[hello world: ]>", sheet.structure_str())
 
     def test_two_blocks(self):
         source = self.items['Two Blocks'][0]
         sheet = build_structure(source)
-        self.assertEqual('',  sheet.combined_issues())
+        self.assertEqual('', sheet.combined_issues())
         self.assertEqual("<[one header: ] [and another: ]>", sheet.structure_str())
 
     def test_blocks_with_items_as_bullets(self):
@@ -49,4 +50,12 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Sections'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<first section: [item: a • b]> <second section: [another: ] [yet another: ]>", sheet.structure_str())
+        self.assertEqual("<first section: [item: a • b]> <second section: [another: ] [yet another: ]>",
+                         sheet.structure_str())
+
+    def test_bold_and_italic(self):
+        source = self.items['Bold and Italic'][0]
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        self.assertEqual("<[title with ‖italic⊣emp‖ text: item with ‖bold⊣str‖ text]>",
+                         sheet.structure_str())
