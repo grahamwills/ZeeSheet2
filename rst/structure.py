@@ -45,7 +45,7 @@ class Run:
 
 @dataclass
 class Block:
-    title: str
+    title: str = None
     items: List[Run] = field(default_factory=list)
 
     def append(self, run: Run):
@@ -74,10 +74,14 @@ class Block:
                 lines.append('- ' + item.as_str())
             lines.append('')
 
+    def empty(self):
+        return self.title is None and not self.items
+
+
 
 @dataclass
 class Section:
-    title: str
+    title: str = None
     blocks: List[Block] = field(default_factory=list)
 
     def append(self, block: Block):
@@ -105,6 +109,10 @@ class Section:
         for b in self.blocks:
             b.add_lines_to(lines)
         lines.append('')
+
+    def empty(self):
+        return self.title is None and \
+        (not self.blocks or len(self.blocks) == 1 and self.blocks[0].empty())
 
 
 class Issue(NamedTuple):

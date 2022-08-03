@@ -1,21 +1,34 @@
-from enum import Enum
-
+import docutils.nodes
 import docutils.nodes
 
 from .structure import *
 
+
 class StructureBuilder(docutils.nodes.NodeVisitor):
     def __init__(self, document):
         super().__init__(document)
+
+        # Initialize the sheet with a new section
         self.sheet = Sheet()
+        self._make_new_section()
+
+        # Set our stack of what we are processing
         self.process_stack = []
 
-    def start(self, node: docutils.nodes.Node, n:int=2) -> str:
+    def visit_document(self, node) -> None:
+        self.start(node)
+
+    def visit_section(self, node) -> None:
+        if not self.current_section().empty():
+            self._make_new_section()
+        self.start(node)
+
+    def start(self, node: docutils.nodes.Node, n: int = 2) -> str:
         current = self._current_processing(n)
         self.process_stack.append(node.tagname)
         return current
 
-    def _current_processing(self, n:int=2):
+    def _current_processing(self, n: int = 2):
         current = ' • '.join(self.process_stack[-n:])
         return current
 
@@ -30,50 +43,40 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         self._error(node, f"{node.tagname} tag not supported")
         self.start(node)
 
-
     def unknown_departure(self, node) -> None:
         self.finish(node)
-
-    def visit_document(self, node) -> None:
-        self.start(node)
 
     def visit_title(self, node) -> None:
         self.start(node)
 
-    def visit_section(self, node) -> None:
-        self.sheet.sections.append(self._make_new_section())
-        self.start(node)
-
     def visit_bullet_list(self, node) -> None:
-        p  = self.start(node)
+        p = self.start(node)
 
     def visit_list_item(self, node) -> None:
         p = self.start(node)
 
     def visit_paragraph(self, node) -> None:
-        self._ensure_section()
         p = self.start(node)
         if p == 'document' or p == 'document • section':
-            self.current_section().append(self._make_new_block())
+            self._make_new_block()
         elif p == 'bullet_list • list_item':
             pass
         else:
             self._error(node, 'Surprising paragraph ancestors')
 
     def visit_definition_list(self, node) -> None:
-        # Ignore this -- it simply groups a set of defintion list items, which is what we care about
+        # Ignore this -- it simply groups a set of definition list items, which is what we care about
         self.start(node)
 
     def visit_definition_list_item(self, node) -> None:
         # Each item starts a block
-        self._ensure_section()
         self.start(node)
-        self.current_section().append(self._make_new_block())
+        self._make_new_block()
 
     def visit_definition(self, node) -> None:
         p = self.start(node)
         if p == 'document':
-            self.current_section().append(self._make_new_block())
+            self._make_new_block()
 
     def visit_term(self, node) -> None:
         p = self.start(node)
@@ -96,7 +99,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self._error(node, "Surprising text ancestors")
 
-
     def current_section(self) -> Section:
         return self.sheet[-1]
 
@@ -105,25 +107,16 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         return section.blocks[-1]
 
     def _ensure_block(self):
-        self._ensure_section()
         if not self.current_section().blocks:
-            self.current_section().append(self._make_new_block())
+            self._make_new_block()
 
-    def _make_new_block(self):
-        section_n = len(self.sheet.sections)
-        block_n = len(self.current_section().blocks) + 1
-        return Block(f"Block.{section_n}.{block_n}")
+    def _make_new_block(self) -> None:
+        self.current_section().blocks.append(Block())
 
-    def _ensure_section(self):
-        if not self.sheet.sections:
-            self.sheet.append(self._make_new_section())
+    def _make_new_section(self) -> None:
+         self.sheet.sections.append(Section())
 
-    def _make_new_section(self):
-        section_n = len(self.sheet.sections) + 1
-        section = Section(f"Section.{section_n}")
-        return section
-
-    def _error(self, node: docutils.nodes.Node, message:str):
+    def _error(self, node: docutils.nodes.Node, message: str):
         ancestors = self._current_processing(n=5)
         text = f"{message} (processing {ancestors})"
         self.sheet.issues.append(

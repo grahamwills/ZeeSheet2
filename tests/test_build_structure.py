@@ -13,37 +13,37 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Empty'][0]
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
-        self.assertEqual('', sheet.structure_str())
+        self.assertEqual('<>', sheet.structure_str())
 
     def test_one_line(self):
         source = self.items['One Line'][0]
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
-        self.assertEqual("<Section.1: [hello: ]>", sheet.structure_str())
+        self.assertEqual("<[hello: ]>", sheet.structure_str())
 
     def test_two_lines(self):
         source = self.items['Two Lines'][0]
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
-        self.assertEqual("<Section.1: [hello world: ]>", sheet.structure_str())
+        self.assertEqual("<[hello world: ]>", sheet.structure_str())
 
     def test_two_blocks(self):
         source = self.items['Two Blocks'][0]
         sheet = build_structure(source)
         self.assertEqual('',  sheet.combined_issues())
-        self.assertEqual("<Section.1: [one header: ] [and another: ]>", sheet.structure_str())
+        self.assertEqual("<[one header: ] [and another: ]>", sheet.structure_str())
 
     def test_blocks_with_items_as_bullets(self):
         source = self.items['Bullets'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<Section.1: [name: first • second] [address: street • city • country]>", sheet.structure_str())
+        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())
 
     def test_blocks_with_items_as_definitions(self):
         source = self.items['Definitions'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<Section.1: [name: first • second] [address: street • city • country]>", sheet.structure_str())
+        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())
 
     def test_sections(self):
         source = self.items['Sections'][0]
