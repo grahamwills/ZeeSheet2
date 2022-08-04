@@ -65,8 +65,67 @@ replaced with that section. Sections are defined as an underlined title, like so
     Best Section Ever
     -----------------
 
+Note that section titles cannot span multiple lines.
+
+
 To start a new section, simply add a new heading, like the one above.
 
 .. note:: You can use equal signs or a few other symbols to underline if you prefer,
           but you must be consistent; don't mix two different styles!
+
+
+
+
+Blocks
+------
+
+Any block of text that has no indentation and is surrounded by blank lines defines a new block
+with that text as the title. It's legal for the block title to span multiple lines, but it's
+not a great idea to have long block titles, so in general, try and keep them short.
+
+.. note:: You must separate a block title from its items by a blank line in all cases.
+
+
+Items
+-----
+
+An item is defined using a list item prefix, a dash or a bullet.
+If an item text is long, then when you wrap it, make sure you indent subsequent lines to keep them part
+of the same item. You do not need to put blank lines between list items.
+
+Here is an example of a block with three items::
+
+    History
+
+    - Born in Ireland in 787AD
+    - Age 18, they went on a raid against the Cymric
+      tribes to the east, and won much glory
+    - Settled in the south
+
+
+Special Text Markup
+===================
+
+Anytime text is defined for viewing (item content, block and section markers) it can be simple text
+or it can contain special markup. Here is a list of the markup allowed:
+
+Bold and Italic
+  Use single or double asterisks around simple text to indicate italic or bold content.
+  There must be no whitespace between the asterisks and the content.
+
+Literal tags
+  To ensure that text is processed as literal text with no processing, use two back-quotes around
+  the content. The enclosed content can span lines if desired
+
+
+Examples
+--------
+
+.. code-block::
+
+    Asterisks denote **bold** or *italic* text
+
+    ``This is literal text. Special characters are ignored,
+    such as *these*, [ ]``.
+
 

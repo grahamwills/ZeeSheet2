@@ -34,8 +34,8 @@ class Element:
     def from_text(cls, text: str, modifier: Optional[str]):
         return cls(text, modifier)
 
-    def is_plain_text(self):
-        return self.modifier is None
+    def is_special(self):
+        return False
 
 
 @dataclass
@@ -66,7 +66,7 @@ class Run:
 
         items = []
         for s in self.elements:
-            if s.is_plain_text():
+            if not s.is_special():
                 # Using explicit space to split keeps the whitespace around
                 for w in splitter.split(s.as_str()):
                     if w != '':

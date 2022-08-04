@@ -19,8 +19,8 @@ class RunTests(unittest.TestCase):
         r.append(Element.from_text(' three four five', None))
 
         self.assertEqual('one two **bright gloomy** three four five', r.as_str(10000))
-        self.assertEqual('one\ntwo\n**bright gloomy**\nthree\nfour\nfive', r.as_str(0))
-        self.assertEqual('one two\n**bright gloomy**\nthree four\nfive', r.as_str(10))
+        self.assertEqual('one\ntwo\n**bright\ngloomy**\nthree\nfour\nfive', r.as_str(0))
+        self.assertEqual('one two\n**bright\ngloomy**\nthree four\nfive', r.as_str(10))
 
     def test_wrapping_with_indent(self):
         r =  Run()
@@ -29,5 +29,5 @@ class RunTests(unittest.TestCase):
         r.append(Element.from_text(' three four five', None))
 
         self.assertEqual('one two **bright gloomy** three four five', r.as_str(10000, 2))
-        self.assertEqual('one\n  two\n  **bright gloomy**\n  three\n  four\n  five', r.as_str(0, 2))
-        self.assertEqual('one two\n  **bright gloomy**\n  three\n  four\n  five', r.as_str(10, 2))
+        self.assertEqual('one\n  two\n  **bright\n  gloomy**\n  three\n  four\n  five', r.as_str(0, 2))
+        self.assertEqual('one two\n  **bright\n  gloomy**\n  three\n  four\n  five', r.as_str(10, 2))
