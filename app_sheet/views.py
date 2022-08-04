@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Dict
 
 from django.http import HttpRequest, HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 
 from rst.validate import prettify
@@ -98,5 +98,6 @@ def action_dispatcher(request, sheet_id):
     # Save the sheet and show it again!
     csd.save()
     url = reverse_lazy('sheet', kwargs={'sheet_id':sheet_id})
-    return HttpResponseRedirect(url)
+
+    return redirect(url)
 
