@@ -245,15 +245,20 @@ abcdefg
 
 
 
-# Runs In Item #########################
-block
+# Runs In Item ################################
+title
 
 - apple
 
   * part a
   * part b
   * part c
-
-- banana | part a | part c
 ################################################
+title
+
+- apple
+
+  - part a
+  - part b
+  - part c
 ################################################

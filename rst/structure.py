@@ -165,12 +165,27 @@ class Run(StructureComponent):
 
 @dataclass
 class Item(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('[', '', ']')
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('[', ' \u2b29 ', ']')
 
     children: List[Run] = field(default_factory=lambda: [Run()])
 
+    def append(self, run: Run):
+        self.children.append(run)
+
     def as_str(self, width: int, indent: int = 0):
+        assert len(self.children) == 1
         return self.children[0].as_str(width, indent=indent)
+
+    def as_text_lines(self, width: int) -> List[str]:
+        lines = []
+        for idx, item in enumerate(self.children):
+            if idx == 0:
+                lines.append('- ' + item.as_str(width, indent=2))
+            else:
+                if idx == 1:
+                    lines.append('')
+                lines.append('  - ' + item.as_str(width, indent=4))
+        return lines
 
     def add_to_content(self, element: Element):
         self.children[-1].append(element)
@@ -183,14 +198,16 @@ class Block(StructureComponent):
     title: Run = field(default_factory=lambda: Run())
     children: List[Item] = field(default_factory=lambda: [Item()])
 
-    def add_lines_to(self, lines, width: int):
+    def as_text_lines(self, width: int) -> List[str]:
+        lines = []
         if self.title:
             lines.append(self.title.as_str(width))
             lines.append('')
         if self.children:
             for item in self.children:
-                lines.append('- ' + item.as_str(width, indent=2))
+                lines += item.as_text_lines(width)
             lines.append('')
+        return lines
 
     def add_to_title(self, element: Element):
         self.title.append(element)
@@ -206,7 +223,8 @@ class Section(StructureComponent):
     def append(self, block: Block):
         self.children.append(block)
 
-    def add_lines_to(self, lines, width: int):
+    def as_text_lines(self, width: int) -> List[str]:
+        lines = []
         if self.title:
             # Since the title has to be underlined, we cannot wrap it
             title = self.title.as_str(10000)
@@ -214,8 +232,9 @@ class Section(StructureComponent):
             lines.append('-' * len(title))
             lines.append('')
         for b in self.children:
-            b.add_lines_to(lines, width)
+            lines += b.as_text_lines(width)
         lines.append('')
+        return lines
 
     def add_to_title(self, element: Element):
         self.title.append(element)
@@ -253,7 +272,7 @@ class Sheet(StructureComponent):
 
         # Add lines for each section
         for s in self.children:
-            s.add_lines_to(lines, width)
+            lines += s.as_text_lines(width)
 
         # Remove trailing section definition and blank lines
         while lines and lines[-1] == '':

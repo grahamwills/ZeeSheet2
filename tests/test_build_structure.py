@@ -94,5 +94,5 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Runs In Item'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        expected = "<>"
+        expected = "❮title ~ [apple ⬩ part a ⬩ part b ⬩ part c]❯"
         self.assertEqual(expected, sheet.structure_str())
