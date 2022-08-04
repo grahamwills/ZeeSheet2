@@ -242,3 +242,18 @@ abcdefg
 - A much longer text that has **bold** text outside,
   ``but then **more bold** text inside the literal part of line``
 ################################################
+
+
+
+# Runs In Item #########################
+block
+
+- apple
+
+  * part a
+  * part b
+  * part c
+
+- banana | part a | part c
+################################################
+################################################

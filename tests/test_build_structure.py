@@ -14,7 +14,7 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Empty'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual('<[ ]>', sheet.structure_str())
+        self.assertEqual('', sheet.structure_str())
 
     def test_one_line(self):
         source = self.items['One Line'][0]
@@ -88,4 +88,11 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual('', sheet.combined_issues())
         expected = "<[abcdefg: Literal *text* with italics inside⊣lit • A much longer text that has ‖bold⊣str‖" \
                    " text outside, ‖but then **more bold** text inside the literal part of line⊣lit]>"
+        self.assertEqual(expected, sheet.structure_str())
+
+    def test_runs_in_item(self):
+        source = self.items['Runs In Item'][0]
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        expected = "<>"
         self.assertEqual(expected, sheet.structure_str())

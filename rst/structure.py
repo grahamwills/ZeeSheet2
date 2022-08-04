@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import List, NamedTuple, Optional
@@ -6,13 +7,72 @@ ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
 
 
+class _EMPTY_CLASS:
+    def has_content(self):
+        return False
+
+    def tidy(self):
+        pass
+
+
+_EMPTY = _EMPTY_CLASS()
+
+
+class Issue(NamedTuple):
+    lineNo: Optional[int]
+    is_error: bool
+    message: str
+
+    def as_text(self) -> str:
+        if self.lineNo:
+            return f"[{self.lineNo:3}] {self.message}"
+        else:
+            return self.message
+
+
+# noinspection PyUnresolvedReferences
 @dataclass
-class Element:
-    value: str
-    modifier: Optional[str]
+class StructureComponent:
 
     def __str__(self):
-        return f"Element[{self.value}]"
+        return self.__class__.__name__
+
+    def __getattr__(self, item):
+        if item == 'title':
+            return _EMPTY
+        if item == 'children':
+            return []
+        raise AttributeError('Unknown attribute: ' + item)
+
+    def __len__(self):
+        return len(self.children)
+
+    def __getitem__(self, item):
+        return self.children[item]
+
+    def last_child(self) -> StructureComponent:
+        return self.children[-1]
+
+    def has_content(self):
+        return self.title_has_content() or self.children_have_content()
+
+    def title_has_content(self):
+        return self.title.has_content()
+
+    def children_have_content(self):
+        return any(s.has_content() for s in self.children)
+
+    def tidy(self) -> None:
+        self.title.tidy()
+        for s in self.children:
+            s.tidy()
+        self.children = [s for s in self.children if s.has_content()]
+
+
+@dataclass
+class Element(StructureComponent):
+    value: str
+    modifier: Optional[str]
 
     def debug_str(self):
         if self.modifier:
@@ -39,35 +99,28 @@ class Element:
     def is_special(self):
         return self.modifier == 'literal'
 
+    def has_content(self):
+        return True
+
 
 @dataclass
-class Run:
-    elements: List[Element] = field(default_factory=list)
+class Run(StructureComponent):
+    children: List[Element] = field(default_factory=list)
 
     def append(self, element: Element):
-        self.elements.append(element)
-
-    def __str__(self):
-        n = len(self)
-        return f"Run[{n} Elements]"
-
-    def __len__(self):
-        return len(self.elements)
-
-    def __getitem__(self, item):
-        return self.elements[item]
+        self.children.append(element)
 
     def debug_str(self):
-        return '\u2016'.join(s.debug_str() for s in self.elements)
+        return '\u2016'.join(s.debug_str() for s in self.children)
 
     def as_str(self, width: int, indent: int = 0) -> str:
-        if not self.elements:
+        if not self.children:
             return ''
 
         splitter = re.compile(r'(\S+)')
 
         items = []
-        for s in self.elements:
+        for s in self.children:
             if not s.is_special():
                 # Using explicit space to split keeps the whitespace around
                 for w in splitter.split(s.as_str()):
@@ -97,114 +150,54 @@ class Run:
 
         return ''.join(results)
 
-    def empty(self) -> bool:
-        return len(self.elements) == 0
-
-    def tidy(self) -> None:
-        # Nothing needed
-        pass
-
 
 @dataclass
-class Item:
-    runs: List[Run] = field(default_factory=lambda: [Run()])
-
-    def __str__(self):
-        n = len(self)
-        return f"Item[{n} Runs]"
-
-    def __len__(self):
-        return len(self.runs)
-
-    def __getitem__(self, item):
-        return self.runs[item]
+class Item(StructureComponent):
+    children: List[Run] = field(default_factory=lambda: [Run()])
 
     def debug_str(self):
-        return ' \ufe19\ufe19 '.join(s.debug_str() for s in self.runs)
+        return '\ufe19'.join(s.debug_str() for s in self.children)
 
     def as_str(self, width: int, indent: int = 0):
-        return self.runs[0].as_str(width, indent=indent)
-
-    def empty(self):
-        return len(self.runs) == 0 or len(self.runs) == 1 and self.runs[0].empty()
+        return self.children[0].as_str(width, indent=indent)
 
     def add_to_content(self, element: Element):
-        self.runs[-1].append(element)
-
-    def tidy(self) -> None:
-        for s in self.runs:
-            s.tidy()
-        if self.runs[-1].empty():
-            del self.runs[-1]
+        self.children[-1].append(element)
 
 
 @dataclass
-class Block:
+class Block(StructureComponent):
     title: Run = field(default_factory=lambda: Run())
-    items: List[Item] = field(default_factory=lambda: [Item()])
-
-    def __str__(self):
-        n = len(self)
-        return f"Block[{n} Runs]"
-
-    def __len__(self):
-        return len(self.items)
-
-    def __getitem__(self, item):
-        return self.items[item]
+    children: List[Item] = field(default_factory=lambda: [Item()])
 
     def debug_str(self):
         pre = f"[{self.title.debug_str()}: " if self.title else '[ '
-        return pre + ' \u2022 '.join(s.debug_str() for s in self.items) + ']'
+        return pre + ' \u2022 '.join(s.debug_str() for s in self.children) + ']'
 
     def add_lines_to(self, lines, width: int):
         if self.title:
             lines.append(self.title.as_str(width))
             lines.append('')
-        if self.items:
-            for item in self.items:
+        if self.children:
+            for item in self.children:
                 lines.append('- ' + item.as_str(width, indent=2))
             lines.append('')
-
-    def empty(self):
-        return self.title.empty() and len(self.items) == 1 and self.items[0].empty()
 
     def add_to_title(self, element: Element):
         self.title.append(element)
 
-    def add_to_content(self, element: Element):
-        item = self.items[-1]
-        item.runs[0].append(element)
-
-    def tidy(self) -> None:
-        self.title.tidy()
-        for s in self.items:
-            s.tidy()
-        if self.items[-1].empty():
-            del self.items[-1]
-
 
 @dataclass
-class Section:
+class Section(StructureComponent):
     title: Run = field(default_factory=lambda: Run())
-    blocks: List[Block] = field(default_factory=lambda: [Block()])
+    children: List[Block] = field(default_factory=lambda: [Block()])
 
     def append(self, block: Block):
-        self.blocks.append(block)
-
-    def __str__(self):
-        n = len(self)
-        return f"Section[{n} Blocks]"
-
-    def __len__(self):
-        return len(self.blocks)
-
-    def __getitem__(self, item):
-        return self.blocks[item]
+        self.children.append(block)
 
     def debug_str(self):
         pre = f"<{self.title.debug_str()}: " if self.title else '<'
-        return pre + ' '.join(s.debug_str() for s in self.blocks) + '>'
+        return pre + ' '.join(s.debug_str() for s in self.children) + '>'
 
     def add_lines_to(self, lines, width: int):
         if self.title:
@@ -213,56 +206,24 @@ class Section:
             lines.append(title)
             lines.append('-' * len(title))
             lines.append('')
-        for b in self.blocks:
+        for b in self.children:
             b.add_lines_to(lines, width)
         lines.append('')
 
     def add_to_title(self, element: Element):
         self.title.append(element)
 
-    def empty(self):
-        return self.title.empty() and len(self.blocks) == 1 and self.blocks[0].empty()
-
-    def tidy(self) -> None:
-        self.title.tidy()
-        for s in self.blocks:
-            s.tidy()
-        if self.blocks[-1].empty():
-            del self.blocks[-1]
-
-
-class Issue(NamedTuple):
-    lineNo: Optional[int]
-    is_error: bool
-    message: str
-
-    def as_text(self) -> str:
-        if self.lineNo:
-            return f"[{self.lineNo:3}] {self.message}"
-        else:
-            return self.message
-
 
 @dataclass
-class Sheet:
-    sections: List[Section] = field(default_factory=lambda: [Section()])
+class Sheet(StructureComponent):
+    children: List[Section] = field(default_factory=lambda: [Section()])
     issues: List[Issue] = field(default_factory=list)
 
     def append(self, section: Section):
-        self.sections.append(section)
-
-    def __str__(self):
-        n = len(self)
-        return f"Sheet[{n} Sections]"
-
-    def __len__(self):
-        return len(self.sections)
-
-    def __getitem__(self, item):
-        return self.sections[item]
+        self.children.append(section)
 
     def structure_str(self):
-        return ' '.join(s.debug_str() for s in self.sections)
+        return ' '.join(s.debug_str() for s in self.children)
 
     def combined_issues(self):
         return ' \u2022 '.join(s.message for s in self.issues)
@@ -285,16 +246,10 @@ class Sheet:
             lines.append('')
 
         # Add lines for each section
-        for s in self.sections:
+        for s in self.children:
             s.add_lines_to(lines, width)
 
         # Remove trailing section definition and blank lines
         while lines and lines[-1] == '':
             lines = lines[:-1]
         return '\n'.join(lines)
-
-    def tidy(self) -> None:
-        for s in self.sections:
-            s.tidy()
-        if self.sections[-1].empty():
-            del self.sections[-1]

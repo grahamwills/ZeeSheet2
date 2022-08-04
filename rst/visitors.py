@@ -33,16 +33,15 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         self.sheet.tidy()
         return self.sheet
 
-
     @property
     def current_section(self) -> Section:
         """The Section we are currently defining"""
-        return self.sheet.sections[-1]
+        return self.sheet.children[-1]
 
     @property
     def current_block(self) -> Block:
         """The Block we are currently defining"""
-        return self.sheet.sections[-1].blocks[-1]
+        return self.sheet.children[-1].children[-1]
 
     def unknown_visit(self, node: docutils.nodes.Node) -> None:
         """Handle a visit for node type we do not explicitly handle"""
@@ -87,7 +86,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Unexpected paragraph encountered')
 
-    def visit_system_message(self, node:docutils.nodes.system_message) -> None:
+    def visit_system_message(self, node: docutils.nodes.system_message) -> None:
         # The departure will not be noted, so must not record this
         level = node.attributes['level']
         message = node.children[0].astext()
@@ -98,7 +97,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # No processing of children
         raise docutils.nodes.SkipChildren
-
 
     def visit_literal(self, node: docutils.nodes.Node) -> None:
         assert len(node.children) == 1
@@ -112,7 +110,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # No processing of children
         raise docutils.nodes.SkipChildren
-
 
     # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
@@ -130,7 +127,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         text = node.astext().replace('\n', ' ')
         element = Element.from_text(text, style)
         self.add_element(element, node, p)
-
 
     # Other methods ####################################################################
 
@@ -160,7 +156,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elif p == 'section • title':
             self.current_section.add_to_title(element)
         elif p == 'list_item • paragraph':
-            self.current_block.add_to_content(element)
+            n = self._count_ancestors('list_item')
+            if n > 1:
+                # New ru within the item
+                self.current_block.children[-1].children.append(Run())
+            self.current_block.children[-1].add_to_content(element)
+
         else:
             self.error(node, 'Unexpected text encountered')
 
@@ -185,16 +186,19 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
-        if not self.current_section.empty():
-            self.sheet.sections.append(Section())
+        if self.current_section.has_content():
+            self.sheet.append(Section())
 
     def _make_new_block(self) -> None:
-        # If the current block is undefined, we just use that
-        if not self.current_block.empty():
-            self.current_section.blocks.append(Block())
+        # If the current block is undefined,we do not need a new one
+        if self.current_block.has_content():
+            self.current_section.append(Block())
 
     def _make_new_run(self) -> None:
         # If the current run is undefined, we just use that
         block = self.current_block
-        if not block.items[-1].empty():
-            block.items.append(Item())
+        if block.last_child().has_content():
+            block.children.append(Item())
+
+    def _count_ancestors(self, target):
+        return sum(t == target for t in self.process_stack)
