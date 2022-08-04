@@ -8,6 +8,9 @@ from . import visitors
 def _parse_rst(text: str) -> nodes.document:
     parser = parsers.rst.Parser()
     settings = core.Publisher(parser=parsers.rst.Parser).get_settings()
+    settings.halt_level = 99
+    settings.tab_width = 4
+
     document = utils.new_document(text, settings)
     parser.parse(text, document)
     return document

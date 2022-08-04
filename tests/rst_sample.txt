@@ -192,6 +192,9 @@ accompanying text that we should absolutely wrap)
 ################################################
 
 
+
+
+
 # Bad Underlining ##############################
 abcd
 ---
@@ -200,4 +203,24 @@ abcd
    [  2] Possible title underline, too short for the title. Treating it as ordinary text because it's so short.
 
 abcd ---
+################################################
+
+
+
+
+
+
+
+# Very Bad Underlining #########################
+abcdefg
+ --------
+
+more after
+################################################
+.. ERROR::
+   Unexpected section title or transition. (within definition_list • definition_list_item • definition)
+
+abcdefg
+
+more after
 ################################################
