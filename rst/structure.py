@@ -28,7 +28,7 @@ class Element:
         elif self.modifier == 'literal':
             return '``' + self.value + '``'
         elif self.modifier is None:
-                return self.value
+            return self.value
         else:
             raise ValueError('Unknown Element modifier: ' + self.modifier)
 
@@ -106,12 +106,42 @@ class Run:
 
 
 @dataclass
+class Item:
+    runs: List[Run] = field(default_factory=lambda: [Run()])
+
+    def __str__(self):
+        n = len(self)
+        return f"Item[{n} Runs]"
+
+    def __len__(self):
+        return len(self.runs)
+
+    def __getitem__(self, item):
+        return self.runs[item]
+
+    def debug_str(self):
+        return ' \ufe19\ufe19 '.join(s.debug_str() for s in self.runs)
+
+    def as_str(self, width: int, indent: int = 0):
+        return self.runs[0].as_str(width, indent=indent)
+
+    def empty(self):
+        return len(self.runs) == 0 or len(self.runs) == 1 and self.runs[0].empty()
+
+    def add_to_content(self, element: Element):
+        self.runs[-1].append(element)
+
+    def tidy(self) -> None:
+        for s in self.runs:
+            s.tidy()
+        if self.runs[-1].empty():
+            del self.runs[-1]
+
+
+@dataclass
 class Block:
     title: Run = field(default_factory=lambda: Run())
-    items: List[Run] = field(default_factory=lambda: [Run()])
-
-    def append(self, run: Run):
-        self.items.append(run)
+    items: List[Item] = field(default_factory=lambda: [Item()])
 
     def __str__(self):
         n = len(self)
@@ -143,7 +173,8 @@ class Block:
         self.title.append(element)
 
     def add_to_content(self, element: Element):
-        self.items[-1].append(element)
+        item = self.items[-1]
+        item.runs[0].append(element)
 
     def tidy(self) -> None:
         self.title.tidy()

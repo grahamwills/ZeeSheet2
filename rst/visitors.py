@@ -197,4 +197,4 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         # If the current run is undefined, we just use that
         block = self.current_block
         if not block.items[-1].empty():
-            block.items.append(Run())
+            block.items.append(Item())
