@@ -16,7 +16,7 @@
     </p>
 
     <form method="post" action="{% url 'action_dispatcher' sheet_id=sheet.id %}">{% csrf_token %}
-
+        {% csrf_token %}
         <div class="main-scrollable2">
         <textarea id="sheet-edit" name="sheet">{{ sheet.content }}</textarea>
         </div>
