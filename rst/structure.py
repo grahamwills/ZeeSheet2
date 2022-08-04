@@ -243,12 +243,12 @@ class Sheet:
         if errors:
             lines.append(ERROR_DIRECTIVE)
             for issue in errors:
-                lines.append('\t' + issue.as_text())
+                lines.append('   ' + issue.as_text())
             lines.append('')
         if warnings:
             lines.append(WARNING_DIRECTIVE)
             for issue in warnings:
-                lines.append('\t' + issue.as_text())
+                lines.append('   ' + issue.as_text())
             lines.append('')
 
         # Add lines for each section

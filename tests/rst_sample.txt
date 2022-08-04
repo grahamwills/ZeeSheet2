@@ -190,3 +190,14 @@ accompanying text that we should absolutely wrap)
 - item with **bold** text and a very long piece of accompanying text that we
   should absolutely wrap
 ################################################
+
+
+# Bad Underlining ##############################
+abcd
+---
+################################################
+.. WARNING::
+   [  2] Possible title underline, too short for the title. Treating it as ordinary text because it's so short.
+
+abcd ---
+################################################

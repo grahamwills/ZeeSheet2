@@ -21,6 +21,6 @@ def build_structure(text: str) -> structure.Sheet:
     return main_visitor.tidy()
 
 
-def prettify(text: str) -> str:
+def prettify(text: str, width:int=100) -> str:
     sheet = build_structure(text)
-    return sheet.to_text()
+    return sheet.to_text(width=width)

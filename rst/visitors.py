@@ -3,8 +3,8 @@ import docutils.nodes
 
 from .structure import *
 
-# These tags will not even be recorded
-IGNORE_TAGS = {'document'}
+# These tags will not  be recorded
+IGNORE_TAGS = {'document', 'system_message'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -87,6 +87,22 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Unexpected paragraph encountered')
 
+    def visit_system_message(self, node:docutils.nodes.system_message) -> None:
+        # The departure will not be noted, so must not record this
+        level = node.attributes['level']
+        message = node.children[0].astext()
+        if level > 2:
+            self.error(node, message)
+        else:
+            self.warning(node, message)
+
+        # No processing of children
+        raise docutils.nodes.SkipChildren
+
+
+
+
+
     # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
 
@@ -125,12 +141,21 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             message = f"Expected to be finishing {expected}, but was encountered {what}"
             raise RuntimeError(message)
 
+    def warning(self, node: docutils.nodes.Node, message: str):
+        text = self._issue_description(message, node)
+        self.sheet.issues.append(Issue(node.line, False, text))
+
     def error(self, node: docutils.nodes.Node, message: str):
-        ancestors = self._processing(n=5)
-        text = f"{message} (processing {ancestors})"
-        self.sheet.issues.append(
-            Issue(node.line, True, text)
-        )
+        text = self._issue_description(message, node)
+        self.sheet.issues.append(Issue(node.line, True, text))
+
+    def _issue_description(self, message, node):
+        ancestors = self._processing(n=5).strip()
+        text = message
+        if ancestors:
+            text += ' (within ' + ancestors + ')'
+        text = text.replace('\n', ' ')
+        return text
 
     def _processing(self, n: int = 2, skip_last: bool = False):
         """Text form of where we are in the processing tree"""

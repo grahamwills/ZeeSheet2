@@ -69,3 +69,10 @@ class BasicBlocks(unittest.TestCase):
                    "text that we should absolutely wrap): item with ‖bold⊣str‖ text and a very long piece " \
                    "of accompanying text that we should absolutely wrap]>"
         self.assertEqual(expected, sheet.structure_str())
+
+    def test_bad_underlining(self):
+        source = self.items['Bad Underlining'][0]
+        sheet = build_structure(source)
+        self.assertEqual("Possible title underline, too short for the title. "
+                         "Treating it as ordinary text because it's so short.", sheet.combined_issues())
+
