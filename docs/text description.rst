@@ -48,3 +48,25 @@ we might have something like this::
 This has one (unnamed, default) section and three blocks. The blocks have 3, 3, and 2 items in them.
 The second block uses asterisks to give a strong style to the numbers, and the third block uses a vertical
 bar (also knowns as a 'pipe symbol') to specify alignment.
+
+
+Syntax
+======
+
+This section describes the syntax for each component
+
+
+Sections
+--------
+
+A sheet starts with a default unnamed section. If you define a section before other content, it will be
+replaced with that section. Sections are defined as an underlined title, like so::
+
+    Best Section Ever
+    -----------------
+
+To start a new section, simply add a new heading, like the one above.
+
+.. note:: You can use equal signs or a few other symbols to underline if you prefer,
+          but you must be consistent; don't mix two different styles!
+

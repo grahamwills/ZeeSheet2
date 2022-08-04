@@ -132,3 +132,5 @@ CODEMIRROR_SETTINGS = codemirror_settings_update(CODEMIRROR_SETTINGS, {
     'lineNumbers': True,
     'indent': 4
 })
+
+CSRF_TRUSTED_ORIGINS = ['https://zeesheet.azurewebsites.net']
