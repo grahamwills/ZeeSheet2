@@ -1,22 +1,19 @@
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, ClassVar, Tuple
+from collections import namedtuple
+from types import SimpleNamespace
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
 
 
-class _EMPTY_CLASS:
-    def has_content(self):
-        return False
-
-    def tidy(self):
-        pass
+# Define an empty class for things with no titles
+_EMPTY = SimpleNamespace(has_content = lambda : False, tidy = lambda : None)
 
 
-_EMPTY = _EMPTY_CLASS()
-
+FormatInfo = namedtuple('ClassInfo', 'open close sep')
 
 class Issue(NamedTuple):
     lineNo: Optional[int]
@@ -33,6 +30,7 @@ class Issue(NamedTuple):
 # noinspection PyUnresolvedReferences
 @dataclass
 class StructureComponent:
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('aaa', 'bbb', 'ccc')
 
     def __str__(self):
         return self.__class__.__name__
@@ -68,15 +66,23 @@ class StructureComponent:
             s.tidy()
         self.children = [s for s in self.children if s.has_content()]
 
+    def structure_str(self):
+        open, sep, close = self.format_pieces
+
+        title = self.title.structure_str() + " ~ " if self.title_has_content() else ''
+        content = sep.join(s.structure_str() for s in self.children)
+
+        return open + (title + content).strip() + close
+
 
 @dataclass
 class Element(StructureComponent):
     value: str
     modifier: Optional[str]
 
-    def debug_str(self):
+    def structure_str(self):
         if self.modifier:
-            return self.value + '\u22a3' + self.modifier[:3]
+            return '\u00ab' + self.value + '\u22a3' + self.modifier[:3] + '\u00bb'
         else:
             return self.value
 
@@ -105,13 +111,19 @@ class Element(StructureComponent):
 
 @dataclass
 class Run(StructureComponent):
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('', '', '')
+
     children: List[Element] = field(default_factory=list)
 
     def append(self, element: Element):
         self.children.append(element)
 
-    def debug_str(self):
-        return '\u2016'.join(s.debug_str() for s in self.children)
+
+    def structure_str(self):
+        if len(self.children) == 1:
+            return self.children[0].structure_str()
+        else:
+            return super().structure_str()
 
     def as_str(self, width: int, indent: int = 0) -> str:
         if not self.children:
@@ -153,10 +165,9 @@ class Run(StructureComponent):
 
 @dataclass
 class Item(StructureComponent):
-    children: List[Run] = field(default_factory=lambda: [Run()])
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('[', '', ']')
 
-    def debug_str(self):
-        return '\ufe19'.join(s.debug_str() for s in self.children)
+    children: List[Run] = field(default_factory=lambda: [Run()])
 
     def as_str(self, width: int, indent: int = 0):
         return self.children[0].as_str(width, indent=indent)
@@ -167,12 +178,10 @@ class Item(StructureComponent):
 
 @dataclass
 class Block(StructureComponent):
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('\u276e', ' ', '\u276f')
+
     title: Run = field(default_factory=lambda: Run())
     children: List[Item] = field(default_factory=lambda: [Item()])
-
-    def debug_str(self):
-        pre = f"[{self.title.debug_str()}: " if self.title else '[ '
-        return pre + ' \u2022 '.join(s.debug_str() for s in self.children) + ']'
 
     def add_lines_to(self, lines, width: int):
         if self.title:
@@ -189,15 +198,13 @@ class Block(StructureComponent):
 
 @dataclass
 class Section(StructureComponent):
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('', ' ', '')
+
     title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
 
     def append(self, block: Block):
         self.children.append(block)
-
-    def debug_str(self):
-        pre = f"<{self.title.debug_str()}: " if self.title else '<'
-        return pre + ' '.join(s.debug_str() for s in self.children) + '>'
 
     def add_lines_to(self, lines, width: int):
         if self.title:
@@ -216,14 +223,13 @@ class Section(StructureComponent):
 
 @dataclass
 class Sheet(StructureComponent):
+    format_pieces : ClassVar[Tuple[str,str,str]] = ('', ' --- ', '')
+
     children: List[Section] = field(default_factory=lambda: [Section()])
     issues: List[Issue] = field(default_factory=list)
 
     def append(self, section: Section):
         self.children.append(section)
-
-    def structure_str(self):
-        return ' '.join(s.debug_str() for s in self.children)
 
     def combined_issues(self):
         return ' \u2022 '.join(s.message for s in self.issues)

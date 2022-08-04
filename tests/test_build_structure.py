@@ -20,54 +20,54 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['One Line'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[hello: ]>", sheet.structure_str())
+        self.assertEqual("❮hello ~❯", sheet.structure_str())
 
     def test_two_lines(self):
         source = self.items['Two Lines'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[hello world: ]>", sheet.structure_str())
+        self.assertEqual("❮hello world ~❯", sheet.structure_str())
 
     def test_two_blocks(self):
         source = self.items['Two Blocks'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[one header: ] [and another: ]>", sheet.structure_str())
+        self.assertEqual("❮one header ~❯ ❮and another ~❯", sheet.structure_str())
 
     def test_blocks_with_items_as_bullets(self):
         source = self.items['Bullets'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())
+        self.assertEqual("❮name ~ [first] [second]❯ ❮address ~ [street] [city] [country]❯", sheet.structure_str())
 
     def test_blocks_with_items_as_definitions(self):
         source = self.items['Definitions'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[name: first • second] [address: street • city • country]>", sheet.structure_str())
+        self.assertEqual("❮name ~ [first] [second]❯ ❮address ~ [street] [city] [country]❯", sheet.structure_str())
 
     def test_sections(self):
         source = self.items['Sections'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<first section: [item: a • b]> <second section: [another: ] [yet another: ]>",
+        self.assertEqual("first section ~ ❮item ~ [a] [b]❯ --- second section ~ ❮another ~❯ ❮yet another ~❯",
                          sheet.structure_str())
 
     def test_bold_and_italic(self):
         source = self.items['Bold and Italic'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        self.assertEqual("<[title with ‖italic⊣emp‖ text: item with ‖bold⊣str‖ text]>",
+        self.assertEqual("❮title with «italic⊣emp» text ~ [item with «bold⊣str» text]❯",
                          sheet.structure_str())
 
     def test_wrapping_text(self):
         source = self.items['Wrapping Test'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        expected = "<[title⊣emp‖ which is a very long piece of accompanying text that we should " \
+        expected = "❮«title⊣emp» which is a very long piece of accompanying text that we should " \
                    "absolutely wrap of a block (remember the text is a very long piece of accompanying " \
-                   "text that we should absolutely wrap): item with ‖bold⊣str‖ text and a very long piece " \
-                   "of accompanying text that we should absolutely wrap]>"
+                   "text that we should absolutely wrap) ~ [item with «bold⊣str» text and a very long " \
+                   "piece of accompanying text that we should absolutely wrap]❯"
         self.assertEqual(expected, sheet.structure_str())
 
     def test_bad_underlining(self):
@@ -86,8 +86,8 @@ class BasicBlocks(unittest.TestCase):
         source = self.items['Literals'][0]
         sheet = build_structure(source)
         self.assertEqual('', sheet.combined_issues())
-        expected = "<[abcdefg: Literal *text* with italics inside⊣lit • A much longer text that has ‖bold⊣str‖" \
-                   " text outside, ‖but then **more bold** text inside the literal part of line⊣lit]>"
+        expected = "❮abcdefg ~ [«Literal *text* with italics inside⊣lit»] [A much longer text that has " \
+                   "«bold⊣str» text outside, «but then **more bold** text inside the literal part of line⊣lit»]❯"
         self.assertEqual(expected, sheet.structure_str())
 
     def test_runs_in_item(self):
