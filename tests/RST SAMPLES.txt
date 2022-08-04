@@ -224,3 +224,21 @@ abcdefg
 
 more after
 ################################################
+
+
+
+
+
+
+# Literals #########################
+abcdefg
+
+- ``Literal *text* with italics inside``
+- A much longer text that has **bold** text outside, ``but then **more bold** text inside the literal part of line``
+################################################
+abcdefg
+
+- ``Literal *text* with italics inside``
+- A much longer text that has **bold** text outside,
+  ``but then **more bold** text inside the literal part of line``
+################################################

@@ -25,8 +25,10 @@ class Element:
             return '**' + self.value + '**'
         elif self.modifier == 'emphasis':
             return '*' + self.value + '*'
+        elif self.modifier == 'literal':
+            return '``' + self.value + '``'
         elif self.modifier is None:
-            return self.value
+                return self.value
         else:
             raise ValueError('Unknown Element modifier: ' + self.modifier)
 
@@ -35,7 +37,7 @@ class Element:
         return cls(text, modifier)
 
     def is_special(self):
-        return False
+        return self.modifier == 'literal'
 
 
 @dataclass

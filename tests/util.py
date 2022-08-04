@@ -8,7 +8,7 @@ def _join_nicely(lines: List[str]) -> str:
 
 
 def test_data() -> Dict[str, Tuple[str, str]]:
-    with open('tests/rst_sample.txt', 'rt') as f:
+    with open('tests/RST SAMPLES.txt', 'rt') as f:
         lines = f.readlines()
 
     result = {}

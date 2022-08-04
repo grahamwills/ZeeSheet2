@@ -4,7 +4,7 @@ import docutils.nodes
 from .structure import *
 
 # These tags will not  be recorded
-IGNORE_TAGS = {'document', 'system_message'}
+IGNORE_TAGS = {'document', 'system_message', 'literal'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -100,7 +100,18 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         raise docutils.nodes.SkipChildren
 
 
+    def visit_literal(self, node: docutils.nodes.Node) -> None:
+        assert len(node.children) == 1
+        text = node.children[0].astext()
 
+        element = Element.from_text(text, 'literal')
+
+        p = self.start(node)
+        self.add_element(element, node, p)
+        self.finish(node)
+
+        # No processing of children
+        raise docutils.nodes.SkipChildren
 
 
     # noinspection PyPep8Naming
@@ -118,14 +129,8 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         text = node.astext().replace('\n', ' ')
         element = Element.from_text(text, style)
-        if p in BLOCK_TITLE_ANCESTRY:
-            self.current_block.add_to_title(element)
-        elif p == 'section • title':
-            self.current_section.add_to_title(element)
-        elif p == 'list_item • paragraph':
-            self.current_block.add_to_content(element)
-        else:
-            self.error(node, 'Unexpected text encountered')
+        self.add_element(element, node, p)
+
 
     # Other methods ####################################################################
 
@@ -148,6 +153,16 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def error(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message, node)
         self.sheet.issues.append(Issue(node.line, True, text))
+
+    def add_element(self, element, node, p):
+        if p in BLOCK_TITLE_ANCESTRY:
+            self.current_block.add_to_title(element)
+        elif p == 'section • title':
+            self.current_section.add_to_title(element)
+        elif p == 'list_item • paragraph':
+            self.current_block.add_to_content(element)
+        else:
+            self.error(node, 'Unexpected text encountered')
 
     def _issue_description(self, message, node):
         ancestors = self._processing(n=5).strip()

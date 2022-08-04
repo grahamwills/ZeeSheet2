@@ -76,9 +76,16 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual("Possible title underline, too short for the title. "
                          "Treating it as ordinary text because it's so short.", sheet.combined_issues())
 
-
     def test_very_bad_underlining(self):
         source = self.items['Very Bad Underlining'][0]
         sheet = build_structure(source)
         self.assertEqual("Unexpected section title or transition. "
                          "(within definition_list • definition_list_item • definition)", sheet.combined_issues())
+
+    def test_literals(self):
+        source = self.items['Literals'][0]
+        sheet = build_structure(source)
+        self.assertEqual('', sheet.combined_issues())
+        expected = "<[abcdefg: Literal *text* with italics inside⊣lit • A much longer text that has ‖bold⊣str‖" \
+                   " text outside, ‖but then **more bold** text inside the literal part of line⊣lit]>"
+        self.assertEqual(expected, sheet.structure_str())
