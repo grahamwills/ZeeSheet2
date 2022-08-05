@@ -3,3 +3,4 @@ whitenoise
 djangocodemirror
 docutils
 sphinx
+django-crispy-forms

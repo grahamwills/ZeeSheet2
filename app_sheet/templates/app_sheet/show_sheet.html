@@ -4,7 +4,7 @@
     {% load djangocodemirror_tags %}
 
     <h2>&nbsp;</h2>
-    <h2>Sheet Editor</h2>
+    <h2>{{ sheet.name }} • {{ sheet.system }}</h2>
 
 
     <p class="smallgray">
@@ -15,10 +15,13 @@
         <i>Last Modified: </i> {{ sheet.modified }}
     </p>
 
+
+    {% include 'app_sheet/messages.html' %}
+
     <form method="post" action="{% url 'action_dispatcher' sheet_id=sheet.id %}">{% csrf_token %}
         {% csrf_token %}
         <div class="main-scrollable2">
-        <textarea id="sheet-edit" name="sheet">{{ sheet.content }}</textarea>
+        <textarea id="sheet-edit" name="sheet">{{ edit_content }}</textarea>
         </div>
         <input name="validate" class="btn btn-primary" type="submit" value="Prettify"/>
         <input name="generate" class="btn btn-primary" type="submit" value="Generate PDF"/>

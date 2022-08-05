@@ -1,24 +1,26 @@
 from datetime import datetime
 from typing import List, Dict
 
-from django.http import HttpRequest, HttpResponseRedirect
+from django.contrib import messages
+from django.contrib.auth import login
+from django.http import HttpRequest
 from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse_lazy
+from django.utils.safestring import mark_safe
 
 from rst.validate import prettify
-
+from .forms import NewUserForm
 from .models import Sheet
-from .forms import NameForm
 
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
     keys = Sheet.objects.filter(**kwargs).values_list(field, flat=True).distinct()
     result = []
     for key in keys:
-        query = {field:key}
+        query = {field: key}
         items = Sheet.objects.filter(**kwargs).filter(**query)
-        result.append({'name':key, 'items':items})
+        result.append({'name': key, 'items': items})
     return result
+
 
 def _user_permissions(user, sheet) -> Dict:
     return {
@@ -37,7 +39,7 @@ def home(request):
         'year': datetime.now().year,
         'mine': _group_sheets('system', owner=user),
         'templates': _group_sheets('system', is_template=True, is_shared=True),
-        'shared': _group_sheets('system', is_shared=True),
+        'shared': _group_sheets('system', is_shared=True, is_template=False),
     }
 
     return render(
@@ -75,7 +77,7 @@ def about(request):
     )
 
 
-def show_sheet(request, sheet_id):
+def show_sheet(request, sheet_id, edit_content=None):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
         request,
@@ -83,64 +85,67 @@ def show_sheet(request, sheet_id):
         {
             'title': 'Sheet',
             'sheet': csd,
+            'edit_content': edit_content or csd.content,
             'permissions': _user_permissions(request.user, csd),
             'year': datetime.now().year,
         }
     )
 
+
 def action_dispatcher(request, sheet_id):
     # No matter what we do after, we need to store the text from the form as the current content
     csd = get_object_or_404(Sheet, pk=sheet_id)
-    csd.content = request.POST['sheet']
+    edit_content = request.POST['sheet']
 
     if 'clone' in request.POST:
         if request.user.is_authenticated:
             # Create a copy with new data
             cloned = Sheet()
-            cloned.content = csd.content
-            cloned.saved = csd.content
+            cloned.content = edit_content
             cloned.system = csd.system
             cloned.owner = request.user
             cloned.name = 'Copy of ' + csd.name
             cloned.is_shared = False
             cloned.is_template = False
             cloned.save()
-            sheet_id = cloned.pk     # Show the new sheet when we redirect
+            sheet_id = cloned.pk  # Show the new sheet when we redirect
         else:
             raise RuntimeError('must fix this')
 
     if 'save' in request.POST:
         # Save the content to saved
-        csd.saved = csd.content
+        csd.content = edit_content
+        csd.save()
     if 'revert' in request.POST:
         # Copy the content from the saved data
-        csd.content = csd.saved
+        edit_content = csd.content
     if 'validate' in request.POST:
         # Check that the definition is good and prettify it
-        csd.content = prettify(csd.content)
+        edit_content = prettify(edit_content)
 
-    # Save the sheet and show it again!
-    csd.save()
-    url = reverse_lazy('sheet', kwargs={'sheet_id':sheet_id})
+    return show_sheet(request, sheet_id, edit_content)
 
-    return redirect(url)
+def _extract_errors(html:str):
+    items = html.split('<li>')
+    assert len(items) %2 == 1
+    for item in items[1::2]:
+        idx = item.find('</li>')
+        yield item[:idx].strip()
 
-
-
-def get_name(request):
-    # if this is a POST request we need to process the form data
-    if request.method == 'POST':
-        # create a form instance and populate it with data from the request:
-        form = NameForm(request.POST)
-        # check whether it's valid:
+def register_request(request):
+    if request.method == "POST":
+        form = NewUserForm(request.POST)
         if form.is_valid():
-            # process the data in form.cleaned_data as required
-            # ...
-            # redirect to a new URL:
-            return HttpResponseRedirect('/thanks/')
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Registration . Welcome to ZeeSheet!")
+            return redirect("home")
 
-    # if a GET (or any other method) we'll create a blank form
-    else:
-        form = NameForm()
+        reason = '<br>'.join(s.as_text() for s in form.errors.values())
+        reason = reason.replace('* ', '<li>')
+        reason = reason.replace('\n', '</li>')
+        message = mark_safe("Unsuccessful registration:<br>" + reason + '</li>')
+        messages.error(request, message)
 
-    return render(request, 'name.html', {'form': form})
+    form = NewUserForm()
+    return render(request=request, template_name="registration/register.html", context={"register_form": form})

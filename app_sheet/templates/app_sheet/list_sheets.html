@@ -9,7 +9,15 @@
             <div class="list-sheets">
                 <ul>
                     {% for item in group.items %}
-                        <li class="text-primary"><a href="{% url 'sheet' item.id %}">{{ item.name }}</a></li>
+                        <li class="text-primary">
+                            <a href="{% url 'sheet' item.id %}">
+                                {% if item.owner == user %}
+                                    {{ item.name }}
+                                {% else %}
+                                    <i>{{ item.name }}</i>
+                                {%  endif %}
+                            </a>
+                        </li>
                     {% endfor %}
                 </ul>
             </div>

@@ -8,6 +8,8 @@ class Sheet(models.Model):
     created = models.DateField(verbose_name='Date Created', auto_now_add=True)
     modified = models.DateField(verbose_name='Date Last Modified', auto_now=True)
     content = models.TextField(verbose_name='Definition Under Edit')
-    saved = models.TextField(verbose_name='Saved Definition')
     is_shared= models.BooleanField(default=False, verbose_name='Share this sheet?')
     is_template = models.BooleanField(default=False, verbose_name='Is this a template?')
+
+    def __str__(self):
+        return self.system + ' • ' + self.owner.username + ' • ' + self.name

@@ -1,0 +1,36 @@
+{% extends "app_sheet/layout.html" %}
+
+{% block content %}
+    {% load crispy_forms_tags %}
+
+    <h2>&nbsp;</h2>
+    <h2>{{ title }}</h2>
+
+    {% include 'app_sheet/messages.html' %}
+
+    <div class="container py-5">
+        <h1>Register as a new user</h1>
+        <p>
+            To register as a user for this site, you only need to enter a username and
+            a password. We do recommend adding an email as that is used if you need to reset
+            your password without needing to contact an admin.
+        </p>
+        <p>
+            Your first and last names are entirely optional and are not used at the moment.
+        </p>
+        <p class="text-danger">
+            This site should not be considered as highly secure. Do not use any password that you
+            use for anything important. The password requirements have been loosened so that you can
+            use short and common passwords. It's up to you how much you care!
+        </p>
+        <hr>
+        <form method="POST">
+            {% csrf_token %}
+            {{ register_form|crispy }}
+            <br>
+            <button class="btn btn-primary" type="submit">Register</button>
+        </form>
+        <p class="text-center">If you already have an account, <a href="{% url 'login' %}">Log in</a> instead.</p>
+    </div>
+
+{% endblock %}
