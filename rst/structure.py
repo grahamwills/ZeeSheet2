@@ -277,4 +277,5 @@ class Sheet(StructureComponent):
         # Remove trailing section definition and blank lines
         while lines and lines[-1] == '':
             lines = lines[:-1]
+
         return '\n'.join(lines)

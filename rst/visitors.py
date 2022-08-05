@@ -28,85 +28,77 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         # Set our stack of what we are processing
         self.process_stack = []
 
-    def tidy(self) -> Sheet:
+    def get_sheet(self) -> Sheet:
         # Fix up pieces we added, but ended up unused
         self.sheet.tidy()
         return self.sheet
 
+    # noinspection PyTypeChecker
     @property
     def current_section(self) -> Section:
         """The Section we are currently defining"""
-        return self.sheet.children[-1]
+        return self.sheet.last_child()
 
+    # noinspection PyTypeChecker
     @property
     def current_block(self) -> Block:
         """The Block we are currently defining"""
-        return self.current_section.children[-1]
+        return self.current_section.last_child()
 
+    # noinspection PyTypeChecker
     @property
     def current_item(self) -> Item:
         """The Item we are currently defining"""
-        return self.current_block.children[-1]
+        return self.current_block.last_child()
 
+    # noinspection PyTypeChecker
     @property
     def current_run(self) -> Run:
         """The Run we are currently defining"""
-        return self.current_item.children[-1]
-
+        return self.current_item.last_child()
 
     def unknown_visit(self, node: docutils.nodes.Node) -> None:
         """Handle a visit for node type we do not explicitly handle"""
         tag = _tag(node)
-        if tag in IGNORE_TAGS:
-            return
-        if tag not in NO_ACTION_TAGS:
-            self.error(node, f"{tag} tag not supported")
-        self.start(node)
-
+        if tag not in IGNORE_TAGS:
+            if tag not in NO_ACTION_TAGS:
+                self.error(node, f"{tag} tag not supported")
+            self.start(node)
 
     def unknown_departure(self, node) -> None:
         """Handle a visit for node type we do not explicitly handle"""
-        tag = node.tagname
-        if tag in IGNORE_TAGS:
-            return
-        else:
+        if _tag(node) not in IGNORE_TAGS:
             self.finish(node)
 
-        # Visit methods ###################################################################
-
+    # Visit methods ###################################################################
 
     def visit_section(self, node) -> None:
         """Unsurprisingly, each Section defines a Section"""
         self.start(node)
         self._make_new_section()
 
-
     def visit_definition_list_item(self, node) -> None:
         """Each Definition List defines a block"""
         self.start(node)
         self._make_new_block()
-
 
     def visit_definition(self, node) -> None:
         p = self.start(node)
         if p == 'document':
             self._make_new_block()
 
-
     def visit_paragraph(self, node) -> None:
         p = self.start(node, n=1)
         if p == '' or p == 'section':
             self._make_new_block()
         elif p == 'list_item':
-            n = self._count_ancestors('list_item')
-            if n > 1:
+            if self._count_ancestors('list_item') > 1:
                 # New run within the item
                 self.current_item.append(Run())
             else:
                 self._make_new_item()
         else:
             self.error(node, 'Unexpected paragraph encountered')
-
 
     def visit_system_message(self, node: docutils.nodes.system_message) -> None:
         # The departure will not be noted, so must not record this
@@ -119,12 +111,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # No processing of children
         raise docutils.nodes.SkipChildren
-
-        # def visit_list_item(self, node) -> None:
-        #     p = self.start(node,2)
-        #     if p == 'list_item • bullet_list':
-        #         self.current_item.append(Run())
-
 
     def visit_literal(self, node: docutils.nodes.Node) -> None:
         assert len(node.children) == 1
@@ -141,7 +127,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # noinspection PyPep8Naming
 
-
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         if self._parent() == 'emphasis':
             style = 'emphasis'
@@ -157,14 +142,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         element = Element.from_text(text, style)
         self.add_element(element, node, p)
 
-        # Other methods ####################################################################
-
+    # Other methods ####################################################################
 
     def start(self, node: docutils.nodes.Node, n: int = 2, skip_last: bool = False) -> str:
         current = self._processing(n, skip_last=skip_last)
         self.process_stack.append(_tag(node))
         return current
-
 
     def finish(self, node: docutils.nodes.Node):
         what = _tag(node)
@@ -173,16 +156,13 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             message = f"Expected to be finishing {expected}, but was encountered {what}"
             raise RuntimeError(message)
 
-
     def warning(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message, node)
         self.sheet.issues.append(Issue(node.line, False, text))
 
-
     def error(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message, node)
         self.sheet.issues.append(Issue(node.line, True, text))
-
 
     def add_element(self, element, node, p):
         if p in BLOCK_TITLE_ANCESTRY:
@@ -194,7 +174,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Unexpected text encountered')
 
-
     def _issue_description(self, message, node):
         ancestors = self._processing(n=5).strip()
         text = message
@@ -203,7 +182,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         text = text.replace('\n', ' ')
         return text
 
-
     def _processing(self, n: int = 2, skip_last: bool = False):
         """Text form of where we are in the processing tree"""
         if skip_last:
@@ -211,30 +189,25 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             return ' • '.join(self.process_stack[-n:])
 
-
     def _parent(self):
         """Previous step in the tree"""
         return self.process_stack[-1]
-
 
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
         if self.current_section.has_content():
             self.sheet.append(Section())
 
-
     def _make_new_block(self) -> None:
         # If the current block is undefined,we do not need a new one
         if self.current_block.has_content():
             self.current_section.append(Block())
-
 
     def _make_new_item(self) -> None:
         # If the current run is undefined, we just use that
         block = self.current_block
         if block.last_child().has_content():
             block.children.append(Item())
-
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)

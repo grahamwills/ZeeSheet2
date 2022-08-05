@@ -21,7 +21,7 @@ def build_structure(text: str) -> structure.Sheet:
     document = _parse_rst(text)
     main_visitor = visitors.StructureBuilder(document)
     document.walkabout(main_visitor)
-    return main_visitor.tidy()
+    return main_visitor.get_sheet()
 
 
 def prettify(text: str, width:int=100) -> str:
