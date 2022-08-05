@@ -125,8 +125,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         # No processing of children
         raise docutils.nodes.SkipChildren
 
-        # noinspection PyPep8Naming
-
+    # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         if self._parent() == 'emphasis':
             style = 'emphasis'
@@ -157,11 +156,11 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             raise RuntimeError(message)
 
     def warning(self, node: docutils.nodes.Node, message: str):
-        text = self._issue_description(message, node)
+        text = self._issue_description(message)
         self.sheet.issues.append(Issue(node.line, False, text))
 
     def error(self, node: docutils.nodes.Node, message: str):
-        text = self._issue_description(message, node)
+        text = self._issue_description(message)
         self.sheet.issues.append(Issue(node.line, True, text))
 
     def add_element(self, element, node, p):
@@ -174,7 +173,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Unexpected text encountered')
 
-    def _issue_description(self, message, node):
+    def _issue_description(self, message):
         ancestors = self._processing(n=5).strip()
         text = message
         if ancestors:
