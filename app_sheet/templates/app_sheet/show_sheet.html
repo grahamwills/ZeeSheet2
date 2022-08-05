@@ -23,8 +23,29 @@
         <input name="validate" class="btn btn-primary" type="submit" value="Prettify"/>
         <input name="generate" class="btn btn-primary" type="submit" value="Generate PDF"/>
         <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-        <input name="save" class="btn btn-primary" type="submit" value="Save"/>
+
+
+
+        {% if permissions.save %}
+            <input name="save" class="btn btn-primary" type="submit" value="Save"/>
+        {% else %}
+            <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
+                 title="You must be logged in and be the owner of a sheet to save it.">
+            <input name="save.disabled" class="btn btn-primary" type="submit" value="Save" style="pointer-events: none" disabled/>
+            </div>
+        {% endif %}
+
         <input name="revert" class="btn btn-primary" type="submit" value="Revert"/>
+
+        {% if permissions.clone %}
+            <input name="clone" class="btn btn-primary" type="submit" value="Clone"/>
+        {% else %}
+            <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
+                 title="You must be logged in to create a copy of a sheet.">
+            <input name="clone.disabled" class="btn btn-primary" type="submit" value="Clone"
+                   data-toggle="tooltip" data-placement="top" disabled/>
+            </div>
+        {% endif %}
 
     </form>
 

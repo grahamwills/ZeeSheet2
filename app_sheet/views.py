@@ -8,6 +8,8 @@ from django.urls import reverse_lazy
 from rst.validate import prettify
 
 from .models import Sheet
+from .forms import NameForm
+
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
     keys = Sheet.objects.filter(**kwargs).values_list(field, flat=True).distinct()
@@ -17,6 +19,12 @@ def _group_sheets(field, **kwargs) -> List[Dict]:
         items = Sheet.objects.filter(**kwargs).filter(**query)
         result.append({'name':key, 'items':items})
     return result
+
+def _user_permissions(user, sheet) -> Dict:
+    return {
+        'save': user == sheet.owner or user.is_superuser,
+        'clone': user.is_authenticated
+    }
 
 
 def home(request):
@@ -67,8 +75,7 @@ def about(request):
     )
 
 
-
-def show_sheet(request, sheet_id, content:str=None):
+def show_sheet(request, sheet_id):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
         request,
@@ -76,6 +83,7 @@ def show_sheet(request, sheet_id, content:str=None):
         {
             'title': 'Sheet',
             'sheet': csd,
+            'permissions': _user_permissions(request.user, csd),
             'year': datetime.now().year,
         }
     )
@@ -85,6 +93,22 @@ def action_dispatcher(request, sheet_id):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     csd.content = request.POST['sheet']
 
+    if 'clone' in request.POST:
+        if request.user.is_authenticated:
+            # Create a copy with new data
+            cloned = Sheet()
+            cloned.content = csd.content
+            cloned.saved = csd.content
+            cloned.system = csd.system
+            cloned.owner = request.user
+            cloned.name = 'Copy of ' + csd.name
+            cloned.is_shared = False
+            cloned.is_template = False
+            cloned.save()
+            sheet_id = cloned.pk     # Show the new sheet when we redirect
+        else:
+            raise RuntimeError('must fix this')
+
     if 'save' in request.POST:
         # Save the content to saved
         csd.saved = csd.content
@@ -92,7 +116,7 @@ def action_dispatcher(request, sheet_id):
         # Copy the content from the saved data
         csd.content = csd.saved
     if 'validate' in request.POST:
-        # Check that the definition si good and rpettify it
+        # Check that the definition is good and prettify it
         csd.content = prettify(csd.content)
 
     # Save the sheet and show it again!
@@ -101,3 +125,22 @@ def action_dispatcher(request, sheet_id):
 
     return redirect(url)
 
+
+
+def get_name(request):
+    # if this is a POST request we need to process the form data
+    if request.method == 'POST':
+        # create a form instance and populate it with data from the request:
+        form = NameForm(request.POST)
+        # check whether it's valid:
+        if form.is_valid():
+            # process the data in form.cleaned_data as required
+            # ...
+            # redirect to a new URL:
+            return HttpResponseRedirect('/thanks/')
+
+    # if a GET (or any other method) we'll create a blank form
+    else:
+        form = NameForm()
+
+    return render(request, 'name.html', {'form': form})
