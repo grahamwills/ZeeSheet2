@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import namedtuple
-from typing import NamedTuple
+from typing import NamedTuple, Union, Tuple
 
 
 class Margins(NamedTuple):
@@ -80,39 +80,27 @@ class Point(NamedTuple):
 
 
 class Extent(NamedTuple):
-    x: float
-    y: float
+    width: float
+    height: float
 
 
 class Rect(namedtuple('Rect', 'left right top bottom')):
 
     @classmethod
-    def make(cls, left=None, right=None, top=None, bottom=None, width=None, height=None):
-        if right is None:
-            right = left + width
-        elif left is None:
-            left = right - width
-        if bottom is None:
-            bottom = top + height
-        elif top is None:
-            top = bottom - height
-        return cls(round(left), round(right), round(top), round(bottom))
-
-    @classmethod
-    def union(cls, *args):
+    def union(cls, *args) -> Rect:
         mix = list(args[0]) if len(args) == 1 else list(args)
-        u = mix[0]
-        for r in mix[1:]:
-            u = Rect.make(left=min(r.left, u.left), top=min(r.top, u.top),
-                          right=max(r.right, u.right), bottom=max(r.bottom, u.bottom))
-        return u
+        left = min(r.left for r in mix)
+        right = max(r.right for r in mix)
+        top = min(r.top for r in mix)
+        bottom = max(r.bottom for r in mix)
+        return Rect(left, right, top, bottom)
 
     @property
-    def width(self):
+    def width(self) -> float:
         return self.right - self.left
 
     @property
-    def height(self):
+    def height(self) -> float:
         return self.bottom - self.top
 
     @property
@@ -123,34 +111,27 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
     def extent(self) -> Extent:
         return Extent(self.width, self.height)
 
-    def __add__(self, off: Margins) -> Rect:
-        return Rect(self.left - off.left, self.right + off.right,
-                    self.top - off.top, self.bottom + off.bottom)
+    @property
+    def perimeter(self) -> float:
+        return 2 * self.width + 2 * self.height
 
-    def __sub__(self, off: Margins) -> Rect:
-        return Rect(self.left + off.left, self.right - off.right,
-                    self.top + off.top, self.bottom - off.bottom)
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+    def __add__(self, off: Union[Margins, Point, Tuple]) -> Rect:
+        try:
+            return Rect(self.left - off.left, self.right + off.right,
+                        self.top - off.top, self.bottom + off.bottom)
+        except AttributeError:
+            return Rect(self.left + off[0], self.right + off[0], self.top + off[1], self.bottom + off[1])
+
+    def __sub__(self, off: Union[Margins, Point, Tuple]) -> Rect:
+        try:
+            return Rect(self.left + off.left, self.right - off.right,
+                        self.top + off.top, self.bottom - off.bottom)
+        except AttributeError:
+            return Rect(self.left - off[0], self.right - off[0], self.top - off[1], self.bottom - off[1])
 
     def __str__(self):
         return "[l=%d r=%d t=%d b=%d]" % (self.left, self.right, self.top, self.bottom)
-
-    def move(self, *, dx=0, dy=0) -> Rect:
-        return Rect(self.left + dx, self.right + dx, self.top + dy, self.bottom + dy)
-
-    def resize(self, *, width=None, height=None) -> Rect:
-        return Rect(self.left, self.right if width is None else self.left + width,
-                    self.top, self.bottom if height is None else self.top + height)
-
-
-def _consistent(low, high, size, description):
-    n = (low is None) + (high is None) + (size is None)
-    if n == 0 and low + size != high:
-        raise ValueError("Inconsistent specification of three arguments: " + description)
-    if n > 1:
-        raise ValueError("Must specify at least two arguments of: " + description)
-    if low is None:
-        return round(high) - round(size), round(high), round(size)
-    if high is None:
-        return round(low), round(low) + round(size), round(size)
-    if size is None:
-        return round(low), round(high), round(high) - round(low)

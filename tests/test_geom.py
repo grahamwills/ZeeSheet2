@@ -1,7 +1,7 @@
 import unittest
 from math import pi as π
 
-from layout.geom import Margins, Point
+from layout.geom import Margins, Point, Rect, Extent
 
 
 class GeomTests(unittest.TestCase):
@@ -48,3 +48,30 @@ class GeomTests(unittest.TestCase):
         self.assertAlmostEqual(0, p1.x)
         self.assertAlmostEqual(-3, p1.y)
         assert Point(1, 1).to_polar() == (π / 4, 2 ** 0.5)
+
+    def test_rect_basics(self):
+        r = Rect(3, 13, 12, 32)
+        self.assertEqual(10, r.width)
+        self.assertEqual(20, r.height)
+        self.assertEqual(200, r.area)
+        self.assertEqual(60, r.perimeter)
+        self.assertEqual(Extent(10, 20), r.extent)
+        self.assertEqual(Point(8, 22), r.center)
+
+    def test_rect_add_sub(self):
+        r = Rect(3, 13, 12, 32)
+        self.assertEqual(Rect(103, 113, 212, 232), r + Point(100, 200))
+        self.assertEqual(Rect(2, 12, 10, 30), r - Point(1, 2))
+
+        self.assertEqual(Rect(103, 113, 212, 232), r + (100, 200))
+        self.assertEqual(Rect(2, 12, 10, 30), r - (1, 2))
+
+        self.assertEqual(Rect(2, 15, 9, 36), r + Margins(1, 2, 3, 4))
+        self.assertEqual(Rect(4, 11, 15, 28), r - Margins(1, 2, 3, 4))
+
+    def test_rect_union(self):
+        r1 = Rect(3, 13, 12, 32)
+        r2 = Rect(6, 7, 15, 15)
+        self.assertEqual(r1, Rect.union(r1, r2))
+        r3 = Rect(1, 6, 15, 16)
+        self.assertEqual(Rect(1, 13, 12, 32), Rect.union(r1, r2, r3))
