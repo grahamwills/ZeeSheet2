@@ -26,6 +26,14 @@ class Error:
     def __str__(self):
         return f"Error({self.unacceptable:1.3}, {self.acceptable:1.3} • {self.extra:1.3})"
 
+    def __add__(self, other: Error):
+        return Error(self.unacceptable + other.unacceptable,
+                     self.acceptable + other.acceptable,
+                     self.extra + other.extra)
+
+    def _score(self) -> float:
+        return self.unacceptable * 100 + self.acceptable + self.extra * 1e-6
+
     @classmethod
     def sum(cls, *args):
         mix = list(args[0]) if len(args) == 1 else list(args)
@@ -34,6 +42,9 @@ class Error:
         e = sum(i.extra for i in mix)
         return Error(u, a, e)
 
+    def better(self, other: Error):
+        return self._score() < other._score()
+
 
 @dataclass
 class PlacedContent:
@@ -41,7 +52,7 @@ class PlacedContent:
     requested: Extent  # The size it was asked to be
     actual: Extent  # The size we made it
     error: Error  # How bad the placement was
-    location: Point = None # Where it was placed within the parent
+    location: Point = None  # Where it was placed within the parent
 
     @property
     def bounds(self):

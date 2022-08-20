@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from layout import packing
 from layout.content import Content, PlacedContent, Error
 from layout.geom import Spacing, Extent, Rect
+from layout.packing import ColumnSpan
 
 NO_SPACING = Spacing(0, 0, 0, 0)
 
@@ -21,6 +22,16 @@ def place_test_content_with_wrapping(content: Content, e: Extent) -> PlacedConte
 
 
 class PackingTest(unittest.TestCase):
+
+    def test_divide_space_simple(self):
+        packer = packing.Packer([], None, NO_SPACING, NO_SPACING)
+        cols = packer.divide_width(100, 3)
+        self.assertEqual([ColumnSpan(0, 0, 33), ColumnSpan(1, 33, 67), ColumnSpan(2, 67, 100)], cols)
+
+    def test_divide_space_complex(self):
+        packer = packing.Packer([], None, margin=Spacing.balanced(5), padding=Spacing(1, 10, 5, 5))
+        cols = packer.divide_width(100, 3)
+        self.assertEqual([ColumnSpan(0, 5, 27), ColumnSpan(1, 37, 58), ColumnSpan(2, 68, 90)], cols)
 
     def test_no_padding_margins(self):
         items = [TestContent(i) for i in (500, 1000, 200)]
@@ -61,3 +72,33 @@ class PackingTest(unittest.TestCase):
         self.assertEqual(Rect(10, 80, 42, 57), group.placed_group[1].bounds)
         self.assertEqual(Rect(10, 80, 61, 64), group.placed_group[2].bounds)
         self.assertEqual(Rect(0, 100, 0, 104), group.bounds)
+
+    def test_three_columns(self):
+        items = [TestContent(i) for i in (1500, 1000, 200, 500, 500, 500, 500)]
+        margins = Spacing.balanced(10)
+        padding = Spacing.balanced(2)
+        packer = packing.Packer(items, place_test_content_with_wrapping, margins, padding)
+        group = packer.into_columns(204, ncol=3)
+
+        bds = [g.bounds for g in group.placed_group]
+
+        # Columns should place items into columns 0 -> {0}, 1 -> {1,2,3}, 3 -> {4,5,6}
+        # Each column should have width = 60
+        self.assertEqual(10, bds[0].left)
+        self.assertEqual(70, bds[0].right)
+
+        self.assertEqual(72, bds[1].left)
+        self.assertEqual(132, bds[1].right)
+        self.assertEqual(72, bds[2].left)
+        self.assertEqual(132, bds[2].right)
+        self.assertEqual(72, bds[3].left)
+        self.assertEqual(132, bds[3].right)
+
+        self.assertEqual(134, bds[4].left)
+        self.assertEqual(194, bds[4].right)
+        self.assertEqual(134, bds[5].left)
+        self.assertEqual(194, bds[5].right)
+        self.assertEqual(134, bds[6].left)
+        self.assertEqual(194, bds[6].right)
+
+        # self.assertEqual(Rect(0, 204, 0, 64), group.bounds)
