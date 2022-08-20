@@ -1,18 +1,18 @@
 import unittest
 from math import pi as π
 
-from layout.geom import Margins, Point, Rect, Extent
+from layout.geom import Spacing, Point, Rect, Extent
 
 
 class GeomTests(unittest.TestCase):
 
     def test_margins(self):
-        m = Margins(5, 10, 11, 12)
-        self.assertEqual(m, Margins(5, 10, 11, 12))
-        self.assertNotEqual(m, Margins(5, 11, 11, 12))
+        m = Spacing(5, 10, 11, 12)
+        self.assertEqual(m, Spacing(5, 10, 11, 12))
+        self.assertNotEqual(m, Spacing(5, 11, 11, 12))
         self.assertEqual(15, m.horizontal)
         self.assertEqual(23, m.vertical)
-        self.assertEqual(Margins.balanced(7), Margins(7, 7, 7, 7))
+        self.assertEqual(Spacing.balanced(7), Spacing(7, 7, 7, 7))
 
     def test_point_reps(self):
         a = Point(0, 0)
@@ -66,8 +66,8 @@ class GeomTests(unittest.TestCase):
         self.assertEqual(Rect(103, 113, 212, 232), r + (100, 200))
         self.assertEqual(Rect(2, 12, 10, 30), r - (1, 2))
 
-        self.assertEqual(Rect(2, 15, 9, 36), r + Margins(1, 2, 3, 4))
-        self.assertEqual(Rect(4, 11, 15, 28), r - Margins(1, 2, 3, 4))
+        self.assertEqual(Rect(2, 15, 9, 36), r + Spacing(1, 2, 3, 4))
+        self.assertEqual(Rect(4, 11, 15, 28), r - Spacing(1, 2, 3, 4))
 
     def test_rect_union(self):
         r1 = Rect(3, 13, 12, 32)

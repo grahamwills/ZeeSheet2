@@ -5,7 +5,7 @@ from collections import namedtuple
 from typing import NamedTuple, Union, Tuple
 
 
-class Margins(NamedTuple):
+class Spacing(NamedTuple):
     left: int
     right: int
     top: int
@@ -23,8 +23,8 @@ class Margins(NamedTuple):
         return "[l=%d, r=%d, t=%d, b=%d]" % self
 
     @classmethod
-    def balanced(cls, size: int) -> Margins:
-        return Margins(size, size, size, size)
+    def balanced(cls, size: int) -> Spacing:
+        return Spacing(size, size, size, size)
 
 
 class Point(NamedTuple):
@@ -119,14 +119,14 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
     def area(self) -> float:
         return self.width * self.height
 
-    def __add__(self, off: Union[Margins, Point, Tuple]) -> Rect:
+    def __add__(self, off: Union[Spacing, Point, Tuple]) -> Rect:
         try:
             return Rect(self.left - off.left, self.right + off.right,
                         self.top - off.top, self.bottom + off.bottom)
         except AttributeError:
             return Rect(self.left + off[0], self.right + off[0], self.top + off[1], self.bottom + off[1])
 
-    def __sub__(self, off: Union[Margins, Point, Tuple]) -> Rect:
+    def __sub__(self, off: Union[Spacing, Point, Tuple]) -> Rect:
         try:
             return Rect(self.left + off.left, self.right - off.right,
                         self.top + off.top, self.bottom - off.bottom)

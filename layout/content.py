@@ -40,27 +40,27 @@ class PlacedContent:
     content: Content  # The definition of what goes in here
     requested: Extent  # The size it was asked to be
     actual: Extent  # The size we made it
-    location: Point  # Where it was placed within the parent
     error: Error  # How bad the placement was
+    location: Point = None # Where it was placed within the parent
 
     @property
     def bounds(self):
-        return Rect(self.location.x, self.location.y,
+        return Rect(self.location.x,
                     self.location.x + self.actual.width,
+                    self.location.y,
                     self.location.y + self.actual.height)
 
 
 @dataclass
 class PlacedGroupContent(PlacedContent):
-    placed_group: List[PlacedContent]
+    placed_group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, items: Iterable[PlacedContent], requested: Extent) -> PlacedGroupContent:
+    def from_items(cls, items: Iterable[PlacedContent], requested: Extent, actual) -> PlacedGroupContent:
         placed = list(items)
         content = GroupContent([i.content for i in placed])
         bounds = Rect.union(i.bounds for i in placed)
         assert bounds.left >= 0
         assert bounds.top >= 0
-        actual = bounds.extent
         error = Error.sum(i.error for i in placed)
-        return PlacedGroupContent(content, requested, actual, Point(0, 0), error, placed)
+        return PlacedGroupContent(content, requested, actual, error, Point(0, 0), placed)
