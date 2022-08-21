@@ -2,9 +2,9 @@ import math
 import unittest
 from dataclasses import dataclass
 
+from common.geom import Spacing, Extent, Rect
 from layout import packing
 from layout.content import Content, PlacedContent, Error
-from layout.geom import Spacing, Extent, Rect
 from layout.packing import ColumnSpan
 
 NO_SPACING = Spacing(0, 0, 0, 0)

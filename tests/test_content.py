@@ -1,7 +1,7 @@
 import unittest
 
 from layout.content import Error, PlacedContent, Content, PlacedGroupContent, GroupContent
-from layout.geom import Extent, Point, Rect
+from common.geom import Extent, Point, Rect
 
 
 class ContentTest(unittest.TestCase):
@@ -16,10 +16,10 @@ class ContentTest(unittest.TestCase):
         outer = Extent(150, 500)
         p1 = PlacedContent(Content(), outer, Extent(90, 100), Error(1, 2, 3), Point(0, 0))
         p2 = PlacedContent(Content(), outer, Extent(120, 110), Error(1, 2, 3), Point(0, 100))
-        p3 = PlacedGroupContent.from_items([p1, p2], outer, Extent(120, 210))
+        p3 = PlacedGroupContent.from_items([p1, p2], outer, Extent(120, 210), 1000)
         self.assertEqual(GroupContent([Content(), Content()]), p3.content)
         self.assertEqual(outer, p3.requested)
         self.assertEqual(Point(0, 0), p3.location)
         self.assertEqual(Rect(0, 120, 0, 210), p3.bounds)
         self.assertEqual(Extent(120, 210), p3.actual)
-        self.assertEqual(Error(2, 4, 6), p3.error)
+        self.assertEqual(Error(2, 4, 1006), p3.error)

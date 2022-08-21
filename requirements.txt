@@ -4,3 +4,5 @@ djangocodemirror
 docutils
 sphinx
 django-crispy-forms
+reportlab
+pyyaml

@@ -1,0 +1,54 @@
+version: 1
+formatters:
+  screen:
+    format: "\u001b[37m%(asctime)s %(name)-24s %(funcName)-24s \u001b[32m%(levelname)-8s \u001b[30m\u001b[1m%(message)s\u001b[0m"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+  logfile:
+    format: "%(asctime)s | %(name)-24s %(funcName)-20.20s %(lineno)-3d | %(threadName)-12.12s | %(levelname)-8s | %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  all:
+    class: logging.StreamHandler
+    level: NOTSET
+    formatter: screen
+    stream: ext://sys.stdout
+
+  important:
+    class: logging.StreamHandler
+    level: WARNING
+    formatter: screen
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.TimedRotatingFileHandler
+    backupCount: 5
+    level: DEBUG
+    formatter: logfile
+    filename: ../_tmp/logs/log-zeesheet2-txt
+    encoding: utf8
+    when: midnight
+
+
+loggers:
+
+  layout:
+    level: DEBUG
+    handlers: [ important, file ]
+    propagate: no
+
+  generate:
+    level: DEBUG
+    handlers: [ important, file ]
+    propagate: no
+
+  PIL.rst:
+    level: ERROR
+    handlers: [ important, file ]
+    propagate: no
+
+
+root:
+  level: DEBUG
+  handlers: [ important, file ]

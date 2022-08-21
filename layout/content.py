@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Iterable
 
-from layout.geom import Extent, Point, Rect
+from common.geom import Extent, Point, Rect
 
 
 @dataclass
@@ -61,17 +61,22 @@ class PlacedContent:
                     self.location.y,
                     self.location.y + self.actual.height)
 
+    def better(self, other: PlacedContent):
+        """Is our placement better?"""
+        return other is None or self.error.better(other.error)
+
 
 @dataclass
 class PlacedGroupContent(PlacedContent):
     placed_group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, items: Iterable[PlacedContent], requested: Extent, actual) -> PlacedGroupContent:
+    def from_items(cls, items: Iterable[PlacedContent], requested: Extent, actual: Extent,
+                   extra_unused: int) -> PlacedGroupContent:
         placed = list(items)
         content = GroupContent([i.content for i in placed])
         bounds = Rect.union(i.bounds for i in placed)
         assert bounds.left >= 0
         assert bounds.top >= 0
-        error = Error.sum(i.error for i in placed)
+        error = Error.sum(i.error for i in placed) + Error(0, 0, extra_unused)
         return PlacedGroupContent(content, requested, actual, error, Point(0, 0), placed)
