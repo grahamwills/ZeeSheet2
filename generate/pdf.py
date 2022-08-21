@@ -1,12 +1,19 @@
+import os
 from dataclasses import dataclass
-from pathlib import Path
+from io import BytesIO
 from typing import NamedTuple, List, Tuple
 
+from django.contrib.auth.models import User
+from django.contrib.sessions.backends import file
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.core.files import File
 from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
 
 from common.geom import Rect, Point
 from common.logging import configured_logger
+from rst.structure import Sheet
 
 LOGGER = configured_logger(__name__)
 
@@ -48,8 +55,9 @@ class FontInfo:
 
 class PDF(canvas.Canvas):
 
-    def __init__(self, output_file: Path, pagesize: Tuple[int, int]) -> None:
-        super().__init__(str(output_file.absolute()), pagesize=pagesize, bottomup=0)
+    def __init__(self, pagesize: Tuple[int, int]) -> None:
+        self.buffer = BytesIO()
+        super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
         self.setLineJoin(1)
         self.setLineCap(1)
         self.font = FontInfo("Helvetica", 14)
@@ -66,3 +74,22 @@ class PDF(canvas.Canvas):
                 textobject.moveCursor(segment.offset.x, segment.offset.y)
             textobject.textOut(segment.text)
         self.drawText(textobject)
+
+    def output(self) -> bytes:
+        self.save()
+        bytes = self.buffer.getvalue()
+        self.buffer.close()
+        return bytes
+
+
+def make_pdf(sheet:Sheet, owner:User) -> str:
+    file_name = f"sheets/{owner.username}-sheet.pdf"
+
+    pdf = PDF(sheet.page_size)
+    pdf.drawString(100, 100, "Hello World")
+    bytes = pdf.output()
+    path = default_storage.save(file_name, ContentFile(bytes))
+    return path[7:] # remove the 'sheets/'
+
+
+

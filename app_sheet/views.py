@@ -3,13 +3,16 @@ from typing import List, Dict
 
 from django.contrib import messages
 from django.contrib.auth import login
-from django.http import HttpRequest
+from django.core.files.storage import default_storage
+from django.http import HttpRequest, FileResponse, HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
-from rst.validate import prettify
+from rst.validate import prettify, build_structure
+from generate.pdf import make_pdf
 from .forms import NewUserForm
 from .models import Sheet
+
 
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
@@ -77,7 +80,7 @@ def about(request):
     )
 
 
-def show_sheet(request, sheet_id, edit_content=None):
+def show_sheet(request, sheet_id, edit_content=None, pdf_file=None):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
         request,
@@ -86,6 +89,7 @@ def show_sheet(request, sheet_id, edit_content=None):
             'title': 'Sheet',
             'sheet': csd,
             'edit_content': edit_content or csd.content,
+            'pdf_file': pdf_file,
             'permissions': _user_permissions(request.user, csd),
             'year': datetime.now().year,
         }
@@ -96,6 +100,7 @@ def action_dispatcher(request, sheet_id):
     # No matter what we do after, we need to store the text from the form as the current content
     csd = get_object_or_404(Sheet, pk=sheet_id)
     edit_content = request.POST['sheet']
+    pdf_file = None
 
     if 'clone' in request.POST:
         if request.user.is_authenticated:
@@ -122,8 +127,21 @@ def action_dispatcher(request, sheet_id):
     if 'validate' in request.POST:
         # Check that the definition is good and prettify it
         edit_content = prettify(edit_content)
+    if 'generate' in request.POST:
+        # Generate PDF and store on disk
+        sheet = build_structure(edit_content)
+        pdf_file = make_pdf(sheet, csd.owner)
 
-    return show_sheet(request, sheet_id, edit_content)
+    return show_sheet(request, sheet_id, edit_content, pdf_file)
+
+
+def show_file(request, file_name:str):
+    name = request.user.username
+    if file_name.startswith(name + '-'):
+        pdf = default_storage.open('sheets/' + file_name, 'rb')
+        return FileResponse(pdf)
+    else:
+        return HttpResponseForbidden('You cannot access sheets of other users')
 
 def _extract_errors(html:str):
     items = html.split('<li>')

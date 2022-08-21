@@ -5,6 +5,8 @@ from typing import List, NamedTuple, Optional, ClassVar, Tuple
 from collections import namedtuple
 from types import SimpleNamespace
 
+import reportlab.lib.pagesizes
+
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
 
@@ -246,6 +248,7 @@ class Sheet(StructureComponent):
 
     children: List[Section] = field(default_factory=lambda: [Section()])
     issues: List[Issue] = field(default_factory=list)
+    page_size : Tuple[int, int] = reportlab.lib.pagesizes.LETTER
 
     def append(self, section: Section):
         self.children.append(section)

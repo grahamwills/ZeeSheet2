@@ -27,3 +27,4 @@ def build_structure(text: str) -> structure.Sheet:
 def prettify(text: str, width:int=100) -> str:
     sheet = build_structure(text)
     return sheet.to_text(width=width)
+

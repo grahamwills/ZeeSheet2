@@ -24,7 +24,8 @@
         <textarea id="sheet-edit" name="sheet">{{ edit_content }}</textarea>
         </div>
         <input name="validate" class="btn btn-primary" type="submit" value="Prettify"/>
-        <input name="generate" class="btn btn-primary" type="submit" value="Generate PDF"/>
+        <input name="generate" class="btn btn-primary" type="submit" value="Generate PDF"
+               onclick="window.open('', 'zeesheet-pdf-output', 'popup,left=100,top=100,width=612,height=792');"/>
         <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
 
 
@@ -53,5 +54,15 @@
     </form>
 
     {% codemirror_instance 'restructuredtext' 'code_codemirror' 'sheet-edit' %}
+
+{% endblock %}
+{% block scripts %}
+
+    {% if pdf_file %}
+        <script>
+            console.log('{{ pdf_file }} }}');
+            window.open( "/display/{{ pdf_file }}", "zeesheet-pdf-output" );
+        </script>
+    {% endif %}
 
 {% endblock %}
