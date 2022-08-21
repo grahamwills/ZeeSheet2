@@ -18,7 +18,7 @@ class TestContent(Content):
 def place_test_content_with_wrapping(content: Content, e: Extent) -> PlacedContent:
     height = math.ceil(content.area / e.width)
     error = Error(0, 0, 0)
-    return PlacedContent(content, e, Extent(e.width, height), error)
+    return PlacedContent(content, Extent(e.width, height), None, error)
 
 
 class PackingTest(unittest.TestCase):

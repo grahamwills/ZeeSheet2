@@ -118,5 +118,4 @@ class Packer:
         lowest = max(column_bottom)
         wasted = sum((lowest - c) * width for c, width in zip(column_bottom, column_width))
 
-        return PlacedGroupContent.from_items(results, Extent(width, -1), Extent(width, last_y + self.margin.bottom),
-                                             wasted)
+        return PlacedGroupContent.from_items(results, Extent(width, last_y + self.margin.bottom), wasted)
