@@ -26,7 +26,7 @@ handlers:
     backupCount: 5
     level: DEBUG
     formatter: logfile
-    filename: ../_tmp/logs/log-zeesheet2-txt
+    filename: logs/log-zeesheet2-txt
     encoding: utf8
     when: midnight
 
@@ -35,7 +35,7 @@ loggers:
 
   layout:
     level: DEBUG
-    handlers: [ important, file ]
+    handlers: [ all, file ]
     propagate: no
 
   generate:

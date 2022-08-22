@@ -79,12 +79,12 @@ li {
     border: 1px solid black;
     padding: 5px;
     background: oldlace;
-    height: calc(100vh - 300px);
+    height: calc(100vh - 330px);
 }
 
 .main-scrollable2 {
     background: white;
-    height: calc(100vh - 210px);
+    height: calc(100vh - 240px);
     margin:10px;
 }
 

@@ -1,9 +1,15 @@
+import logging
+import reprlib
 from dataclasses import dataclass
-from typing import Iterable, Callable, List
+from typing import Iterable, Callable, List, Any
 
 from common.geom import Extent, Point, Spacing
-from .content import Content
+from common.logging import configured_logger
+from generate.pdf import PDF
+from rst.structure import StructureComponent
 from .content import PlacedContent, PlacedGroupContent
+
+LOGGER = configured_logger(__name__)
 
 
 @dataclass
@@ -15,6 +21,9 @@ class ColumnSpan:
     @property
     def width(self) -> int:
         return self.right - self.left
+
+    def __str__(self) -> str:
+        return f"{self.left}:{self.right}"
 
 
 def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[ColumnSpan]:
@@ -34,13 +43,24 @@ class Packer:
     """Packs rectangular content into a given space"""
 
     def __init__(self,
-                 items: Iterable[Content],
-                 place_function: Callable[[Content, Extent], PlacedContent],
-                 margin: Spacing, padding: Spacing):
+                 represents: Any,
+                 items: Iterable[type(StructureComponent)],
+                 place_function: Callable[[type(StructureComponent), Extent, PDF], PlacedContent],
+                 margin: Spacing, padding: Spacing,
+                 pdf: PDF = None):
+        self.represents = represents
         self.items = list(items)
         self.place_function = place_function
+        self.pdf = pdf
         self.margin = margin
         self.padding = padding
+
+
+    def name(self):
+        try:
+            return self.represents.name()
+        except AttributeError:
+            return reprlib.repr(self.represents)
 
     def into_columns(self, width: int, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
@@ -48,7 +68,15 @@ class Packer:
             raise ValueError('Cannot have more columns than items in a layout')
         spans = self.divide_width(width, ncol)
 
-        return self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
+        ss = ", ".join(str(s) for s in spans)
+        LOGGER.debug(f"Packing {self.name()} into columns: {ss}")
+
+        group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
+
+        for c in group.placed_group:
+            LOGGER.debug(f".. placed {c.name()} into {c.bounds}")
+
+        return group
 
     def find_best_allocation(self, width: int, spans, column_counts: List[int], remaining_items: int,
                              index) -> PlacedGroupContent:
@@ -101,7 +129,7 @@ class Packer:
                 last_y_with_padding = self.margin.top
                 last_span = span
 
-            placed = self.place_function(item, Extent(span.width, -1))
+            placed = self.place_function(item, Extent(span.width, -1), self.pdf)
             y = max(last_y_with_padding, last_y + self.padding.top)
             placed.location = Point(span.left, y)
             last_y = placed.bounds.bottom
@@ -118,4 +146,7 @@ class Packer:
         lowest = max(column_bottom)
         wasted = sum((lowest - c) * width for c, width in zip(column_bottom, column_width))
 
-        return PlacedGroupContent.from_items(results, Extent(width, last_y + self.margin.bottom), wasted)
+        return PlacedGroupContent.from_items(self.represents,
+                                             results,
+                                             Extent(width, last_y + self.margin.bottom),
+                                             wasted)

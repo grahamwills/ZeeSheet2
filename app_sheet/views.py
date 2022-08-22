@@ -9,7 +9,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
 from rst.validate import prettify, build_structure
-from generate.pdf import make_pdf
+from layout.build import make_pdf
 from .forms import NewUserForm
 from .models import Sheet
 

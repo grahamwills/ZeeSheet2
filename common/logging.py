@@ -19,7 +19,7 @@ def _initialize_logging():
 
     logging.Logger.fine = fine
 
-    path = Path(__file__).parent.parent.joinpath('resources', 'logging.yaml')
+    path = Path(__file__).parent.parent.joinpath('logging.yaml')
     if os.path.exists(path):
         with open(path, 'rt') as f:
             try:

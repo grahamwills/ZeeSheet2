@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+import reprlib
 from dataclasses import dataclass, field
 from typing import List, NamedTuple, Optional, ClassVar, Tuple
 from collections import namedtuple
@@ -127,7 +128,7 @@ class Run(StructureComponent):
         else:
             return super().structure_str()
 
-    def as_str(self, width: int, indent: int = 0) -> str:
+    def as_str(self, width: int = 9e99, indent: int = 0) -> str:
         if not self.children:
             return ''
 
@@ -211,6 +212,14 @@ class Block(StructureComponent):
             lines.append('')
         return lines
 
+    def name(self):
+        """ Descriptive name for debugging"""
+        if self.title:
+            return 'Block{' + reprlib.repr(self.title.as_str()) + ', ' + str(len(self.children)) + ' items}'
+        else:
+            return 'Block{' + str(len(self.children)) + ' items}'
+
+
     def add_to_title(self, element: Element):
         self.title.append(element)
 
@@ -221,6 +230,13 @@ class Section(StructureComponent):
 
     title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
+
+    def name(self):
+        """ Descriptive name for debugging"""
+        if self.title:
+            return 'Section{' + reprlib.repr(self.title.as_str()) + ', ' + str(len(self.children)) + ' items}'
+        else:
+            return 'Section{' + str(len(self.children)) + ' items}'
 
     def append(self, block: Block):
         self.children.append(block)

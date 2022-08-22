@@ -2,16 +2,12 @@ from typing import List
 
 from common.geom import Extent, Point
 from generate.pdf import PDF, TextSegment
-from layout.content import PlacedGroupContent, PlacedElementContent, Error, PlacedContent
+from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
 from rst.structure import Run, Item, Block
 
 
-def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedGroupContent:
-    items: List[PlacedElementContent] = []
-
-    # No attempt to split wrapping
-    # ignores text modifiers
-    # One item per line
+def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
+    segments: List[TextSegment] = []
 
     x, y = 0, 0
     for element in run.children:
@@ -19,18 +15,13 @@ def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         text = element.value
         width = font.width(text)
         extent = Extent(width, font.line_spacing)
-        error = Error(0, 0, 0)
-        split = None
         location = Point(x, y)
-        segment = TextSegment(text, location)
-        item = PlacedElementContent(element, extent, location, error, split, segment)
         y += font.line_spacing
-        items.append(item)
+        segment = TextSegment(text, location)
+        segments.append(segment)
 
     outer_bounds = Extent(extent.width, y)
-    extra_space = 0
-
-    return PlacedGroupContent.from_items(items, outer_bounds, extra_space)
+    return PlacedRunContent(run, outer_bounds, Point(0,0), Error(0,0,0), segments)
 
 
 def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
@@ -46,7 +37,7 @@ def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     outer_bounds = Extent(extent.width, y)
     extra_space = 0
 
-    return PlacedGroupContent.from_items(items, outer_bounds, extra_space)
+    return PlacedGroupContent.from_items(item, items, outer_bounds, extra_space)
 
 
 def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
@@ -59,7 +50,7 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         y += placed_title.extent.height
         items.append(placed_title)
 
-        # Extr spacing for the title to be fixed later
+        # Extra spacing for the title to be fixed later
         y += ITEM_SPACING + ITEM_SPACING
 
     for item in block.children:
@@ -72,4 +63,4 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     outer_bounds = Extent(extent.width, y)
     extra_space = 0
 
-    return PlacedGroupContent.from_items(items, outer_bounds, extra_space)
+    return PlacedGroupContent.from_items(block, items, outer_bounds, extra_space)
