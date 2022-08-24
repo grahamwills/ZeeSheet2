@@ -79,9 +79,12 @@ class PDF(canvas.Canvas):
         textobject.setFont(self.font.name, self.font.size)
         textobject.setTextOrigin(0, self.font.top_to_baseline)
         textobject.setLeading(self.font.line_spacing)
+        current_y = 0
         for segment in segments:
             if segment.offset:
-                textobject.moveCursor(segment.offset.x, segment.offset.y)
+                # The 'x' is absolute, but the 'y' is relative to the last move
+                textobject.moveCursor(segment.offset.x, segment.offset.y - current_y)
+                current_y = segment.offset.y
             textobject.textOut(segment.text)
         self.drawText(textobject)
 

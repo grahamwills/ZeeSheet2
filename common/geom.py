@@ -32,7 +32,9 @@ class Point(NamedTuple):
     y: float
 
     def __str__(self) -> str:
-        return f"({self.x},{self.y})"
+        x = f"{self.x:.2f}".rstrip('0').rstrip('.')
+        y = f"{self.y:.2f}".rstrip('0').rstrip('.')
+        return f"({x}, {y})"
 
     def __add__(self, other) -> Point:
         return Point(self.x + other.x, self.y + other.y)
