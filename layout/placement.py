@@ -50,13 +50,14 @@ def split_for_wrap(text: str,
 
 def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
     placed = _place_run(run, extent, pdf, False)
-    if placed.extent.height <= extent.height:
+
+    if not placed.error.clipped:
         # Fits into the extent requested
         return placed
 
     # Try with bad breaks
-    placed = _place_run(run, extent, pdf, True)
-    return placed
+    placed1 = _place_run(run, extent, pdf, True)
+    return placed1 if placed1.better(placed) else placed
 
 
 def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
@@ -64,12 +65,18 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
 
     x, y, right, bottom = 0, 0, 0, 0
     area_used = 0
-    acceptable_breaks, bad_breaks = 0, 0
+    acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     for element in run.children:
         font = pdf.font
         text = element.value
         height = font.line_spacing
+
         while text is not None:
+            if y + height > extent.height:
+                # Clipped text; just add the size of the clipped area
+                clipped += height * font.width(text)
+                break
+
             head, width, tail, is_bad = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=allow_bad_breaks)
             if not head and not x and not allow_bad_breaks:
                 # Failed to split with whole line available - try again, but allow bad breaks just for this line
@@ -100,7 +107,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
 
     bounds = Extent(right, bottom)
     error = Error(
-        0,
+        clipped,
         bad_breaks,
         acceptable_breaks,
         bounds.area - area_used  # Unused space in square pixels

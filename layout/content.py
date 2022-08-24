@@ -14,7 +14,7 @@ LOGGER = configured_logger(__name__)
 @dataclass
 class Error:
     """ Error from placing one or more items. """
-    clipped: float # Approximate pixel size of items clipped out and lost
+    clipped: float  # Approximate pixel size of items clipped out and lost
     bad_breaks: float  # Measures the error we want to improve above all (counts of bad breaks)
     breaks: float  # Measures error we'd prefer to reduce if possible (counts of line breaks)
     extra: float  # Extra space that this is not using (in pixels)
@@ -32,7 +32,7 @@ class Error:
         return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n), round(self.extra, n))
 
     def _score(self) -> float:
-        return self.bad_breaks * 100 + self.breaks + self.extra * 1e-6
+        return self.clipped * 1e6 + self.bad_breaks * 100 + self.breaks + self.extra * 1e-6
 
     @classmethod
     def sum(cls, *args):

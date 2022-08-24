@@ -127,7 +127,7 @@ class Packer:
                 last_y_with_padding = self.margin.top
                 last_span = span
 
-            placed = self.place_function(item, Extent(span.width, -1), self.pdf)
+            placed = self.place_function(item, Extent(span.width, 9e99), self.pdf)
             y = max(last_y_with_padding, last_y + self.padding.top)
             placed.location = Point(span.left, y)
             last_y = placed.bounds.bottom

@@ -115,3 +115,13 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('(0, 0)|(0, 16)|(26, 16)|(0, 31)|(0, 47)', locs)
         self.assertEqual(Rect(0, 46, 0, 62), round(placed.bounds))
         self.assertEqual(Error(0, 1, 2, 230), round(placed.error))
+
+    def test_not_enough_space_no_matter_what_we_try(self):
+        run = Run([self.E1, self.EX, self.E3])
+        placed = place_run(run, Extent(80, 60), self.pdf)
+        texts = '|'.join(s.text for s in placed.segments)
+        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        self.assertEqual('hello to this |supercalifra|gilisticexpiali', texts)
+        self.assertEqual('(0, 0)|(0, 16)|(0, 31)', locs)
+        self.assertEqual(Rect(0, 78, 0, 47), round(placed.bounds))
+        self.assertEqual(Error(1330, 2, 1, 132), round(placed.error))

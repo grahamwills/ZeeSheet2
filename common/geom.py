@@ -82,6 +82,7 @@ class Point(NamedTuple):
 
 
 class Extent(NamedTuple):
+
     width: float
     height: float
 
