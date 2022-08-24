@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Optional, NamedTuple
 
 from common.geom import Extent, Point
 from generate.pdf import PDF, TextSegment, FontInfo
@@ -6,10 +6,18 @@ from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, 
 from rst.structure import Run, Item, Block
 
 
+class SplitResult(NamedTuple):
+    """Contains the results of splitting  text for wrapping purposes"""
+    fit: Optional[str]
+    fit_width: float
+    next_line: Optional[str]
+    bad_break: bool
+
+
 def split_for_wrap(text: str,
                    available: float,
                    font: FontInfo,
-                   allow_bad_breaks: bool = False) -> Tuple[Optional[str], float, Optional[str], bool]:
+                   allow_bad_breaks: bool = False) -> SplitResult:
     """
         Splits the text into two parts to facilitate wrapping
 
@@ -24,28 +32,28 @@ def split_for_wrap(text: str,
     width = font.width(text)
     if width <= available:
         # Easy if it all fits!
-        return text, width, None, False
+        return SplitResult(text, width, None, False)
 
     # Search through in order
     # (might be faster to do a search starting from a fraction (available/width) of the string)
 
-    best, best_w = None, 0
+    best = None
     for at in range(1, len(text) - 1):
-        good_split = text[at].isspace()
-        if allow_bad_breaks or good_split:
+        if allow_bad_breaks or text[at].isspace():
             head = text[:at]
             w = font.width(head.rstrip())
             if w < available:
-                best, best_w = head, w
+                best = head, w
             else:
                 break
 
     if best:
-        tail = text[len(best):]
-        split_good = best[-1].isspace() or tail[0].isspace()
-        return best.rstrip(), best_w, tail.lstrip(), not split_good
+        head = best[0]
+        tail = text[len(head):]
+        split_good = head[-1].isspace() or tail[0].isspace()
+        return SplitResult(head.rstrip(), best[1], tail.lstrip(), not split_good)
     else:
-        return None, 0, text, False
+        return SplitResult(None, 0, text, False)
 
 
 def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
@@ -77,33 +85,33 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
                 clipped += height * font.width(text)
                 break
 
-            head, width, tail, is_bad = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=allow_bad_breaks)
-            if not head and not x and not allow_bad_breaks:
+            split = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=allow_bad_breaks)
+            if not split.fit and not x and not allow_bad_breaks:
                 # Failed to split with whole line available - try again, but allow bad breaks just for this line
-                head, width, tail, is_bad = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=True)
-            if not head and not x:
+                split = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=True)
+            if not split.fit and not x:
                 # Still failed
                 raise RuntimeError('An empty line cannot fit a single character')
 
-            if head:
+            if split.fit:
                 # Put it on this line
-                segments.append(TextSegment(head, Point(x, y)))
-                x += width
+                segments.append(TextSegment(split.fit, Point(x, y)))
+                x += split.fit_width
                 right = max(right, x)
                 bottom = max(bottom, y + height)
-                area_used += width * height
+                area_used += split.fit_width * height
 
-            if tail:
+            if split.next_line:
                 # Start a new line
                 x = 0
                 y += height
-                if is_bad:
+                if split.bad_break:
                     bad_breaks += 1
                 else:
                     acceptable_breaks += 1
 
             # Continue to process the tail text, if it exists
-            text = tail
+            text = split.next_line
 
     bounds = Extent(right, bottom)
     error = Error(
@@ -127,7 +135,6 @@ def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
 
     outer_bounds = Extent(extent.width, y)
     extra_space = 0
-
     return PlacedGroupContent.from_items(item, items, outer_bounds, extra_space)
 
 
