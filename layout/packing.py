@@ -1,4 +1,3 @@
-import logging
 import reprlib
 from dataclasses import dataclass
 from typing import Iterable, Callable, List, Any
@@ -54,7 +53,6 @@ class Packer:
         self.pdf = pdf
         self.margin = margin
         self.padding = padding
-
 
     def name(self):
         try:

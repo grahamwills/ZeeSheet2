@@ -41,7 +41,7 @@ def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
 
 
 def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
-    ITEM_SPACING = 4
+    ITEM_SPACING = 0
     items: List[PlacedContent] = []
     x, y = 0, 0
 
@@ -57,6 +57,8 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         placed_item = place_item(item, extent, pdf)
         placed_item.location = Point(x, y)
         y += placed_item.extent.height + ITEM_SPACING
+        items.append(placed_item)
+
 
     y -= ITEM_SPACING
 

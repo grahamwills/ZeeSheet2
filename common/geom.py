@@ -65,7 +65,7 @@ class Point(NamedTuple):
         return hash(self.x) + 17 * hash(self.y)
 
     def __bool__(self) -> bool:
-        return self.x != 0 and self.y != 0
+        return self.x != 0 or self.y != 0
 
     def __round__(self, n=None):
         return Point(round(self.x, n), round(self.y, n))

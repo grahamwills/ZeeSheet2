@@ -1,6 +1,8 @@
+import reprlib
 from dataclasses import dataclass
+from enum import Enum
 from io import BytesIO
-from typing import NamedTuple, List, Tuple
+from typing import List, Tuple
 
 from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
@@ -11,20 +13,19 @@ from common.logging import configured_logger
 LOGGER = configured_logger(__name__)
 
 
-class DrawMethod(NamedTuple):
-    fill: bool
-    stroke: bool
-
-
-DrawMethod.FILL = DrawMethod(True, False)
-DrawMethod.STROKE = DrawMethod(False, True)
-DrawMethod.BOTH = DrawMethod(True, True)
+class DrawMethod(Enum):
+    FILL = 1
+    DRAW = 2
+    BOTH = 3
 
 
 @dataclass
 class TextSegment:
     text: str
     offset: Point
+
+    def __str__(self):
+        return reprlib.repr(self.text) + '@' + str(self.offset)
 
 
 class FontInfo:
@@ -40,10 +41,22 @@ class FontInfo:
         a, d = metrics.getAscentDescent(name, size)
         self.ascent = abs(a)
         self.descent = abs(d)
-        self.line_spacing = (self.ascent + self.descent) * 1.2
 
     def width(self, text: str) -> float:
+        """Measures the width of the text"""
         return metrics.stringWidth(text, self.name, self.size)
+
+    @property
+    def line_spacing(self):
+        """The distance between two lines"""
+        return (self.ascent + self.descent) * 1.2
+
+    @property
+    def top_to_baseline(self):
+        """The distance from the notional top to the baseline for the font"""
+        # We split the leading half above the text and half below it
+        leading = self.line_spacing - (self.ascent + self.descent)
+        return self.ascent + leading / 2
 
 
 class PDF(canvas.Canvas):
@@ -56,13 +69,16 @@ class PDF(canvas.Canvas):
         self.font = FontInfo("Helvetica", 14)
 
     def draw_rect(self, r: Rect, method: DrawMethod):
-        self.rect(r.left, r.top, r.width, r.height, fill=method.fill, stroke=method.stroke)
+        self.rect(r.left, r.top, r.width, r.height,
+                  fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
 
-    def draw_text(self, segments: List[TextSegment], location: Point):
-        LOGGER.debug(f"At {location}: Drawing segments {segments}")
+    def draw_text(self, segments: List[TextSegment]):
+        ss = ', '.join([str(s) for s in segments])
+        LOGGER.debug(f"Drawing segments {ss}")
         textobject = self.beginText()
         textobject.setFont(self.font.name, self.font.size)
-        textobject.setTextOrigin(location.x, location.y)
+        textobject.setTextOrigin(0, self.font.top_to_baseline)
+        textobject.setLeading(self.font.line_spacing)
         for segment in segments:
             if segment.offset:
                 textobject.moveCursor(segment.offset.x, segment.offset.y)
@@ -74,5 +90,3 @@ class PDF(canvas.Canvas):
         bytes = self.buffer.getvalue()
         self.buffer.close()
         return bytes
-
-

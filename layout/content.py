@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import reprlib
 from dataclasses import dataclass
-from typing import List, Iterable, Tuple, Optional, Any
+from typing import List, Iterable, Any
 
 from common.geom import Extent, Point, Rect
-from generate.pdf import TextSegment, PDF
-from rst.structure import Run, StructureComponent
+from common.logging import configured_logger
+from generate.pdf import TextSegment, PDF, DrawMethod
+from rst.structure import Section, Block, Item
+
+LOGGER = configured_logger(__name__)
 
 
 @dataclass
@@ -41,7 +43,7 @@ class Error:
 
 @dataclass
 class PlacedContent:
-    represents: Any   # Whatever this represents
+    represents: Any  # Whatever this represents
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
     error: Error  # How bad the placement was
@@ -57,7 +59,7 @@ class PlacedContent:
         """Is our placement better?"""
         return other is None or self.error.better(other.error)
 
-    def draw(self, pdf:PDF):
+    def _draw(self, pdf: PDF):
         raise NotImplementedError('Must be defined in subclass')
 
     def name(self):
@@ -66,13 +68,26 @@ class PlacedContent:
         except AttributeError:
             return str(self.represents)
 
+    def draw(self, pdf: PDF):
+        if self.location:
+            pdf.saveState()
+            LOGGER.debug(self.name() + ': Translating by ' + str(self.location))
+            _debug_draw_rect(pdf, self.represents, self.bounds)
+            pdf.translate(self.location.x, self.location.y)
+            self._draw(pdf)
+            pdf.restoreState()
+        else:
+            # No need for all that work
+            self._draw(pdf)
+
 
 @dataclass
 class PlacedGroupContent(PlacedContent):
     placed_group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, represents, items: Iterable[PlacedContent], actual: Extent, extra_unused: int) -> PlacedGroupContent:
+    def from_items(cls, represents, items: Iterable[PlacedContent], actual: Extent,
+                   extra_unused: int) -> PlacedGroupContent:
         placed = list(items)
         bounds = Rect.union(i.bounds for i in placed)
         assert bounds.left >= 0
@@ -80,7 +95,7 @@ class PlacedGroupContent(PlacedContent):
         error = Error.sum(i.error for i in placed) + Error(0, 0, extra_unused)
         return PlacedGroupContent(represents, actual, Point(0, 0), error, placed)
 
-    def draw(self, pdf:PDF):
+    def _draw(self, pdf: PDF):
         for p in self.placed_group:
             p.draw(pdf)
 
@@ -89,5 +104,21 @@ class PlacedGroupContent(PlacedContent):
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
 
-    def draw(self, pdf:PDF):
-        pdf.draw_text(self.segments, self.location)
+    def _draw(self, pdf: PDF):
+        pdf.draw_text(self.segments)
+
+
+def _debug_draw_rect(pdf, represents, rect):
+    if isinstance(represents, Section):
+        r, g, b, a = 1, 0.7, 0, 0.15
+    elif isinstance(represents, Block):
+        r, g, b, a = 0, 0, 1, 0.15
+    elif isinstance(represents, Item):
+        r, g, b, a = 1, 0, 0, 0.2
+    else:
+        raise ValueError('Unexpected representation: ' + str(represents))
+    pdf.saveState()
+    pdf.setFillColorRGB(r, g, b, alpha=a)
+    pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
+    pdf.draw_rect(rect, DrawMethod.BOTH)
+    pdf.restoreState()

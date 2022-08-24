@@ -40,7 +40,7 @@ loggers:
 
   generate:
     level: DEBUG
-    handlers: [ important, file ]
+    handlers: [ all, file ]
     propagate: no
 
   PIL.rst:

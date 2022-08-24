@@ -11,6 +11,7 @@ from rst.structure import Sheet, Section, Block
 
 
 def make_pdf(sheet:Sheet, owner:User) -> str:
+    print(sheet.structure_str())
     file_name = f"sheets/{owner.username}-sheet.pdf"
     pdf = PDF(sheet.page_size)
     content = create_content(sheet, pdf)
@@ -27,7 +28,7 @@ def create_block(block: Block, extent: Extent, pdf: PDF) -> PlacedContent:
 
 def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     margin = Spacing.balanced(10)
-    padding = Spacing.balanced(5)
+    padding = Spacing.balanced(10)
 
     packer = Packer(section, section.children, create_block, margin, padding, pdf)
     content = packer.into_columns(round(extent.width))
@@ -36,8 +37,8 @@ def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
 
 def create_content(sheet:Sheet, pdf: PDF):
 
-    margin = Spacing.balanced(10)
-    padding = Spacing.balanced(5)
+    margin = Spacing.balanced(5)
+    padding = Spacing.balanced(2)
 
     packer = Packer('Sheet', sheet.children, create_section, margin, padding, pdf)
     content = packer.into_columns(sheet.page_size[0])
