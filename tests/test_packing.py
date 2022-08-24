@@ -19,8 +19,8 @@ class TestContent(StructureComponent):
 
 def place_test_content_with_wrapping(content: StructureComponent, e: Extent, _:PDF) -> PlacedContent:
     height = math.ceil(content.area / e.width)
-    error = Error(0, 0, 0)
-    return PlacedContent(Extent(e.width, height), Point(0,0), error)
+    error = Error(0, 0, 0, 0)
+    return PlacedContent('test', Extent(e.width, height), Point(0,0), error)
 
 
 class PackingTest(unittest.TestCase):

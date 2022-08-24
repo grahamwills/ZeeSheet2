@@ -18,8 +18,8 @@ class GeomTests(unittest.TestCase):
         a = Point(0, 0)
         b = Point(3.0, 4.5)
 
-        self.assertEqual(str(a), '(0,0)')
-        self.assertEqual(str(b), '(3.0,4.5)')
+        self.assertEqual(str(a), '(0, 0)')
+        self.assertEqual(str(b), '(3, 4.5)')
         self.assertEqual(repr(a), 'Point(x=0, y=0)')
         self.assertEqual(repr(b), 'Point(x=3.0, y=4.5)')
 

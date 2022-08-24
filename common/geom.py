@@ -85,6 +85,10 @@ class Extent(NamedTuple):
     width: float
     height: float
 
+    @property
+    def area(self):
+        return self.width * self.height
+
 
 class Rect(namedtuple('Rect', 'left right top bottom')):
 
@@ -120,6 +124,9 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
     @property
     def area(self) -> float:
         return self.width * self.height
+
+    def __round__(self, n=None):
+        return Rect(round(self.left, n), round(self.right, n), round(self.top, n), round(self.bottom, n))
 
     def __add__(self, off: Union[Spacing, Point, Tuple]) -> Rect:
         try:

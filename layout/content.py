@@ -13,29 +13,35 @@ LOGGER = configured_logger(__name__)
 
 @dataclass
 class Error:
-    """ Error from placing one or more items"""
-    unacceptable: float  # Measures the error we want to improve above all
-    acceptable: float  # Measures error we'd prefer to reduce if possible
-    extra: float  # Extra space that this is not using
+    """ Error from placing one or more items. """
+    clipped: float # Approximate pixel size of items clipped out and lost
+    bad_breaks: float  # Measures the error we want to improve above all (counts of bad breaks)
+    breaks: float  # Measures error we'd prefer to reduce if possible (counts of line breaks)
+    extra: float  # Extra space that this is not using (in pixels)
 
     def __str__(self):
-        return f"Error({self.unacceptable:1.3}, {self.acceptable:1.3} • {self.extra:1.3})"
+        return f"Error({self.bad_breaks:1.3}, {self.breaks:1.3} • {self.extra:1.3})"
 
     def __add__(self, other: Error):
-        return Error(self.unacceptable + other.unacceptable,
-                     self.acceptable + other.acceptable,
+        return Error(self.clipped + other.clipped,
+                     self.bad_breaks + other.bad_breaks,
+                     self.breaks + other.breaks,
                      self.extra + other.extra)
 
+    def __round__(self, n=None):
+        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n), round(self.extra, n))
+
     def _score(self) -> float:
-        return self.unacceptable * 100 + self.acceptable + self.extra * 1e-6
+        return self.bad_breaks * 100 + self.breaks + self.extra * 1e-6
 
     @classmethod
     def sum(cls, *args):
         mix = list(args[0]) if len(args) == 1 else list(args)
-        u = sum(i.unacceptable for i in mix)
-        a = sum(i.acceptable for i in mix)
+        c = sum(i.clipped for i in mix)
+        u = sum(i.bad_breaks for i in mix)
+        a = sum(i.breaks for i in mix)
         e = sum(i.extra for i in mix)
-        return Error(u, a, e)
+        return Error(c, u, a, e)
 
     def better(self, other: Error):
         return self._score() < other._score()
@@ -92,7 +98,7 @@ class PlacedGroupContent(PlacedContent):
         bounds = Rect.union(i.bounds for i in placed)
         assert bounds.left >= 0
         assert bounds.top >= 0
-        error = Error.sum(i.error for i in placed) + Error(0, 0, extra_unused)
+        error = Error.sum(i.error for i in placed) + Error(0, 0, 0, extra_unused)
         return PlacedGroupContent(represents, actual, Point(0, 0), error, placed)
 
     def _draw(self, pdf: PDF):
