@@ -6,53 +6,78 @@ from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, 
 from rst.structure import Run, Item, Block
 
 
-def split_for_wrap(text: str, available: float, font: FontInfo) -> Tuple[Optional[str], float, Optional[str]]:
+def split_for_wrap(text: str,
+                   available: float,
+                   font: FontInfo,
+                   allow_bad_breaks: bool = False) -> Tuple[Optional[str], float, Optional[str], bool]:
     """
         Splits the text into two parts to facilitate wrapping
 
         :param text: text to break
         :param available: space available to place into
         :param font: the font being used
-        :return: the string that fits and the width of that string followed by the remainder of the string
+        :param allow_bad_breaks: if true, can break anywhere
+        :return: the string that fits and the width of that string followed by the remainder of the string,
+        and then a flag for a bad break
     """
 
     width = font.width(text)
     if width <= available:
         # Easy if it all fits!
-        return text, width, None
+        return text, width, None, False
 
     # Search through in order
     # (might be faster to do a search starting from a fraction (available/width) of the string)
 
     best, best_w = None, 0
     for at in range(1, len(text) - 1):
-        if text[at:at + 1].isspace():
-            head = text[:at].strip()
-            w = font.width(head)
+        good_split = text[at].isspace()
+        if allow_bad_breaks or good_split:
+            head = text[:at]
+            w = font.width(head.rstrip())
             if w < available:
                 best, best_w = head, w
             else:
                 break
 
     if best:
-        remainder = text[len(best):].lstrip()
-        return best, best_w, remainder
+        tail = text[len(best):]
+        split_good = best[-1].isspace() or tail[0].isspace()
+        return best.rstrip(), best_w, tail.lstrip(), not split_good
     else:
-        return None, 0, text
+        return None, 0, text, False
 
 
 def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
+    placed = _place_run(run, extent, pdf, False)
+    if placed.extent.height <= extent.height:
+        # Fits into the extent requested
+        return placed
+
+    # Try with bad breaks
+    placed = _place_run(run, extent, pdf, True)
+    return placed
+
+
+def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
     segments: List[TextSegment] = []
 
     x, y, right, bottom = 0, 0, 0, 0
     area_used = 0
-    acceptable_breaks = 0
+    acceptable_breaks, bad_breaks = 0, 0
     for element in run.children:
         font = pdf.font
         text = element.value
         height = font.line_spacing
         while text is not None:
-            head, width, tail = split_for_wrap(text, extent.width - x, font)
+            head, width, tail, is_bad = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=allow_bad_breaks)
+            if not head and not x and not allow_bad_breaks:
+                # Failed to split with whole line available - try again, but allow bad breaks just for this line
+                head, width, tail, is_bad = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=True)
+            if not head and not x:
+                # Still failed
+                raise RuntimeError('An empty line cannot fit a single character')
+
             if head:
                 # Put it on this line
                 segments.append(TextSegment(head, Point(x, y)))
@@ -60,15 +85,15 @@ def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
                 right = max(right, x)
                 bottom = max(bottom, y + height)
                 area_used += width * height
-            else:
-                if x == 0:
-                    raise RuntimeError('An empty line cannot fit this text')
 
             if tail:
                 # Start a new line
                 x = 0
                 y += height
-                acceptable_breaks += 1
+                if is_bad:
+                    bad_breaks += 1
+                else:
+                    acceptable_breaks += 1
 
             # Continue to process the tail text, if it exists
             text = tail
@@ -76,7 +101,7 @@ def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
     bounds = Extent(right, bottom)
     error = Error(
         0,
-        0,
+        bad_breaks,
         acceptable_breaks,
         bounds.area - area_used  # Unused space in square pixels
     )

@@ -11,24 +11,45 @@ class TestRunPlacement(unittest.TestCase):
     E1 = Element('hello to this ', None)
     E2 = Element('brave new', 'strong')
     E3 = Element(' world', None)
+    EX = Element('supercalifragilisticexpialidocious', None)
     pdf = PDF((1000, 1000))
 
     def test_split_line(self):
         font = FontInfo('Helvetica', 14)
-        head, w, tail = split_for_wrap('hello everyone in the room ', 40, font)
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 40, font)
         self.assertEqual('hello', head)
         self.assertEqual('everyone in the room ', tail)
         self.assertEqual(font.width('hello'), w)
 
-        head, w, tail = split_for_wrap('hello everyone in the room ', 100, font)
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 100, font)
         self.assertEqual('hello everyone', head)
         self.assertEqual('in the room ', tail)
         self.assertEqual(font.width('hello everyone'), w)
 
-        head, w, tail = split_for_wrap('hello everyone in the room ', 120, font)
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 120, font)
         self.assertEqual('hello everyone in', head)
         self.assertEqual('the room ', tail)
         self.assertEqual(font.width('hello everyone in'), w)
+
+    def test_split_line_allowing_bad_breaks(self):
+        font = FontInfo('Helvetica', 14)
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 40, font, True)
+        self.assertEqual('hello', head)
+        self.assertEqual(False, bad)
+        self.assertEqual('everyone in the room ', tail)
+        self.assertEqual(font.width('hello'), w)
+
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 100, font, True)
+        self.assertEqual('hello everyone i', head)
+        self.assertEqual('n the room ', tail)
+        self.assertEqual(True, bad)
+        self.assertEqual(font.width('hello everyone i'), w)
+
+        head, w, tail, bad = split_for_wrap('hello everyone in the room ', 120, font, True)
+        self.assertEqual('hello everyone in t', head)
+        self.assertEqual('he room ', tail)
+        self.assertEqual(True, bad)
+        self.assertEqual(font.width('hello everyone in t'), w)
 
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
@@ -73,13 +94,24 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(Rect(0, 45, 0, 78), round(placed.bounds))
         self.assertEqual(Error(0, 0, 4, 883), round(placed.error))
 
-    def test_not_enough_at_end(self):
-        run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(50, 100), self.pdf)
+    def test_need_bad_break(self):
+        run = Run([self.EX])
+        placed = place_run(run, Extent(45, 100), self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
-        self.assertEqual('hello to|this |brave|new| world', texts)
+        self.assertEqual('superc|alifragil|isticex|pialido|cious', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(Rect(0, 45, 0, 78), round(placed.bounds))
-        self.assertEqual(Error(0, 0, 4, 883), round(placed.error))
+        self.assertEqual(Rect(0, 44, 0, 78), round(placed.bounds))
+        self.assertEqual(Error(0, 4, 0, 362), round(placed.error))
+
+    def test_need_bad_breaks_to_fit_vertically(self):
+        run = Run([self.E1, self.E2, self.E3])
+        placed = place_run(run, Extent(50, 65), self.pdf)
+        self.assertEqual(5, len(placed.segments))
+        texts = '|'.join(s.text for s in placed.segments)
+        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        self.assertEqual('hello to|this |bra|ve new|world', texts)
+        self.assertEqual('(0, 0)|(0, 16)|(26, 16)|(0, 31)|(0, 47)', locs)
+        self.assertEqual(Rect(0, 46, 0, 62), round(placed.bounds))
+        self.assertEqual(Error(0, 1, 2, 230), round(placed.error))
