@@ -75,7 +75,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
     area_used = 0
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     for element in run.children:
-        font = pdf.font
+        font = element.modify_font(pdf.font)
         text = element.value
         height = font.line_spacing
 
@@ -95,7 +95,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
 
             if split.fit:
                 # Put it on this line
-                segments.append(TextSegment(split.fit, Point(x, y)))
+                segments.append(TextSegment(split.fit, Point(x, y), font))
                 x += split.fit_width
                 right = max(right, x)
                 bottom = max(bottom, y + height)
@@ -139,27 +139,34 @@ def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
 
 
 def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
-    ITEM_SPACING = 0
     items: List[PlacedContent] = []
-    x, y = 0, 0
+    y = 0
 
     if block.title:
         placed_title = place_run(block.title, extent, pdf)
         y += placed_title.extent.height
         items.append(placed_title)
 
-        # Extra spacing for the title to be fixed later
-        y += ITEM_SPACING + ITEM_SPACING
+    # Find out how many columns we have
+    ncols = max(len(item.children) for item in block.children)
 
+    # Evenly space everything and assume everything fits
+
+
+    y_next = 0
     for item in block.children:
-        placed_item = place_item(item, extent, pdf)
-        placed_item.location = Point(x, y)
-        y += placed_item.extent.height + ITEM_SPACING
-        items.append(placed_item)
-
-    y -= ITEM_SPACING
+        for i, run in enumerate(item.children):
+            cell_extent = Extent(extent.width/ncols, extent.height)
+            x = i * cell_extent.width
+            placed_run = place_run(run, cell_extent, pdf)
+            placed_run.location = Point(x, y)
+            y_next = max(y_next, placed_run.bounds.bottom)
+            items.append(placed_run)
+        y = y_next
 
     outer_bounds = Extent(extent.width, y)
+
+    # TODO: Fix this
     extra_space = 0
 
     return PlacedGroupContent.from_items(block, items, outer_bounds, extra_space)

@@ -71,7 +71,7 @@ class Packer:
 
         group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
 
-        for c in group.placed_group:
+        for c in group.group:
             LOGGER.debug(f".. placed {c.name()} into {c.bounds}")
 
         return group

@@ -1,22 +1,25 @@
 from __future__ import annotations
+
+import itertools
 import re
 import reprlib
-from dataclasses import dataclass, field
-from typing import List, NamedTuple, Optional, ClassVar, Tuple
 from collections import namedtuple
+from dataclasses import dataclass, field
 from types import SimpleNamespace
+from typing import List, NamedTuple, Optional, ClassVar, Tuple
 
 import reportlab.lib.pagesizes
+
+from generate.pdf import FontInfo
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
 
-
 # Define an empty class for things with no titles
-_EMPTY = SimpleNamespace(has_content = lambda : False, tidy = lambda : None)
-
+_EMPTY = SimpleNamespace(has_content=lambda: False, tidy=lambda: None)
 
 FormatInfo = namedtuple('ClassInfo', 'open close sep')
+
 
 class Issue(NamedTuple):
     lineNo: Optional[int]
@@ -33,7 +36,7 @@ class Issue(NamedTuple):
 # noinspection PyUnresolvedReferences
 @dataclass
 class StructureComponent:
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('aaa', 'bbb', 'ccc')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('aaa', 'bbb', 'ccc')
 
     def __str__(self):
         return self.__class__.__name__
@@ -105,22 +108,24 @@ class Element(StructureComponent):
     def from_text(cls, text: str, modifier: Optional[str]):
         return cls(text, modifier)
 
-    def is_special(self):
+    def is_literal(self):
         return self.modifier == 'literal'
 
     def has_content(self):
         return True
 
+    def modify_font(self, font: FontInfo):
+        return font.modify(self.modifier == 'strong', self.modifier == 'emphasis')
+
 
 @dataclass
 class Run(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('', '', '')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('', '', '')
 
     children: List[Element] = field(default_factory=list)
 
     def append(self, element: Element):
         self.children.append(element)
-
 
     def structure_str(self):
         if len(self.children) == 1:
@@ -136,7 +141,7 @@ class Run(StructureComponent):
 
         items = []
         for s in self.children:
-            if not s.is_special():
+            if not s.is_literal():
                 # Using explicit space to split keeps the whitespace around
                 for w in splitter.split(s.as_str()):
                     if w != '':
@@ -166,9 +171,31 @@ class Run(StructureComponent):
         return ''.join(results)
 
 
+def split_run_into_cells(base: Run) -> List[Run]:
+    current = Run()
+    cells: List[Run] = [current]
+    for element in base.children:
+        if element.modifier or '|' not in element.value:
+            # Does not contain a cell splitter
+            current.append(element)
+        else:
+            # Cells automatically cause white space around them to be stripped
+            items = [s.strip() for s in element.value.split('|')]
+            if items[0]:
+                # add the first one
+                current.append(Element(items[0], element.modifier))
+            for s in items[1:]:
+                # For the next items, start a new cell first
+                current = Run()
+                cells.append(current)
+                if s:
+                    current.append(Element(s, element.modifier))
+    return cells
+
+
 @dataclass
 class Item(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('[', ' \u2b29 ', ']')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('[', ' \u2b29 ', ']')
 
     children: List[Run] = field(default_factory=lambda: [Run()])
 
@@ -193,10 +220,15 @@ class Item(StructureComponent):
     def add_to_content(self, element: Element):
         self.children[-1].append(element)
 
+    def tidy(self) -> None:
+        super().tidy()
+        divided = [split_run_into_cells(run) for run in self.children]
+        self.children = list(itertools.chain(*divided))
+
 
 @dataclass
 class Block(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('\u276e', ' ', '\u276f')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('\u276e', ' ', '\u276f')
 
     title: Run = field(default_factory=lambda: Run())
     children: List[Item] = field(default_factory=lambda: [Item()])
@@ -219,14 +251,13 @@ class Block(StructureComponent):
         else:
             return 'Block{' + str(len(self.children)) + ' items}'
 
-
     def add_to_title(self, element: Element):
         self.title.append(element)
 
 
 @dataclass
 class Section(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('', ' ', '')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('', ' ', '')
 
     title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
@@ -260,11 +291,11 @@ class Section(StructureComponent):
 
 @dataclass
 class Sheet(StructureComponent):
-    format_pieces : ClassVar[Tuple[str,str,str]] = ('', ' --- ', '')
+    format_pieces: ClassVar[Tuple[str, str, str]] = ('', ' --- ', '')
 
     children: List[Section] = field(default_factory=lambda: [Section()])
     issues: List[Issue] = field(default_factory=list)
-    page_size : Tuple[int, int] = reportlab.lib.pagesizes.LETTER
+    page_size: Tuple[int, int] = reportlab.lib.pagesizes.LETTER
 
     def append(self, section: Section):
         self.children.append(section)

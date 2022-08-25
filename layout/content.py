@@ -6,7 +6,7 @@ from typing import List, Iterable, Any
 from common.geom import Extent, Point, Rect
 from common.logging import configured_logger
 from generate.pdf import TextSegment, PDF, DrawMethod
-from rst.structure import Section, Block, Item
+from rst.structure import Section, Block, Item, Run
 
 LOGGER = configured_logger(__name__)
 
@@ -89,20 +89,17 @@ class PlacedContent:
 
 @dataclass
 class PlacedGroupContent(PlacedContent):
-    placed_group: List[PlacedContent] = None
+    group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, represents, items: Iterable[PlacedContent], actual: Extent,
+    def from_items(cls, represents, items: Iterable[PlacedContent], extent: Extent,
                    extra_unused: int) -> PlacedGroupContent:
         placed = list(items)
-        bounds = Rect.union(i.bounds for i in placed)
-        assert bounds.left >= 0
-        assert bounds.top >= 0
         error = Error.sum(i.error for i in placed) + Error(0, 0, 0, extra_unused)
-        return PlacedGroupContent(represents, actual, Point(0, 0), error, placed)
+        return PlacedGroupContent(represents, extent, Point(0, 0), error, placed)
 
     def _draw(self, pdf: PDF):
-        for p in self.placed_group:
+        for p in self.group:
             p.draw(pdf)
 
 
@@ -121,6 +118,8 @@ def _debug_draw_rect(pdf, represents, rect):
         r, g, b, a = 0, 0, 1, 0.15
     elif isinstance(represents, Item):
         r, g, b, a = 1, 0, 0, 0.2
+    elif isinstance(represents, Run):
+        r, g, b, a = 1, 0, 1, 0.2
     else:
         raise ValueError('Unexpected representation: ' + str(represents))
     pdf.saveState()
