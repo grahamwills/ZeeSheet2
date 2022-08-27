@@ -5,7 +5,7 @@ from typing import Iterable, Callable, List, Any
 from common.geom import Extent, Point, Spacing
 from common.logging import configured_logger
 from generate.pdf import PDF
-from structure.model import StructureComponent
+from structure import StructureComponent
 from .content import PlacedContent, PlacedGroupContent
 
 LOGGER = configured_logger(__name__)

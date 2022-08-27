@@ -6,7 +6,7 @@ from typing import List, Iterable, Any
 from common.geom import Extent, Point, Rect
 from common.logging import configured_logger
 from generate.pdf import TextSegment, PDF, DrawMethod
-from structure.model import Section, Block, Item, Run
+from structure import Section, Block, Item, Run
 
 LOGGER = configured_logger(__name__)
 

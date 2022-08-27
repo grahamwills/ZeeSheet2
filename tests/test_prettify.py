@@ -1,6 +1,6 @@
 import unittest
 
-from structure.operation import prettify
+from structure import prettify
 from . import util
 
 

@@ -16,7 +16,7 @@ def _parse_rst(text: str) -> nodes.document:
     return document
 
 
-def build_structure(text: str) -> model.Sheet:
+def build_sheet(text: str) -> model.Sheet:
     """Parses the text and builds the basic structure out of it"""
     document = _parse_rst(text)
     main_visitor = visitors.StructureBuilder(document)
@@ -25,6 +25,6 @@ def build_structure(text: str) -> model.Sheet:
 
 
 def prettify(text: str, width:int=100) -> str:
-    sheet = build_structure(text)
+    sheet = build_sheet(text)
     return sheet.to_text(width=width)
 
