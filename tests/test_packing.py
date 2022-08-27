@@ -2,7 +2,7 @@ import math
 import unittest
 from dataclasses import dataclass
 
-from common.geom import Spacing, Extent, Rect, Point
+from common import Spacing, Extent, Rect, Point
 from generate.pdf import PDF
 from layout import packing
 from layout.content import PlacedContent, Error

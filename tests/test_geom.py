@@ -1,7 +1,7 @@
 import unittest
 from math import pi as π
 
-from common.geom import Spacing, Point, Rect, Extent
+from common import Spacing, Point, Rect, Extent
 
 
 class GeomTests(unittest.TestCase):

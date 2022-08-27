@@ -69,11 +69,11 @@ class StructureComponent:
             s.tidy()
         self.children = [s for s in self.children if s.has_content()]
 
-    def structure_str(self):
+    def structure_str(self, short: bool):
         open, sep, close = self.format_pieces
 
-        title = self.title.structure_str() + " ~ " if self.title_has_content() else ''
-        content = sep.join(s.structure_str() for s in self.children)
+        title = self.title.structure_str(short) + " ~ " if self.title_has_content() else ''
+        content = sep.join(s.structure_str(short) for s in self.children)
 
         return open + (title + content).strip() + close
 
@@ -83,8 +83,10 @@ class Element(StructureComponent):
     value: str
     modifier: Optional[str]
 
-    def structure_str(self):
-        if self.modifier:
+    def structure_str(self, short: bool):
+        if short:
+            return self.value if len(self.value) <= 20 else self.value[:19] + '\u2026'
+        elif self.modifier:
             return '\u00ab' + self.value + '\u22a3' + self.modifier[:3] + '\u00bb'
         else:
             return self.value
@@ -141,11 +143,11 @@ class Run(StructureComponent):
     def append(self, element: Element):
         self.children.append(element)
 
-    def structure_str(self):
+    def structure_str(self, short: bool):
         if len(self.children) == 1:
-            return self.children[0].structure_str()
+            return self.children[0].structure_str(short)
         else:
-            return super().structure_str()
+            return super().structure_str(short)
 
     def strip(self):
         """Remove heading and trailing whitespace if the edge elements are simple text"""
@@ -306,9 +308,6 @@ class Section(StructureComponent):
     def append(self, block: Block):
         self.children.append(block)
 
-    def add_to_title(self, element: Element):
-        self.title.append(element)
-
 
 @dataclass
 class Sheet(StructureComponent):
@@ -321,6 +320,6 @@ class Sheet(StructureComponent):
     def append(self, section: Section):
         self.children.append(section)
 
-    def combined_issues(self):
+    def describe_issues(self):
         return ' \u2022 '.join(s.message for s in self.issues)
 

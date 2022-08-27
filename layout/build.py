@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 
-from common.geom import Spacing, Extent
+from common import Spacing, Extent
 from generate.pdf import PDF
 from layout.content import PlacedContent
 from layout.packing import Packer
@@ -11,7 +11,6 @@ from structure import Sheet, Section, Block
 
 
 def make_pdf(sheet:Sheet, owner:User) -> str:
-    print(sheet.structure_str())
     file_name = f"sheets/{owner.username}-sheet.pdf"
     pdf = PDF(sheet.page_size)
     content = create_content(sheet, pdf)

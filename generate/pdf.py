@@ -8,8 +8,8 @@ from reportlab.lib import fonts, colors
 from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
 
-from common.geom import Rect, Point
-from common.logging import configured_logger
+from common import Rect, Point
+from common import configured_logger
 
 LOGGER = configured_logger(__name__)
 

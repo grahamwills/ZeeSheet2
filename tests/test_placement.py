@@ -1,6 +1,6 @@
 import unittest
 
-from common.geom import Extent, Point, Rect
+from common import Extent, Point, Rect
 from generate.pdf import PDF, FontInfo
 from layout.content import Error
 from layout.placement import place_run, split_for_wrap, place_block

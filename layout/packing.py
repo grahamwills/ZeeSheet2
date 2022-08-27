@@ -2,8 +2,8 @@ import reprlib
 from dataclasses import dataclass
 from typing import Iterable, Callable, List, Any
 
-from common.geom import Extent, Point, Spacing
-from common.logging import configured_logger
+from common import Extent, Point, Spacing
+from common import configured_logger
 from generate.pdf import PDF
 from structure import StructureComponent
 from .content import PlacedContent, PlacedGroupContent

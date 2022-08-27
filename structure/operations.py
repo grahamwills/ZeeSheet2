@@ -40,6 +40,8 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
 
     return '\n'.join(lines)
 
+def description(comp: model.StructureComponent, short:bool =False) -> str:
+    return comp.structure_str(short)
 
 def append_issues_rst(lines: List[str], directive: str, issues: List[model.Issue]):
     """Convert issues to restructured text directives"""

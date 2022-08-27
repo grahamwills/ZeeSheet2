@@ -167,7 +167,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         if p in BLOCK_TITLE_ANCESTRY:
             self.current_block.add_to_title(element)
         elif p == 'section • title':
-            self.current_section.add_to_title(element)
+            self.current_section.title.append(element)
         elif p == 'list_item • paragraph':
             self.current_run.append(element)
         else:

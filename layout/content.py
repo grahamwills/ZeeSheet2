@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Iterable, Any
 
-from common.geom import Extent, Point, Rect
-from common.logging import configured_logger
+from common import Extent, Point, Rect
+from common import configured_logger
 from generate.pdf import TextSegment, PDF, DrawMethod
-from structure import Section, Block, Item, Run
+from structure import Section, Block, Item, Run, description
 
 LOGGER = configured_logger(__name__)
 
@@ -70,7 +70,7 @@ class PlacedContent:
 
     def name(self):
         try:
-            return self.represents.name()
+            return description(self.represents, short=True)
         except AttributeError:
             return str(self.represents)
 

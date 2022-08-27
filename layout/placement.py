@@ -1,6 +1,6 @@
 from typing import List, Optional, NamedTuple
 
-from common.geom import Extent, Point
+from common import Extent, Point
 from generate.pdf import PDF, TextSegment, FontInfo
 from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
 from structure import Run, Item, Block
