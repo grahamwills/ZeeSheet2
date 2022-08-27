@@ -41,7 +41,7 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
     return '\n'.join(lines)
 
 def description(comp: model.StructureUnit, short:bool =False) -> str:
-    return comp.structure_str(short)
+    return comp.description(short)
 
 def append_issues_rst(lines: List[str], directive: str, issues: List[model.Problem]):
     """Convert issues to restructured text directives"""
@@ -55,20 +55,20 @@ def append_issues_rst(lines: List[str], directive: str, issues: List[model.Probl
 def append_item_rst(lines: List[str], item: model.Item, width: int):
     if not item.children:
         return
-    txt = '- ' + item.children[0].as_str(width, indent=2)
+    txt = '- ' + item.children[0].to_rst(width, indent=2)
     lines.append(txt)
 
     if len(item.children) > 1:
         lines.append('')
         for run in item.children[1:]:
-            txt = '  - ' + run.as_str(width, indent=4)
+            txt = '  - ' + run.to_rst(width, indent=4)
             lines.append(txt)
         lines.append('')
 
 
 def append_block_rst(lines: List[str], block: model.Block, width: int):
     if block.title:
-        lines.append(block.title.as_str(width))
+        lines.append(block.title.to_rst(width))
         lines.append('')
 
     if not block.children:
@@ -79,7 +79,7 @@ def append_block_rst(lines: List[str], block: model.Block, width: int):
 
     if ncols > 1:
         # Create a table of simple text representations and calculate the maximum widths of each column
-        table = [[run.as_str().strip() for run in item.children] for item in block.children]
+        table = [[run.to_rst().strip() for run in item.children] for item in block.children]
         col_widths = [0] * ncols
         for row in table:
             for c, txt in enumerate(row):
@@ -101,7 +101,7 @@ def append_block_rst(lines: List[str], block: model.Block, width: int):
                         row_parts.append(txt.ljust(col_widths[i]))
                     else:
                         # Need to wrap the text onto the next line
-                        txt = item.children[i].as_str(space_for_last, indent=2).strip()
+                        txt = item.children[i].to_rst(space_for_last, indent=2).strip()
                         row_parts.append(txt)
                 lines.append(('- ' + ' | '.join(row_parts)))
             lines.append('')
@@ -117,7 +117,7 @@ def append_section_rst(lines: List[str], section: model.Section, width: int):
     """Adds restructured text lines for the given section"""
     if section.title:
         # Since the section title has to be underlined, we cannot wrap it
-        title = section.title.as_str()
+        title = section.title.to_rst()
         lines.append(title)
         lines.append('-' * len(title))
         lines.append('')

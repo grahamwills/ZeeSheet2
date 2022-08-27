@@ -21,7 +21,7 @@ class Element():
     def __post_init__(self):
         assert self.value, 'Element must be created with valid content'
 
-    def structure_str(self, short: bool):
+    def description(self, short: bool):
         if short:
             if self.modifier == 'checkbox':
                 if self.value == 'X':
@@ -95,32 +95,32 @@ class StructureUnit:
             s.tidy()
         self.children = [s for s in self.children if s]
 
-    def structure_str(self, short: bool):
+    def description(self, short: bool):
         open, sep, close = self.format_pieces
 
-        title = self.title.structure_str(short) + " ~ " if self._titled() and self.title else ''
+        title = self.title.description(short) + " ~ " if self._titled() and self.title else ''
 
         if short:
             content = str(len(self.children)) + " items"
         else:
-            content = sep.join(s.structure_str(short) for s in self.children)
+            content = sep.join(s.description(short) for s in self.children)
 
         return open + (title + content).strip() + close
+
 
 @dataclass
 class Run(StructureUnit):
     format_pieces: ClassVar[Tuple[str, str, str]] = ('', '', '')
-
     children: List[Element] = field(default_factory=list)
 
     def append(self, element: Element):
         self.children.append(element)
 
-    def structure_str(self, short: bool):
+    def description(self, short: bool):
         if len(self.children) == 1:
-            return self.children[0].structure_str(short)
+            return self.children[0].description(short)
         else:
-            return super().structure_str(short)
+            return super().description(short)
 
     def strip(self):
         """Remove heading and trailing whitespace if the edge elements are simple text"""
@@ -130,31 +130,26 @@ class Run(StructureUnit):
             if not self.children[-1].modifier:
                 self.children[-1].value = self.children[-1].value.rstrip()
 
-        # Remove empty items
-        self.tidy()
-
-    def as_str(self, width: int = 9e99, indent: int = 0) -> str:
+    def to_rst(self, width: int = 9e99, indent: int = 0) -> str:
         if not self.children:
             return ''
 
+        # Split plain text (no modifier elements) into words and create a list of all unsplittable units
         splitter = re.compile(r'(\S+)')
-
-        items = []
+        atoms = []
         for s in self.children:
-            if s.modifier != 'literal':
+            if s.modifier == 'literal':
+                # Do not split literals
+                atoms.append(s.to_rst())
+            else:
                 # Using explicit space to split keeps the whitespace around
                 for w in splitter.split(s.to_rst()):
                     if w != '':
-                        items.append(w)
-            else:
-                # Do not split up anything that is not simple text
-                items.append(s.to_rst())
+                        atoms.append(w)
 
         results = []
         current_line_length = indent
-
-        # Then try all the rest
-        for this, next in zip(items, items[1:] + [' ']):
+        for this, next in zip(atoms, atoms[1:] + [' ']):
             if this == ' ':
                 # a potential break point
                 if current_line_length + 1 + len(next) > width:
@@ -170,33 +165,9 @@ class Run(StructureUnit):
 
         return ''.join(results)
 
-
-    def __bool__(self):
-        return bool(self.children)
-
     def tidy(self) -> None:
+        # We do not need to tidy runs
         pass
-
-
-def split_run_into_cells(base: Run) -> List[Run]:
-    current = Run()
-    cells: List[Run] = [current]
-    for element in base.children:
-        if element.modifier or '|' not in element.value:
-            # Does not contain a cell splitter
-            current.append(element)
-        else:
-            items = element.value.split('|')
-            if items[0]:
-                # add the first one
-                current.append(Element(items[0], element.modifier))
-            for s in items[1:]:
-                # For the next items, start a new cell first
-                current = Run()
-                cells.append(current)
-                if s:
-                    current.append(Element(s, element.modifier))
-    return cells
 
 
 @dataclass
@@ -210,17 +181,39 @@ class Item(StructureUnit):
 
     def as_str(self, width: int, indent: int = 0):
         assert len(self.children) == 1
-        return self.children[0].as_str(width, indent=indent)
+        return self.children[0].to_rst(width, indent=indent)
 
     def add_to_content(self, element: Element):
         self.children[-1].append(element)
 
+    @staticmethod
+    def _split_run_into_cells(base: Run) -> List[Run]:
+        current = Run()
+        cells: List[Run] = [current]
+        for element in base.children:
+            if element.modifier or '|' not in element.value:
+                # Does not contain a cell splitter
+                current.append(element)
+            else:
+                items = element.value.split('|')
+                if items[0]:
+                    # add the first one
+                    current.append(Element(items[0], element.modifier))
+                for s in items[1:]:
+                    # For the next items, start a new cell first
+                    current = Run()
+                    cells.append(current)
+                    if s:
+                        current.append(Element(s, element.modifier))
+        return cells
+
     def tidy(self) -> None:
         super().tidy()
 
-        # Now divide into cells
-        divided = [split_run_into_cells(run) for run in self.children]
+        # Divide into cells
+        divided = [self._split_run_into_cells(run) for run in self.children]
         self.children = list(itertools.chain(*divided))
+
 
 
 @dataclass
@@ -234,7 +227,7 @@ class Block(StructureUnit):
     def name(self):
         """ Descriptive name for debugging"""
         if self.title:
-            return 'Block{' + reprlib.repr(self.title.as_str()) + ', ' + str(len(self.children)) + ' items}'
+            return 'Block{' + reprlib.repr(self.title.to_rst()) + ', ' + str(len(self.children)) + ' items}'
         else:
             return 'Block{' + str(len(self.children)) + ' items}'
 
@@ -264,7 +257,7 @@ class Section(StructureUnit):
     def name(self):
         """ Descriptive name for debugging"""
         if self.title:
-            return 'Section{' + reprlib.repr(self.title.as_str()) + ', ' + str(len(self.children)) + ' items}'
+            return 'Section{' + reprlib.repr(self.title.to_rst()) + ', ' + str(len(self.children)) + ' items}'
         else:
             return 'Section{' + str(len(self.children)) + ' items}'
 
