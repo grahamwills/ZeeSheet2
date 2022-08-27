@@ -126,7 +126,8 @@ def action_dispatcher(request, sheet_id):
         edit_content = csd.content
     if 'validate' in request.POST:
         # Check that the definition is good and prettify it
-        edit_content = prettify(edit_content)
+        sheet = text_to_sheet(edit_content)
+        edit_content = prettify(sheet)
     if 'generate' in request.POST:
         # Generate PDF and store on disk
         sheet = text_to_sheet(edit_content)

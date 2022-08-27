@@ -1,6 +1,7 @@
 import unittest
 
 from structure import text_to_sheet, description
+from structure.model import build_special_markup_within_element, Element
 from . import util
 
 
@@ -96,3 +97,11 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual('', sheet.describe_issues())
         expected = "❮title ~ [apple ⬩ part a ⬩ part b ⬩ part c]❯"
         self.assertEqual(expected, description(sheet))
+
+    def test_checkboxes(self):
+        e = Element.from_text('[ ] [X] [O]', None)
+        elements = build_special_markup_within_element(e)
+        expected = [Element(' ', 'checkbox'), Element(' ', None),
+                    Element('X', 'checkbox'), Element(' ', None),
+                    Element(' ', 'checkbox')]
+        self.assertEqual(expected, elements)

@@ -73,7 +73,11 @@ class StructureComponent:
         open, sep, close = self.format_pieces
 
         title = self.title.structure_str(short) + " ~ " if self.title_has_content() else ''
-        content = sep.join(s.structure_str(short) for s in self.children)
+
+        if short:
+            content = str(len(self.children)) + " items"
+        else:
+            content = sep.join(s.structure_str(short) for s in self.children)
 
         return open + (title + content).strip() + close
 
@@ -85,6 +89,11 @@ class Element(StructureComponent):
 
     def structure_str(self, short: bool):
         if short:
+            if self.modifier == 'checkbox':
+                if self.value == 'X':
+                    return '\u2612'
+                else:
+                    return '\u2610'
             return self.value if len(self.value) <= 20 else self.value[:19] + '\u2026'
         elif self.modifier:
             return '\u00ab' + self.value + '\u22a3' + self.modifier[:3] + '\u00bb'
@@ -98,6 +107,8 @@ class Element(StructureComponent):
             return '*' + self.value + '*'
         elif self.modifier == 'literal':
             return '``' + self.value + '``'
+        elif self.modifier == 'checkbox':
+            return '[' + self.value + ']'
         elif self.modifier is None:
             return self.value
         else:
@@ -121,17 +132,18 @@ def build_special_markup_within_element(element: Element) -> Optional[List[Eleme
     """Returns None if no change, or a list of replacement elements if there was markup found"""
     if element.modifier:
         return None
-    parts = re.split(r'\[[ XO]]', element.value)
+    parts = re.split(r'(\[[ XO]\])', element.value)
     if len(parts) == 1:
         return None
     replacements = []
     for txt in parts:
         if txt == '[ ]' or txt == '[O]':
-            replacements.append(Element('O', 'checkbox'))
+            replacements.append(Element(' ', 'checkbox'))
         elif txt == '[X]':
             replacements.append(Element('X', 'checkbox'))
         elif txt:
             replacements.append(Element(txt, None))
+    return replacements
 
 
 @dataclass
