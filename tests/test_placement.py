@@ -8,11 +8,11 @@ from structure import Element, Run, Block, Item
 
 
 class TestRunPlacement(unittest.TestCase):
-    E1 = Element('hello to this ', None)
-    E2 = Element('brave new', None)
+    E1 = Element('hello to this ')
+    E2 = Element('brave new')
     E2A = Element('brave new', 'strong')
-    E3 = Element(' world', None)
-    EX = Element('supercalifragilisticexpialidocious', None)
+    E3 = Element(' world')
+    EX = Element('supercalifragilisticexpialidocious')
     pdf = PDF((1000, 1000))
 
     def test_split_line(self):
@@ -146,7 +146,7 @@ def _makeItem(txt: str) -> Item:
 
 
 class TestBlockPlacement(unittest.TestCase):
-    title = Run([Element('A simple title', None)])
+    title = Run([Element('A simple title')])
     pdf = PDF((1000, 1000))
 
     def test_simple_block(self):

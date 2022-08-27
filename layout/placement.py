@@ -75,7 +75,8 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
     area_used = 0
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     for element in run.children:
-        font = element.modify_font(pdf.font)
+        font= pdf.font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
+
         text = element.value
         height = font.line_spacing
 

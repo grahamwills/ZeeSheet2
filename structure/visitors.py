@@ -37,25 +37,26 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     @property
     def current_section(self) -> Section:
         """The Section we are currently defining"""
-        return self.sheet.last_child()
+        component = self.sheet
+        return component.children[-1]
 
     # noinspection PyTypeChecker
     @property
     def current_block(self) -> Block:
         """The Block we are currently defining"""
-        return self.current_section.last_child()
+        return self.current_section.children[-1]
 
     # noinspection PyTypeChecker
     @property
     def current_item(self) -> Item:
         """The Item we are currently defining"""
-        return self.current_block.last_child()
+        return self.current_block.children[-1]
 
     # noinspection PyTypeChecker
     @property
     def current_run(self) -> Run:
         """The Run we are currently defining"""
-        return self.current_item.last_child()
+        return self.current_item.children[-1]
 
     def unknown_visit(self, node: docutils.nodes.Node) -> None:
         """Handle a visit for node type we do not explicitly handle"""
@@ -115,11 +116,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def visit_literal(self, node: docutils.nodes.Node) -> None:
         assert len(node.children) == 1
         text = node.children[0].astext()
-
-        element = Element.from_text(text, 'literal')
+        element = Element(text, 'literal')
 
         p = self.start(node)
-        self.add_element(element, node, p)
+        self.add_elements([element], node, p)
         self.finish(node)
 
         # No processing of children
@@ -138,8 +138,8 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             p = self.start(node)
 
         text = node.astext().replace('\n', ' ')
-        element = Element.from_text(text, style)
-        self.add_element(element, node, p)
+        elements = Element.text_to_elements(text, style)
+        self.add_elements(elements, node, p)
 
     # Other methods ####################################################################
 
@@ -157,19 +157,19 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def warning(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message)
-        self.sheet.issues.append(Issue(node.line, False, text))
+        self.sheet.issues.append(Problem(node['line'], False, text))
 
     def error(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message)
-        self.sheet.issues.append(Issue(node.line, True, text))
+        self.sheet.issues.append(Problem(node['line'], True, text))
 
-    def add_element(self, element, node, p):
+    def add_elements(self, elements, node, p):
         if p in BLOCK_TITLE_ANCESTRY:
-            self.current_block.add_to_title(element)
+            self.current_block.title.children += elements
         elif p == 'section • title':
-            self.current_section.title.append(element)
+            self.current_section.title.children += elements
         elif p == 'list_item • paragraph':
-            self.current_run.append(element)
+            self.current_run.children += elements
         else:
             self.error(node, 'Unexpected text encountered')
 
@@ -194,18 +194,18 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
-        if self.current_section.has_content():
+        if self.current_section:
             self.sheet.append(Section())
 
     def _make_new_block(self) -> None:
         # If the current block is undefined,we do not need a new one
-        if self.current_block.has_content():
+        if self.current_block:
             self.current_section.append(Block())
 
     def _make_new_item(self) -> None:
         # If the current run is undefined, we just use that
         block = self.current_block
-        if block.last_child().has_content():
+        if block.children[-1]:
             block.children.append(Item())
 
     def _count_ancestors(self, target):

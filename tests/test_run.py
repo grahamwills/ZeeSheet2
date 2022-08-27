@@ -6,7 +6,7 @@ class RunTests(unittest.TestCase):
     def test_wrapping_with_words_as_runs(self):
         r =  Run()
         for s in 'this| is |a |piece| of| text |that| is |somewhat| long'.split('|'):
-            r.append(Element.from_text(s, None))
+            r.append(Element(s))
 
         self.assertEqual('this is a piece of text that is somewhat long', r.as_str(1000))
         self.assertEqual('this is a piece of\ntext that is\nsomewhat long', r.as_str(20))
@@ -14,9 +14,9 @@ class RunTests(unittest.TestCase):
 
     def test_wrapping_with_long_runs(self):
         r =  Run()
-        r.append(Element.from_text('one two ', None))
-        r.append(Element.from_text('bright gloomy', 'strong'))
-        r.append(Element.from_text(' three four five', None))
+        r.append(Element('one two '))
+        r.append(Element('bright gloomy', 'strong'))
+        r.append(Element(' three four five'))
 
         self.assertEqual('one two **bright gloomy** three four five', r.as_str(10000))
         self.assertEqual('one\ntwo\n**bright\ngloomy**\nthree\nfour\nfive', r.as_str(0))
@@ -24,9 +24,9 @@ class RunTests(unittest.TestCase):
 
     def test_wrapping_with_indent(self):
         r =  Run()
-        r.append(Element.from_text('one two ', None))
-        r.append(Element.from_text('bright gloomy', 'strong'))
-        r.append(Element.from_text(' three four five', None))
+        r.append(Element('one two '))
+        r.append(Element('bright gloomy', 'strong'))
+        r.append(Element(' three four five'))
 
         self.assertEqual('one two **bright gloomy** three four five', r.as_str(10000, 2))
         self.assertEqual('one\n  two\n  **bright\n  gloomy**\n  three\n  four\n  five', r.as_str(0, 2))

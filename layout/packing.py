@@ -5,7 +5,7 @@ from typing import Iterable, Callable, List, Any
 from common import Extent, Point, Spacing
 from common import configured_logger
 from generate.pdf import PDF
-from structure import StructureComponent
+from structure import StructureUnit
 from .content import PlacedContent, PlacedGroupContent
 
 LOGGER = configured_logger(__name__)
@@ -43,8 +43,8 @@ class Packer:
 
     def __init__(self,
                  represents: Any,
-                 items: Iterable[type(StructureComponent)],
-                 place_function: Callable[[type(StructureComponent), Extent, PDF], PlacedContent],
+                 items: Iterable[type(StructureUnit)],
+                 place_function: Callable[[type(StructureUnit), Extent, PDF], PlacedContent],
                  margin: Spacing, padding: Spacing,
                  pdf: PDF = None):
         self.represents = represents

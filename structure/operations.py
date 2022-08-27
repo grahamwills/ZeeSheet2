@@ -40,15 +40,15 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
 
     return '\n'.join(lines)
 
-def description(comp: model.StructureComponent, short:bool =False) -> str:
+def description(comp: model.StructureUnit, short:bool =False) -> str:
     return comp.structure_str(short)
 
-def append_issues_rst(lines: List[str], directive: str, issues: List[model.Issue]):
+def append_issues_rst(lines: List[str], directive: str, issues: List[model.Problem]):
     """Convert issues to restructured text directives"""
     if issues:
         lines.append(directive)
         for issue in issues:
-            lines.append('   ' + issue.as_text())
+            lines.append(f"   [{issue.lineNo:3}] {issue.message}")
         lines.append('')
 
 

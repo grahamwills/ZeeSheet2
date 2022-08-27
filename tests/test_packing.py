@@ -7,17 +7,17 @@ from generate.pdf import PDF
 from layout import packing
 from layout.content import PlacedContent, Error
 from layout.packing import ColumnSpan
-from structure import StructureComponent
+from structure import StructureUnit
 
 NO_SPACING = Spacing(0, 0, 0, 0)
 
 
 @dataclass
-class TestContent(StructureComponent):
+class TestContent(StructureUnit):
     area: int
 
 
-def place_test_content_with_wrapping(content: StructureComponent, e: Extent, _:PDF) -> PlacedContent:
+def place_test_content_with_wrapping(content: StructureUnit, e: Extent, _:PDF) -> PlacedContent:
     height = math.ceil(content.area / e.width)
     error = Error(0, 0, 0, 0)
     return PlacedContent('test', Extent(e.width, height), Point(0,0), error)
