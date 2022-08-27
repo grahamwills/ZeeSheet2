@@ -4,7 +4,7 @@ from enum import Enum
 from io import BytesIO
 from typing import List, Tuple
 
-from reportlab.lib import fonts
+from reportlab.lib import fonts, colors
 from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
 
@@ -12,6 +12,8 @@ from common.geom import Rect, Point
 from common.logging import configured_logger
 
 LOGGER = configured_logger(__name__)
+
+_WHITE = colors.Color(1, 1, 1)
 
 
 class DrawMethod(Enum):
@@ -72,9 +74,22 @@ class PDF(canvas.Canvas):
         self.setLineCap(1)
         self.font = FontInfo("Helvetica", 14, False, False)
 
+        # Keep an index to give unique names to form items
+        self._name_index = 0
+
     def draw_rect(self, r: Rect, method: DrawMethod):
         self.rect(r.left, r.top, r.width, r.height,
                   fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
+
+    def draw_checkbox(self, rx, ry, width, height, state) -> (int, int):
+        x, y = self.absolutePosition(rx, ry - height * 0.2)
+        self._name_index += 1
+        name = 'f' + str(self._name_index)
+        LOGGER.debug("Adding checkbox name='%s' with state=%s ", name, state)
+        self.acroForm.checkbox(name=name, x=x - 0.5, y=y, size=min(width, height) + 1,
+                               fillColor=_WHITE,
+                               buttonStyle='cross', borderWidth=0.5, checked=state)
+        return width, height
 
     def draw_text(self, segments: List[TextSegment]):
         ss = ', '.join([str(s) for s in segments])

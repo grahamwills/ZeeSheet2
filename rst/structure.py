@@ -118,6 +118,23 @@ class Element(StructureComponent):
         return font.modify(self.modifier == 'strong', self.modifier == 'emphasis')
 
 
+def build_special_markup_within_element(element: Element) -> Optional[List[Element]]:
+    """Returns None if no change, or a list of replacement elements if there was markup found"""
+    if element.modifier:
+        return None
+    parts = re.split(r'\[[ XO]]', element.value)
+    if len(parts) == 1:
+        return None
+    replacements = []
+    for txt in parts:
+        if txt == '[ ]' or txt == '[O]':
+            replacements.append(Element('O', 'checkbox'))
+        elif txt == '[X]':
+            replacements.append(Element('X', 'checkbox'))
+        elif txt:
+            replacements.append(Element(txt, None))
+
+
 @dataclass
 class Run(StructureComponent):
     format_pieces: ClassVar[Tuple[str, str, str]] = ('', '', '')
@@ -170,6 +187,19 @@ class Run(StructureComponent):
 
         return ''.join(results)
 
+    def tidy(self) -> None:
+        super().tidy()
+
+        # Elements may need to be split up if they have special markup in the for check-boxes and similar
+        items = []
+        for element in self.children:
+            parts = build_special_markup_within_element(element)
+            if parts:
+                items += parts
+            else:
+                items.append(element)
+        self.children = items;
+
 
 def split_run_into_cells(base: Run) -> List[Run]:
     current = Run()
@@ -179,8 +209,7 @@ def split_run_into_cells(base: Run) -> List[Run]:
             # Does not contain a cell splitter
             current.append(element)
         else:
-            # Cells automatically cause white space around them to be stripped
-            items = [s.strip() for s in element.value.split('|')]
+            items = element.value.split('|')
             if items[0]:
                 # add the first one
                 current.append(Element(items[0], element.modifier))
@@ -210,11 +239,15 @@ class Item(StructureComponent):
         lines = []
         for idx, item in enumerate(self.children):
             if idx == 0:
-                lines.append('- ' + item.as_str(width, indent=2))
+                txt = '- ' + item.as_str(width, indent=2)
+                lines.append(txt.rstrip())
             else:
                 if idx == 1:
                     lines.append('')
-                lines.append('  - ' + item.as_str(width, indent=4))
+                txt = '  - ' + item.as_str(width, indent=4)
+                lines.append(txt.rstrip())
+        if len(self.children) > 1:
+            lines.append('')
         return lines
 
     def add_to_content(self, element: Element):
@@ -222,6 +255,8 @@ class Item(StructureComponent):
 
     def tidy(self) -> None:
         super().tidy()
+
+        # Now divide into cells
         divided = [split_run_into_cells(run) for run in self.children]
         self.children = list(itertools.chain(*divided))
 
@@ -237,11 +272,44 @@ class Block(StructureComponent):
         lines = []
         if self.title:
             lines.append(self.title.as_str(width))
+
             lines.append('')
-        if self.children:
-            for item in self.children:
-                lines += item.as_text_lines(width)
-            lines.append('')
+
+        if not self.children:
+            return lines
+
+        # Try to show as matrix of aligned cells
+        ncols = max(len(item.children) for item in self.children)
+
+        if ncols > 1:
+            matrix = [[run.as_str(100000, 0).strip() for run in item.children] for item in self.children]
+            widths = [0] * ncols
+            for row in matrix:
+                for c, txt in enumerate(row):
+                    widths[c] = max(widths[c], len(txt))
+
+            # The last cell can wrap onto the next line if we need to (require 5 characters). The others must fit
+            space_for_up_to_last = 2 + sum(widths[:1]) + 3 * (ncols - 1)
+            if space_for_up_to_last + 5 <= width:
+                space_for_last = width - space_for_up_to_last
+                for row, item in zip(matrix, self.children):
+                    row_parts = []
+                    for i, txt in enumerate(row):
+                        if i < ncols-1 or len(txt) <= space_for_last:
+                            # Add the justified text
+                            row_parts.append(txt.ljust(widths[i]))
+                        else:
+                            # Need to wrap the text onto the next line
+                            txt = item.children[i].as_str(space_for_last, indent = 2).strip()
+                            row_parts.append(txt)
+                    lines.append(('- ' + ' | '.join(row_parts)).rstrip())
+                lines.append('')
+                return lines
+
+        # Simple method
+        for item in self.children:
+            lines += item.as_text_lines(width)
+        lines.append('')
         return lines
 
     def name(self):
