@@ -1,2 +1,2 @@
-from .model import StructureComponent, Element, Run, Item, Block, Section, Sheet
-from .operation import prettify, build_sheet
+from .model import StructureComponent, Element, Run, Item, Block, Section, Sheet, Issue
+from .operations import prettify, text_to_sheet

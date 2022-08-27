@@ -12,9 +12,6 @@ import reportlab.lib.pagesizes
 
 from generate.pdf import FontInfo
 
-ERROR_DIRECTIVE = '.. ERROR::'
-WARNING_DIRECTIVE = '.. WARNING::'
-
 # Define an empty class for things with no titles
 _EMPTY = SimpleNamespace(has_content=lambda: False, tidy=lambda: None)
 
@@ -111,8 +108,8 @@ class Element(StructureComponent):
     def is_literal(self):
         return self.modifier == 'literal'
 
-    def has_content(self):
-        return True
+    def has_content(self) -> bool:
+        return bool(self.value)
 
     def modify_font(self, font: FontInfo):
         return font.modify(self.modifier == 'strong', self.modifier == 'emphasis')
@@ -149,6 +146,17 @@ class Run(StructureComponent):
             return self.children[0].structure_str()
         else:
             return super().structure_str()
+
+    def strip(self):
+        """Remove heading and trailing whitespace if the edge elements are simple text"""
+        if self.children:
+            if not self.children[0].modifier:
+                self.children[0].value = self.children[0].value.lstrip()
+            if not self.children[-1].modifier:
+                self.children[-1].value = self.children[-1].value.rstrip()
+
+        # Remove empty items
+        super().tidy()
 
     def as_str(self, width: int = 9e99, indent: int = 0) -> str:
         if not self.children:
@@ -198,7 +206,8 @@ class Run(StructureComponent):
                 items += parts
             else:
                 items.append(element)
-        self.children = items;
+        self.children = items
+
 
 
 def split_run_into_cells(base: Run) -> List[Run]:
@@ -235,21 +244,6 @@ class Item(StructureComponent):
         assert len(self.children) == 1
         return self.children[0].as_str(width, indent=indent)
 
-    def as_text_lines(self, width: int) -> List[str]:
-        lines = []
-        for idx, item in enumerate(self.children):
-            if idx == 0:
-                txt = '- ' + item.as_str(width, indent=2)
-                lines.append(txt.rstrip())
-            else:
-                if idx == 1:
-                    lines.append('')
-                txt = '  - ' + item.as_str(width, indent=4)
-                lines.append(txt.rstrip())
-        if len(self.children) > 1:
-            lines.append('')
-        return lines
-
     def add_to_content(self, element: Element):
         self.children[-1].append(element)
 
@@ -268,49 +262,6 @@ class Block(StructureComponent):
     title: Run = field(default_factory=lambda: Run())
     children: List[Item] = field(default_factory=lambda: [Item()])
 
-    def as_text_lines(self, width: int) -> List[str]:
-        lines = []
-        if self.title:
-            lines.append(self.title.as_str(width))
-
-            lines.append('')
-
-        if not self.children:
-            return lines
-
-        # Try to show as matrix of aligned cells
-        ncols = max(len(item.children) for item in self.children)
-
-        if ncols > 1:
-            matrix = [[run.as_str(100000, 0).strip() for run in item.children] for item in self.children]
-            widths = [0] * ncols
-            for row in matrix:
-                for c, txt in enumerate(row):
-                    widths[c] = max(widths[c], len(txt))
-
-            # The last cell can wrap onto the next line if we need to (require 5 characters). The others must fit
-            space_for_up_to_last = 2 + sum(widths[:1]) + 3 * (ncols - 1)
-            if space_for_up_to_last + 5 <= width:
-                space_for_last = width - space_for_up_to_last
-                for row, item in zip(matrix, self.children):
-                    row_parts = []
-                    for i, txt in enumerate(row):
-                        if i < ncols-1 or len(txt) <= space_for_last:
-                            # Add the justified text
-                            row_parts.append(txt.ljust(widths[i]))
-                        else:
-                            # Need to wrap the text onto the next line
-                            txt = item.children[i].as_str(space_for_last, indent = 2).strip()
-                            row_parts.append(txt)
-                    lines.append(('- ' + ' | '.join(row_parts)).rstrip())
-                lines.append('')
-                return lines
-
-        # Simple method
-        for item in self.children:
-            lines += item.as_text_lines(width)
-        lines.append('')
-        return lines
 
     def name(self):
         """ Descriptive name for debugging"""
@@ -319,8 +270,23 @@ class Block(StructureComponent):
         else:
             return 'Block{' + str(len(self.children)) + ' items}'
 
+    def column_count(self) ->int:
+        """Maximum number of runs in each block item"""
+        return max(len(item.children) for item in self.children) if self.children else 0
+
     def add_to_title(self, element: Element):
         self.title.append(element)
+
+    def tidy(self) -> None:
+        super().tidy()
+
+        # If we have cells for the block, then the runs get stripped
+        if self.column_count() > 1:
+            for item in self.children:
+                for run in item:
+                    run.strip()
+
+
 
 
 @dataclass
@@ -340,19 +306,6 @@ class Section(StructureComponent):
     def append(self, block: Block):
         self.children.append(block)
 
-    def as_text_lines(self, width: int) -> List[str]:
-        lines = []
-        if self.title:
-            # Since the title has to be underlined, we cannot wrap it
-            title = self.title.as_str(10000)
-            lines.append(title)
-            lines.append('-' * len(title))
-            lines.append('')
-        for b in self.children:
-            lines += b.as_text_lines(width)
-        lines.append('')
-        return lines
-
     def add_to_title(self, element: Element):
         self.title.append(element)
 
@@ -371,29 +324,3 @@ class Sheet(StructureComponent):
     def combined_issues(self):
         return ' \u2022 '.join(s.message for s in self.issues)
 
-    def to_text(self, width: int = 100) -> str:
-        lines = []
-
-        errors = [i for i in self.issues if i.is_error]
-        warnings = [i for i in self.issues if not i.is_error]
-
-        if errors:
-            lines.append(ERROR_DIRECTIVE)
-            for issue in errors:
-                lines.append('   ' + issue.as_text())
-            lines.append('')
-        if warnings:
-            lines.append(WARNING_DIRECTIVE)
-            for issue in warnings:
-                lines.append('   ' + issue.as_text())
-            lines.append('')
-
-        # Add lines for each section
-        for s in self.children:
-            lines += s.as_text_lines(width)
-
-        # Remove trailing section definition and blank lines
-        while lines and lines[-1] == '':
-            lines = lines[:-1]
-
-        return '\n'.join(lines)

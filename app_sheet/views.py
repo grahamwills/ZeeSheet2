@@ -8,7 +8,7 @@ from django.http import HttpRequest, FileResponse, HttpResponse, HttpResponseFor
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
-from structure import prettify, build_sheet
+from structure import prettify, text_to_sheet
 from layout.build import make_pdf
 from .forms import NewUserForm
 from .models import Sheet
@@ -129,7 +129,7 @@ def action_dispatcher(request, sheet_id):
         edit_content = prettify(edit_content)
     if 'generate' in request.POST:
         # Generate PDF and store on disk
-        sheet = build_sheet(edit_content)
+        sheet = text_to_sheet(edit_content)
         pdf_file = make_pdf(sheet, csd.owner)
 
     return show_sheet(request, sheet_id, edit_content, pdf_file)

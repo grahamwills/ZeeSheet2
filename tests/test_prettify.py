@@ -1,6 +1,6 @@
 import unittest
 
-from structure import prettify
+import structure
 from . import util
 
 
@@ -13,4 +13,5 @@ class PrettifyTests(unittest.TestCase):
     def test_prettify(self):
         for idx, (name, (source, expected)) in enumerate(self.items.items()):
             with self.subTest(f'Prettify example #{idx}', name=name):
-                self.assertEqual(prettify(source, 80), expected)
+                sheet = structure.text_to_sheet(source)
+                self.assertEqual(structure.prettify(sheet, 80), expected)
