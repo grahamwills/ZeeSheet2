@@ -5,7 +5,7 @@ from typing import Iterable, Callable, List, Any
 from common import Extent, Point, Spacing
 from common import configured_logger
 from generate.pdf import PDF
-from structure import StructureUnit
+from structure import StructureUnit, description
 from .content import PlacedContent, PlacedGroupContent
 
 LOGGER = configured_logger(__name__)
@@ -54,12 +54,6 @@ class Packer:
         self.margin = margin
         self.padding = padding
 
-    def name(self):
-        try:
-            return self.represents.name()
-        except AttributeError:
-            return reprlib.repr(self.represents)
-
     def into_columns(self, width: int, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
         if n_items < ncol:
@@ -67,7 +61,7 @@ class Packer:
         spans = self.divide_width(width, ncol)
 
         ss = ", ".join(str(s) for s in spans)
-        LOGGER.debug(f"Packing {self.name()} into columns: {ss}")
+        LOGGER.debug(f"Packing '{description(self.represents, short=True)}' into columns: {ss}")
 
         group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
 

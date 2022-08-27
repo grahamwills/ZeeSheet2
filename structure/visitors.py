@@ -95,7 +95,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elif p == 'list_item':
             if self._count_ancestors('list_item') > 1:
                 # New run within the item
-                self.current_item.append(Run())
+                self.current_item.children.append(Run())
             else:
                 self._make_new_item()
         else:
@@ -195,12 +195,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
         if self.current_section:
-            self.sheet.append(Section())
+            self.sheet.children.append(Section())
 
     def _make_new_block(self) -> None:
         # If the current block is undefined,we do not need a new one
         if self.current_block:
-            self.current_section.append(Block())
+            self.current_section.children.append(Block())
 
     def _make_new_item(self) -> None:
         # If the current run is undefined, we just use that
