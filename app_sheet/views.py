@@ -8,7 +8,7 @@ from django.http import HttpRequest, FileResponse, HttpResponse, HttpResponseFor
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
-from rst.validate import prettify, build_structure
+from structure.operation import prettify, build_structure
 from layout.build import make_pdf
 from .forms import NewUserForm
 from .models import Sheet

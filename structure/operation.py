@@ -1,7 +1,7 @@
 from docutils import parsers, utils, core, nodes
 from docutils.parsers import rst
 
-from . import structure
+from . import model
 from . import visitors
 
 
@@ -16,7 +16,7 @@ def _parse_rst(text: str) -> nodes.document:
     return document
 
 
-def build_structure(text: str) -> structure.Sheet:
+def build_structure(text: str) -> model.Sheet:
     """Parses the text and builds the basic structure out of it"""
     document = _parse_rst(text)
     main_visitor = visitors.StructureBuilder(document)

@@ -7,7 +7,7 @@ from generate.pdf import PDF
 from layout.content import PlacedContent
 from layout.packing import Packer
 from layout.placement import place_block
-from rst.structure import Sheet, Section, Block
+from structure.model import Sheet, Section, Block
 
 
 def make_pdf(sheet:Sheet, owner:User) -> str:

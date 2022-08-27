@@ -1,6 +1,6 @@
 import random
 
-import rst.validate
+import structure.validate
 
 BLOCKS = [
     'one', 'two', 'three', 'four', 'five', '\n', '-', '*', '=====', ' ',
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     for _ in range(0, 10000):
         phrase = random_phrase()
         try:
-            result = rst.validate.build_structure(phrase)
+            result = structure.validate.build_structure(phrase)
         except:
             print("Failed\n----------------------------------------------")
             print(phrase)

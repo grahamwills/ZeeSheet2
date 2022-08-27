@@ -7,7 +7,7 @@ from generate.pdf import PDF
 from layout import packing
 from layout.content import PlacedContent, Error
 from layout.packing import ColumnSpan
-from rst.structure import StructureComponent
+from structure.model import StructureComponent
 
 NO_SPACING = Spacing(0, 0, 0, 0)
 

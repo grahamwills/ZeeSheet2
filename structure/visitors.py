@@ -1,7 +1,7 @@
 import docutils.nodes
 import docutils.nodes
 
-from .structure import *
+from .model import *
 
 # These tags will not  be recorded
 IGNORE_TAGS = {'document', 'system_message', 'literal'}

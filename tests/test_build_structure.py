@@ -1,6 +1,6 @@
 import unittest
 
-from rst.validate import build_structure
+from structure.operation import build_structure
 from . import util
 
 

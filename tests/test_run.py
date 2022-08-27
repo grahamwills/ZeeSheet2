@@ -1,4 +1,4 @@
-from rst.structure import Run, Element
+from structure.model import Run, Element
 import unittest
 
 class RunTests(unittest.TestCase):

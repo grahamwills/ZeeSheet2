@@ -3,7 +3,7 @@ from typing import List, Optional, NamedTuple
 from common.geom import Extent, Point
 from generate.pdf import PDF, TextSegment, FontInfo
 from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
-from rst.structure import Run, Item, Block
+from structure.model import Run, Item, Block
 
 
 class SplitResult(NamedTuple):

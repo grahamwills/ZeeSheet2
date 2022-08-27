@@ -1,6 +1,6 @@
 import unittest
 
-from rst.validate import prettify
+from structure.operation import prettify
 from . import util
 
 
