@@ -27,8 +27,8 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
     lines = []
 
     # List the errors and warnings up front
-    append_issues_rst(lines, ERROR_DIRECTIVE, [i for i in sheet.issues if i.is_error])
-    append_issues_rst(lines, WARNING_DIRECTIVE, [i for i in sheet.issues if not i.is_error])
+    append_issues_rst(lines, ERROR_DIRECTIVE, [i for i in sheet.problems if i.is_error])
+    append_issues_rst(lines, WARNING_DIRECTIVE, [i for i in sheet.problems if not i.is_error])
 
     # Add lines for each section
     for s in sheet.children:

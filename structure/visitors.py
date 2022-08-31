@@ -4,7 +4,7 @@ import docutils.nodes
 from .model import *
 
 # These tags will not  be recorded
-IGNORE_TAGS = {'document', 'system_message', 'literal'}
+IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference', 'problematic'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -16,6 +16,20 @@ BLOCK_TITLE_ANCESTRY = {'paragraph', 'section • paragraph', 'definition_list_i
 
 def _tag(node: docutils.nodes.Node):
     return getattr(node, 'tagname')
+
+
+def _line_of(node: docutils.nodes.Node):
+    if not node:
+        return -999
+    if 'line' in node:
+        return node['line']
+    try:
+        line = node.line
+        if line is not None:
+            return line
+    except KeyError:
+        pass
+    return _line_of(node.parent)
 
 
 class StructureBuilder(docutils.nodes.NodeVisitor):
@@ -141,6 +155,28 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elements = Element.text_to_elements(text, style)
         self.add_elements(elements, node, p)
 
+    def visit_problematic(self, node: docutils.nodes.Node) -> None:
+        if node.astext() == '|':
+            pass
+        else:
+            self.warning(node, 'Problematic syntax')
+
+    def visit_substitution_reference(self, node: docutils.nodes.Node) -> None:
+        # Treat the pipe symbols as actual text both before and after
+        p = self._processing(2)
+        elements = Element.text_to_elements('|', None)
+        self.add_elements(elements, node, p)
+
+    def depart_substitution_reference(self, node: docutils.nodes.Node) -> None:
+        # Treat the pipe symbols as actual text both before and after
+        p = self._processing(2)
+        elements = Element.text_to_elements('|', None)
+        self.add_elements(elements, node, p)
+
+
+
+
+
     # Other methods ####################################################################
 
     def start(self, node: docutils.nodes.Node, n: int = 2, skip_last: bool = False) -> str:
@@ -152,16 +188,16 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         what = _tag(node)
         expected = self.process_stack.pop()
         if expected != what:
-            message = f"Expected to be finishing {expected}, but was encountered {what}"
+            message = f"Expected to be finishing {expected}, but encountered {what}"
             raise RuntimeError(message)
 
     def warning(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message)
-        self.sheet.issues.append(Problem(node['line'], False, text))
+        self.sheet.problems.append(Problem(_line_of(node), False, text))
 
     def error(self, node: docutils.nodes.Node, message: str):
         text = self._issue_description(message)
-        self.sheet.issues.append(Problem(node['line'], True, text))
+        self.sheet.problems.append(Problem(_line_of(node), True, text))
 
     def add_elements(self, elements, node, p):
         if p in BLOCK_TITLE_ANCESTRY:

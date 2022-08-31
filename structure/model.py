@@ -227,8 +227,8 @@ class Section(StructureUnit):
 class Sheet(StructureUnit):
     FMT = FormatPieces('', ' --- ', '')
     children: List[Section] = field(default_factory=lambda: [Section()])
-    issues: List[Problem] = field(default_factory=list)
+    problems: List[Problem] = field(default_factory=list)
     page_size: Tuple[int, int] = reportlab.lib.pagesizes.LETTER
 
     def describe_issues(self):
-        return ' \u2022 '.join(s.message for s in self.issues)
+        return ' \u2022 '.join(s.message for s in self.problems)

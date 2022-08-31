@@ -75,7 +75,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
     area_used = 0
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     for element in run.children:
-        font= pdf.font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
+        font = pdf.font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
 
         text = element.value
 
@@ -83,25 +83,26 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
 
         # Handle checkbox
         if element.modifier == 'checkbox':
-            text = None
-            # Add a little spacing (as a small percentage of the box size)
-            width = height * 1.1
+            text = None  # Don't handle this as text
+            width = (font.ascent + font.descent) * 1.1  # Add a little spacing (as a small percentage of the box size)
 
             if y + height > extent.height:
-                # Clipped text; add the size of the checkbox to the clipped area x10 because we really want the checkbox
-                clipped += width * height * 10
+                # Off the bottom -- cannot be placed
+                can_be_placed = False
             elif x + width > extent.width:
-                # Place on next line
+                # Off the right edge - try to place it on the next line
+                x = 0
                 y += height
-                if y + height > extent.height or x + width > extent.width:
-                    # Overflows now; so it's just clipped out again
-                    clipped += width * height * 10
-                else:
-                    segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
-                    x += width
+                can_be_placed = (height <= extent.height and width <= extent.width)
             else:
+                can_be_placed = True
+
+            if can_be_placed:
                 segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
                 x += width
+            else:
+                clipped += width * height * 10
+            text = None  # Don't handle this as text in the next block
 
         # Handle cases of actual text, wrapping if necessary
         while text is not None:
@@ -177,11 +178,10 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
 
     # Evenly space everything and assume everything fits
 
-
     y_next = 0
     for item in block.children:
         for i, run in enumerate(item.children):
-            cell_extent = Extent(extent.width/ncols, extent.height)
+            cell_extent = Extent(extent.width / ncols, extent.height)
             x = i * cell_extent.width
             placed_run = place_run(run, cell_extent, pdf)
             placed_run.location = Point(x, y)
