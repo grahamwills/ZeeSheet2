@@ -1,7 +1,7 @@
 from typing import List, Optional, NamedTuple
 
 from common import Extent, Point
-from generate.pdf import PDF, TextSegment, FontInfo
+from generate.pdf import PDF, TextSegment, FontInfo, CheckboxSegment
 from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
 from structure import Run, Item, Block
 
@@ -59,8 +59,8 @@ def split_for_wrap(text: str,
 def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
     placed = _place_run(run, extent, pdf, False)
 
+    # If it is not clipped, it is good enough
     if not placed.error.clipped:
-        # Fits into the extent requested
         return placed
 
     # Try with bad breaks
@@ -69,7 +69,7 @@ def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
 
 
 def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
-    segments: List[TextSegment] = []
+    segments = []
 
     x, y, right, bottom = 0, 0, 0, 0
     area_used = 0
@@ -78,8 +78,32 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
         font= pdf.font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
 
         text = element.value
+
         height = font.line_spacing
 
+        # Handle checkbox
+        if element.modifier == 'checkbox':
+            text = None
+            # Add a little spacing (as a small percentage of the box size)
+            width = height * 1.1
+
+            if y + height > extent.height:
+                # Clipped text; add the size of the checkbox to the clipped area x10 because we really want the checkbox
+                clipped += width * height * 10
+            elif x + width > extent.width:
+                # Place on next line
+                y += height
+                if y + height > extent.height or x + width > extent.width:
+                    # Overflows now; so it's just clipped out again
+                    clipped += width * height * 10
+                else:
+                    segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
+                    x += width
+            else:
+                segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
+                x += width
+
+        # Handle cases of actual text, wrapping if necessary
         while text is not None:
             if y + height > extent.height:
                 # Clipped text; just add the size of the clipped area

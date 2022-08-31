@@ -11,10 +11,18 @@ FormatPieces = namedtuple('FormatInfo', 'open close sep')
 Problem = namedtuple('Problem', 'lineNo is_error message')
 
 
+def checkbox_character(state) -> str:
+    if state == 'X' or state is True:
+        return '\u2612'
+    else:
+        return '\u2610'
+
+
 @dataclass
 class Element:
     value: str
     modifier: Optional[str] = None
+
 
     def __post_init__(self):
         assert self.value, 'Element must be created with valid content'
@@ -22,10 +30,7 @@ class Element:
     def description(self, short: bool):
         if short:
             if self.modifier == 'checkbox':
-                if self.value == 'X':
-                    return '\u2612'
-                else:
-                    return '\u2610'
+                return checkbox_character(self.value)
             return self.value if len(self.value) <= 20 else self.value[:19] + '\u2026'
         elif self.modifier:
             return '\u00ab' + self.value + '\u22a3' + self.modifier[:3] + '\u00bb'

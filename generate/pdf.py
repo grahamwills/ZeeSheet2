@@ -2,7 +2,7 @@ import reprlib
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from reportlab.lib import fonts, colors
 from reportlab.pdfbase import pdfmetrics as metrics
@@ -10,6 +10,7 @@ from reportlab.pdfgen import canvas
 
 from common import Rect, Point
 from common import configured_logger
+from structure.model import checkbox_character
 
 LOGGER = configured_logger(__name__)
 
@@ -65,6 +66,16 @@ class TextSegment:
         return reprlib.repr(self.text) + '@' + str(self.offset)
 
 
+@dataclass
+class CheckboxSegment:
+    state: bool
+    offset: Point
+    font: FontInfo
+
+    def __str__(self):
+        return checkbox_character(self.state) + '@' + str(self.offset)
+
+
 class PDF(canvas.Canvas):
 
     def __init__(self, pagesize: Tuple[int, int]) -> None:
@@ -81,17 +92,19 @@ class PDF(canvas.Canvas):
         self.rect(r.left, r.top, r.width, r.height,
                   fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
 
-    def draw_checkbox(self, rx, ry, width, height, state) -> (int, int):
-        x, y = self.absolutePosition(rx, ry - height * 0.2)
+    def _draw_checkbox(self, rx, ry, font: FontInfo, state):
+        size = font.ascent + font.descent
+
+        x, y = self.absolutePosition(rx, ry + size)
+        y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)
         LOGGER.debug("Adding checkbox name='%s' with state=%s ", name, state)
-        self.acroForm.checkbox(name=name, x=x - 0.5, y=y, size=min(width, height) + 1,
+        self.acroForm.checkbox(name=name, x=x, y=y, size=size,
                                fillColor=_WHITE,
                                buttonStyle='cross', borderWidth=0.5, checked=state)
-        return width, height
 
-    def draw_text(self, segments: List[TextSegment]):
+    def draw_text(self, segments: List[Union[TextSegment, CheckboxSegment]]):
         ss = ', '.join([str(s) for s in segments])
         LOGGER.debug(f"Drawing segments {ss}")
 
@@ -106,7 +119,12 @@ class PDF(canvas.Canvas):
             if segment.offset:
                 text.moveCursor(segment.offset.x - off.x, segment.offset.y - off.y)
                 off = segment.offset
-            text.textOut(segment.text)
+            if hasattr(segment, 'text'):
+                # It is text, so just output it
+                text.textOut(segment.text)
+            else:
+                self._draw_checkbox(segment.offset.x, segment.offset.y, current_font, segment.state)
+
         self.drawText(text)
 
     def output(self) -> bytes:
