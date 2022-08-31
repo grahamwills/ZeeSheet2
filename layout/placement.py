@@ -83,9 +83,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
 
         # Handle checkbox
         if element.modifier == 'checkbox':
-            text = None  # Don't handle this as text
             width = (font.ascent + font.descent) * 1.1  # Add a little spacing (as a small percentage of the box size)
-
             if y + height > extent.height:
                 # Off the bottom -- cannot be placed
                 can_be_placed = False

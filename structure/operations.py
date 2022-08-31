@@ -40,11 +40,13 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
 
     return '\n'.join(lines)
 
-def description(comp: model.StructureUnit, short:bool =False) -> str:
+
+def description(comp: model.StructureUnit, short: bool = False) -> str:
     try:
         return comp.description(short)
     except AttributeError:
         return str(comp)
+
 
 def append_issues_rst(lines: List[str], directive: str, issues: List[model.Problem]):
     """Convert issues to restructured text directives"""
@@ -65,7 +67,7 @@ def append_item_rst(lines: List[str], item: model.Item, width: int):
         lines.append('')
         for run in item.children[1:]:
             txt = '  - ' + run.to_rst(width, indent=4)
-            lines.append(txt)
+            lines.append(txt.rstrip())
         lines.append('')
 
 
@@ -106,11 +108,11 @@ def append_block_rst(lines: List[str], block: model.Block, width: int):
                         # Need to wrap the text onto the next line
                         txt = item.children[i].to_rst(space_for_last, indent=2).strip()
                         row_parts.append(txt)
-                lines.append(('- ' + ' | '.join(row_parts)))
+                lines.append(('- ' + ' | '.join(row_parts).rstrip()))
             lines.append('')
             return lines
 
-    # Could not fit onto one line; need to use the siple method
+    # Could not fit onto one line; need to use the simple method
     for item in block.children:
         append_item_rst(lines, item, width)
     lines.append('')

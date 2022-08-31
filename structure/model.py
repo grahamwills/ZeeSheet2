@@ -23,7 +23,6 @@ class Element:
     value: str
     modifier: Optional[str] = None
 
-
     def __post_init__(self):
         assert self.value, 'Element must be created with valid content'
 
@@ -53,9 +52,9 @@ class Element:
 
     @classmethod
     def _from_text(cls, txt):
-        if txt == '[ ]' or txt == '[O]':
+        if txt == '[ ]' or txt == '[O]' or txt == '[o]':
             return cls(' ', 'checkbox')
-        elif txt == '[X]':
+        elif txt == '[X]' or txt == '[x]':
             return cls('X', 'checkbox')
         else:
             return cls(txt, None)
@@ -67,7 +66,7 @@ class Element:
             return [cls(text, modifier)]
         else:
             # Split up to define checkboxes and other special items
-            parts = re.split(r'(\[[ XO]])', text)
+            parts = re.split(r'(\[[ XOxo]])', text)
             return [cls._from_text(t) for t in parts if t]
 
 
@@ -92,11 +91,17 @@ class StructureUnit:
         return bool(self.children) or (self._titled() and bool(self.title))
 
     def tidy(self) -> None:
-        if self._titled():
-            self.title.tidy()
+        raise NotImplementedError('Must be implemented by descendents')
+
+    def _tidy_title(self):
+        self.title.tidy()
+
+    def _tidy_children(self, keep_empty: bool = False):
+        """ Tidy children, and optionally throw away children with no centent"""
         for s in self.children:
             s.tidy()
-        self.children = [s for s in self.children if s]
+        if not keep_empty:
+            self.children = [s for s in self.children if s]
 
     def description(self, short: bool):
         start, sep, end = self.FMT
@@ -196,13 +201,15 @@ class Item(StructureUnit):
                         self.add_to_content(Element(s, element.modifier))
 
     def tidy(self) -> None:
-        super().tidy()
+        # replace children with a new list, breaking runs into cells to do so
 
-        # Divide up into cells
         old = self.children
         self.children = []
         for run in old:
-            self._split_run_into_cells(run)
+            if run:
+                self._split_run_into_cells(run)
+
+        self._tidy_children(keep_empty=True)
 
 
 @dataclass
@@ -215,12 +222,20 @@ class Block(StructureUnit):
         """Maximum number of runs in each block item"""
         return max(len(item.children) for item in self.children) if self.children else 0
 
+    def tidy(self) -> None:
+        self._tidy_title()
+        self._tidy_children()
+
 
 @dataclass
 class Section(StructureUnit):
     FMT = FormatPieces('', ' ', '')
     title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
+
+    def tidy(self) -> None:
+        self._tidy_title()
+        self._tidy_children()
 
 
 @dataclass
@@ -232,3 +247,6 @@ class Sheet(StructureUnit):
 
     def describe_issues(self):
         return ' \u2022 '.join(s.message for s in self.problems)
+
+    def tidy(self) -> None:
+        self._tidy_children()
