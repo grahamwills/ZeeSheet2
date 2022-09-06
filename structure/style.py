@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import List
 
@@ -47,7 +48,7 @@ class FontStyle:
         if self.family:
             parts.append(f'font-family:{self.family}')
         if self.size is not None:
-            parts.append(f'font-size:{self.size}')
+            parts.append(f'font-size:{_num2str(self.size)}')
         if self.style is not None:
             parts.append(f'font-style:{self.style}')
 
@@ -66,14 +67,14 @@ class TextStyle:
             toColor(value)  # Check it is valid
             self.color = value
         elif key == 'opacity':
-            self.opacity = float(value)
-        elif key == 'align':
+            self.opacity = _txt2fraction(value)
+        elif key in {'align', 'alignment'}:
             if value in {'left', 'right', 'center'}:
                 self.align = value
             else:
                 raise ValueError(f"Unknown value {value} for alignment -- should be one of:left, right, center")
         elif key in ['indent', 'indentation']:
-            self.indent = float(value)
+            self.indent = units.toLength(value)
         else:
             raise AttributeError(key)
 
@@ -81,30 +82,19 @@ class TextStyle:
         if self.color:
             parts.append(f'text-color:{self.color}')
         if self.opacity is not None:
-            parts.append(f'text-opacity:{self.opacity}')
+            parts.append(f'text-opacity:{_num2str(self.opacity)}')
         if self.align is not None:
             parts.append(f'text-align:{self.align}')
         if self.indent is not None:
-            parts.append(f'text-indent:{self.indent}')
-
-
-def _len2str(x: float) -> str:
-    if x == 0:
-        return 0
-    if x % 9 == 0:
-        return f'{x / 9}in'
-    elif x == int(x):
-        return str(int(x))
-    else:
-        return str(x)
+            parts.append(f'text-indent:{_num2str(self.indent)}')
 
 
 def spacing_to_text(spacing: Spacing) -> str:
     parts = (_len2str(spacing.left), _len2str(spacing.right), _len2str(spacing.top), _len2str(spacing.bottom))
     if parts[0] == parts[1] == parts[2] == parts[3]:
         return '{}'.format(parts[0])
-    if parts[0] == parts[1] and  parts[2] == parts[3]:
-        return '{} {}'.format(parts[0], parts[1])
+    if parts[0] == parts[1] and parts[2] == parts[3]:
+        return '{} {}'.format(parts[0], parts[2])
     else:
         return '{} {} {} {}'.format(*parts)
 
@@ -123,18 +113,18 @@ class BoxStyle:
     def set(self, key: str, value):
         if key.startswith('box'):
             key = key[3:]
+
         if key in {'color', 'backgroundcolor', 'background', 'bg'}:
             toColor(value)  # Check it is valid
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
-            self.opacity = float(value)
-        if key == 'bordercolor':
+            self.opacity = _txt2fraction(value)
+        elif key == 'bordercolor':
             toColor(value)  # Check it is valid
             self.border_color = value
-        if key == 'borderopacity':
-            toColor(value)  # Check it is valid
-            self.border_opacity = value
-        elif key in {'border', 'method', 'style'}:
+        elif key == 'borderopacity':
+            self.border_opacity = _txt2fraction(value)
+        elif key in {'border', 'method', 'style', 'bordermethod'}:
             if value in {'none', 'square', 'rounded'}:
                 self.border = value
             else:
@@ -143,7 +133,7 @@ class BoxStyle:
             self.margin = text_to_spacing(value)
         elif key == 'padding':
             self.padding = text_to_spacing(value)
-        elif key in ['width', 'size', 'linewidth', 'borderwidth']:
+        elif key in ['width', 'size', 'linewidth', 'borderwidth', 'borderlinewidth']:
             self.width = units.toLength(value)
         else:
             raise AttributeError(key)
@@ -152,19 +142,19 @@ class BoxStyle:
         if self.border:
             parts.append(f'border:{self.border}')
         if self.width:
-            parts.append(f'border-width:{self.width}')
+            parts.append(f'border-width:{_len2str(self.width)}')
         if self.border_color:
             parts.append(f'border-color:{self.border_color}')
         if self.border_opacity is not None:
-            parts.append(f'border-opacity:{self.border_opacity}')
+            parts.append(f'border-opacity:{_num2str(self.border_opacity)}')
         if self.color:
-            parts.append(f'background-color:{self.color}')
+            parts.append(f'background:{self.color}')
         if self.opacity is not None:
-            parts.append(f'background-opacity:{self.opacity}')
+            parts.append(f'background-opacity:{_num2str(self.opacity)}')
         if self.margin is not None:
             parts.append(f'margin:{spacing_to_text(self.margin)}')
         if self.padding is not None:
-            parts.append(f'indent:{spacing_to_text(self.padding)}')
+            parts.append(f'padding:{spacing_to_text(self.padding)}')
 
 
 @dataclass
@@ -180,8 +170,8 @@ class Style:
         if not self.name.isidentifier():
             raise ValueError(f'Style name must be a valid identifier, but was {self.name}')
 
-    def set(self, key: str, value: str):
-        key = key.lower().replace('-', '').replace('_', '')
+    def set(self, name: str, value: str) -> Style:
+        key = name.lower().replace('-', '').replace('_', '')
         if key in {'parent', 'inherit'}:
             self.parent = value
 
@@ -190,17 +180,22 @@ class Style:
         # Check if the attribute has a child name as prefix
         for child in children:
             if key.startswith(child):
-                getattr(self, child).set(key[len(key):], value)
+                try:
+                    getattr(self, child).set(key[len(child):], value)
+                    return self
+                except AttributeError:
+                    pass
 
         # Just try the children in order. The order is important as
         # the children may have attributes with the same name
         for child in children:
             try:
                 getattr(self, child).set(key, value)
+                return self
             except AttributeError:
                 pass
 
-        raise AttributeError(key)
+        raise AttributeError(name)
 
     def to_definition(self):
         parts = []
@@ -219,27 +214,47 @@ class Defaults:
     base = Style(
         'default',
         None,
-        TextStyle('black', 1.0, 'left', 0),
-        FontStyle('Helvetica', 12, 'normal'),
+        TextStyle('black', 1.0, 'left', 0.0),
+        FontStyle('Helvetica', 12.0, 'normal'),
         BoxStyle(
             'white', 0.0,
-            'none', 1, 'black', 1.0,
-            Spacing.balanced(0), Spacing.balanced(0)))
+            'none', 1.0, 'black', 1.0,
+            Spacing.balanced(0.0), Spacing.balanced(0.0)))
 
 
-def set_style_value(obj, name: str, value: str):
-    # First standardize the name
-    name = name.lower().replace('-', '_')
+def set_using_definition(style: Style, text: str) -> None:
+    definitions = re.split('\W*[,;]\W*', text)
+    for d in definitions:
+        dd = d.split(':')
+        if len(dd) != 2:
+            raise ValueError('Style definitions must be of the form KEY:VALUE, but we received: ' + d)
+        style.set(dd[0].strip(), dd[1].strip())
 
-    # If this works, great
-    if hasattr(obj, name):
-        setattr(obj, name, value)
-        return
 
-    # See if we need to set a value on a child
-    try:
-        p = name.index('-')
-        if hasattr(obj, name[:p]):
-            set_style_value(getattr(obj, name[:p]), name[p + 1:], value)
-    except ValueError:
-        pass
+def _txt2fraction(value: str) -> float:
+    if value[-1] == '%':
+        v = float(value[:-1]) / 100
+    else:
+        v = float(value)
+    if 0 <= v <= 1:
+        return v
+    else:
+        raise ValueError("Opacity must be in the range [0,1] or [0%, 100%]")
+
+
+def _num2str(x: float) -> str:
+    if x == int(x):
+        return str(int(x))
+    else:
+        # At most 2 decimal places
+        return f'{x:.2f}'.rstrip('0')
+
+
+def _len2str(x: float) -> str:
+    if x == 0:
+        return 0
+    if x % 72 == 0:
+        return f'{int(x) // 72}in'
+    if x % 9 == 0:
+        return f'{int(x) / 72}in'
+    return _num2str(x)
