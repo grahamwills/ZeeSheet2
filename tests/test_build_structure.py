@@ -91,6 +91,16 @@ class BasicBlocks(unittest.TestCase):
                    "«bold⊣str» text outside, «but then **more bold** text inside the literal part of line⊣lit»]❯"
         self.assertEqual(expected, description(sheet))
 
+    def test_styles_simple(self):
+        source = self.items['Simple Styles'][0]
+        sheet = text_to_sheet(source)
+        self.assertEqual('', sheet.describe_issues())
+        self.assertEqual(2, len(sheet.styles))
+        self.assertIn('a', sheet.styles)
+        self.assertIn('b', sheet.styles)
+        self.assertEqual(sheet.styles['a'].font.family, 'Courier')
+        self.assertEqual(sheet.styles['b'].parent, 'a')
+
     def test_runs_in_item(self):
         source = self.items['Runs In Item'][0]
         sheet = text_to_sheet(source)

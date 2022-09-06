@@ -3,9 +3,11 @@ from __future__ import annotations
 import re
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import List, Optional, ClassVar, Tuple
+from typing import List, Optional, ClassVar, Tuple, Dict
 
 import reportlab.lib.pagesizes
+
+from structure.style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
 Problem = namedtuple('Problem', 'lineNo is_error message')
@@ -242,6 +244,7 @@ class Section(StructureUnit):
 class Sheet(StructureUnit):
     FMT = FormatPieces('', ' --- ', '')
     children: List[Section] = field(default_factory=lambda: [Section()])
+    styles: Dict[str, Style] = field(default_factory=lambda: {})
     problems: List[Problem] = field(default_factory=list)
     page_size: Tuple[int, int] = reportlab.lib.pagesizes.LETTER
 

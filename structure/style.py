@@ -174,6 +174,7 @@ class Style:
         key = name.lower().replace('-', '').replace('_', '')
         if key in {'parent', 'inherit'}:
             self.parent = value
+            return self
 
         children = ('text', 'font', 'box')
 
@@ -225,10 +226,11 @@ class Defaults:
 def set_using_definition(style: Style, text: str) -> None:
     definitions = re.split('\W*[,;]\W*', text)
     for d in definitions:
-        dd = d.split(':')
-        if len(dd) != 2:
-            raise ValueError('Style definitions must be of the form KEY:VALUE, but we received: ' + d)
-        style.set(dd[0].strip(), dd[1].strip())
+        if d:
+            dd = d.split(':')
+            if len(dd) != 2:
+                raise ValueError('Style definitions must be of the form KEY:VALUE, but we received: ' + d)
+            style.set(dd[0].strip(), dd[1].strip())
 
 
 def _txt2fraction(value: str) -> float:

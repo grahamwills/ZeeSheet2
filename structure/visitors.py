@@ -1,10 +1,11 @@
 import docutils.nodes
 import docutils.nodes
 
+from . import style
 from .model import *
 
 # These tags will not  be recorded
-IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference', 'problematic'}
+IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference', 'problematic', 'style_definitions'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -173,9 +174,28 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elements = Element.text_to_elements('|', None)
         self.add_elements(elements, node, p)
 
-
-
-
+    def visit_style_definitions(self, node) -> None:
+        lines: List[str] = node.lines
+        current_style = None
+        for raw in lines:
+            line = raw.lstrip()
+            if line == raw:
+                # No indentation means we define a style
+                name = line.lower()
+                if name.endswith(':'):
+                    name = name[:-1].strip()
+                if not name.isidentifier():
+                    self.error(node, f"{name} is not a valid identifier for a style")
+                if name in self.sheet.styles:
+                    self.warning(node, f"{name} is being modified. It's better to define it all in one go")
+                current_style = Style(name)
+                self.sheet.styles[name] = current_style
+            else:
+                # Indented means this is a definition
+                if not current_style:
+                    self.error(node, 'You must name the style you wish to use before defining its properties')
+                else:
+                    style.set_using_definition(current_style, line.lstrip())
 
     # Other methods ####################################################################
 

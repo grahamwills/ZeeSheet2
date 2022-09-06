@@ -1,13 +1,35 @@
 from typing import List
 
-from docutils import parsers, utils, core
+from docutils import parsers, utils, core, nodes
 from docutils.parsers import rst
+from docutils.parsers.rst import directives, Directive
 
 from . import model
 from . import visitors
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
+
+
+# noinspection PyPep8Naming
+class style_definitions(nodes.important):
+
+    def __init__(self, lines: List[str]):
+        super().__init__()
+        self.lines = lines
+
+
+class StylesDirectiveHandler(Directive):
+    required_arguments = 0
+    optional_arguments = 0
+    has_content = True
+
+    def run(self):
+        lines = [s.rstrip() for s in self.content if s.rstrip()]
+        return [style_definitions(lines)]
+
+
+directives.register_directive('styles', StylesDirectiveHandler)
 
 
 def text_to_sheet(text: str) -> model.Sheet:
@@ -37,6 +59,14 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
     # Remove trailing section definition and blank lines
     while lines and lines[-1] == '':
         lines = lines[:-1]
+
+    # Handle styles
+    if sheet.styles:
+        lines.append('')
+        lines.append('.. styles::')
+        for name, style in sheet.styles.items():
+            lines.append('  ' + name)
+            lines.append('    ' + style.to_definition())
 
     return '\n'.join(lines)
 
