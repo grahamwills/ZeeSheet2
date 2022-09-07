@@ -294,8 +294,8 @@ whatever
 whatever
 
 .. styles::
-  a
-    font-family:Courier; border:rounded
-  b
-    inherit:a; padding:0.25in 0.75in
+   a
+     font-family:Courier; border:rounded
+   b
+     inherit:a; padding:0.25in 0.75in
 #################################################

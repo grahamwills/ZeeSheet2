@@ -8,12 +8,12 @@ class TestStyle(TestCase):
 
     def test_default(self):
         # Tests a few items
-        self.assertEqual(Defaults.base.name, 'default')
-        self.assertEqual(Defaults.base.parent, None)
-        self.assertEqual(Defaults.base.text.align, 'left')
-        self.assertEqual(Defaults.base.font.family, 'Helvetica')
-        self.assertEqual(Defaults.base.box.opacity, 0.0)
-        self.assertEqual(Defaults.base.box.padding, Spacing(0, 0, 0, 0))
+        self.assertEqual(Defaults.default.name, 'default')
+        self.assertEqual(Defaults.default.parent, None)
+        self.assertEqual(Defaults.default.text.align, 'left')
+        self.assertEqual(Defaults.default.font.family, 'Helvetica')
+        self.assertEqual(Defaults.default.box.opacity, 0.0)
+        self.assertEqual(Defaults.default.box.padding, Spacing(0, 0, 0, 0))
 
     def test_initialization(self):
         s = Style('allowed_name')
@@ -29,13 +29,13 @@ class TestStyle(TestCase):
                          'border:none; border-width:1; '
                          'border-color:black; border-opacity:1; '
                          'background:white; background-opacity:0; '
-                         'margin:0; padding:0', Defaults.base.to_definition())
+                         'margin:0; padding:0', Defaults.default.to_definition())
 
     def test_to_definition_empty(self):
         self.assertEqual('inherit:default', Style('test', 'default').to_definition())
 
     def test_round_trip_for_default(self):
-        base = Defaults.base
+        base = Defaults.default
         base_def = base.to_definition()
         parsed = Style('default')
         set_using_definition(parsed, base_def)

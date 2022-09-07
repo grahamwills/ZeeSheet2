@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import List, Optional, ClassVar, Tuple, Dict
+from typing import List, Optional, ClassVar, Dict
 
-import reportlab.lib.pagesizes
+from reportlab.lib.units import inch
 
+from structure import style
 from structure.style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
@@ -19,6 +20,12 @@ def checkbox_character(state) -> str:
     else:
         return '\u2610'
 
+@dataclass
+class SheetOptions:
+    style: str = 'default_sheet'
+    width: float = 8.5 * inch
+    height: float = 11 * inch
+    debug: bool = False
 
 @dataclass
 class Element:
@@ -221,7 +228,7 @@ class Block(StructureUnit):
     children: List[Item] = field(default_factory=lambda: [Item()])
 
     def column_count(self) -> int:
-        """Maximum number of runs in each block item"""
+        """ Maximum number of runs in each block item """
         return max(len(item.children) for item in self.children) if self.children else 0
 
     def tidy(self) -> None:
@@ -246,7 +253,7 @@ class Sheet(StructureUnit):
     children: List[Section] = field(default_factory=lambda: [Section()])
     styles: Dict[str, Style] = field(default_factory=lambda: {})
     problems: List[Problem] = field(default_factory=list)
-    page_size: Tuple[int, int] = reportlab.lib.pagesizes.LETTER
+    options: SheetOptions = field(default_factory=SheetOptions)
 
     def describe_issues(self):
         return ' \u2022 '.join(s.message for s in self.problems)

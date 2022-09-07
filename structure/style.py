@@ -159,9 +159,9 @@ class BoxStyle:
 
 @dataclass
 class Style:
-    """ A complete style  """
+    """ A complete style """
     name: str
-    parent: str = None
+    parent: str = 'default'
     text: TextStyle = field(default_factory=TextStyle)
     font: FontStyle = field(default_factory=FontStyle)
     box: BoxStyle = field(default_factory=BoxStyle)
@@ -169,6 +169,7 @@ class Style:
     def __post_init__(self):
         if not self.name.isidentifier():
             raise ValueError(f'Style name must be a valid identifier, but was {self.name}')
+
 
     def set(self, name: str, value: str) -> Style:
         key = name.lower().replace('-', '').replace('_', '')
@@ -212,7 +213,7 @@ class Defaults:
     """ Default Values """
 
     # noinspection PyTypeChecker
-    base = Style(
+    default = Style(
         'default',
         None,
         TextStyle('black', 1.0, 'left', 0.0),
@@ -221,6 +222,11 @@ class Defaults:
             'white', 0.0,
             'none', 1.0, 'black', 1.0,
             Spacing.balanced(0.0), Spacing.balanced(0.0)))
+
+    title = Style('default_title').set('font-size', '14').set('font-face', 'bold')
+    block = Style('default_block').set('border', 'square').set('margin', '4').set('padding', '2')
+    section = Style('default_section').set('margin', '8').set('padding', '4')
+    sheet = Style('default_sheet').set('margin', '0.75in').set('padding', '8')
 
 
 def set_using_definition(style: Style, text: str) -> None:

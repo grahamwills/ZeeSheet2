@@ -10,7 +10,6 @@ from structure import Section, Block, Item, Run, description
 
 LOGGER = configured_logger(__name__)
 
-
 @dataclass
 class Error:
     """ Error from placing one or more items. """
@@ -112,18 +111,19 @@ class PlacedRunContent(PlacedContent):
 
 
 def _debug_draw_rect(pdf, represents, rect):
-    if isinstance(represents, Section):
-        r, g, b, a = 1, 0.7, 0, 0.15
-    elif isinstance(represents, Block):
-        r, g, b, a = 0, 0, 1, 0.15
-    elif isinstance(represents, Item):
-        r, g, b, a = 1, 0, 0, 0.2
-    elif isinstance(represents, Run):
-        r, g, b, a = 1, 0, 1, 0.2
-    else:
-        raise ValueError('Unexpected representation: ' + str(represents))
-    pdf.saveState()
-    pdf.setFillColorRGB(r, g, b, alpha=a)
-    pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
-    pdf.draw_rect(rect, DrawMethod.BOTH)
-    pdf.restoreState()
+    if  pdf.debug:
+        if isinstance(represents, Section):
+            r, g, b, a = 1, 0.7, 0, 0.15
+        elif isinstance(represents, Block):
+            r, g, b, a = 0, 0, 1, 0.15
+        elif isinstance(represents, Item):
+            r, g, b, a = 1, 0, 0, 0.2
+        elif isinstance(represents, Run):
+            r, g, b, a = 1, 0, 1, 0.2
+        else:
+            raise ValueError('Unexpected representation: ' + str(represents))
+        pdf.saveState()
+        pdf.setFillColorRGB(r, g, b, alpha=a)
+        pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
+        pdf.draw_rect(rect, DrawMethod.BOTH)
+        pdf.restoreState()

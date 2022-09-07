@@ -1,11 +1,12 @@
 import docutils.nodes
 import docutils.nodes
+from reportlab.lib import units
 
-from . import style
 from .model import *
 
 # These tags will not  be recorded
-IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference', 'problematic', 'style_definitions'}
+IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference',
+               'problematic', 'settings', 'style_definitions'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -31,6 +32,19 @@ def _line_of(node: docutils.nodes.Node):
     except KeyError:
         pass
     return _line_of(node.parent)
+
+def _apply_option_definitions(definitions:Dict[str, str], options):
+    for k, v in definitions.items():
+        if k == 'style':
+            options.style = v
+        elif k == 'width':
+            options.width = units.toLength(v)
+        elif k == 'height':
+            options.height = units.toLength(v)
+        elif isinstance(v, bool):
+            setattr(options, k, v)
+        else:
+            raise AttributeError(f'Unknown option {k}')
 
 
 class StructureBuilder(docutils.nodes.NodeVisitor):
@@ -174,6 +188,30 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elements = Element.text_to_elements('|', None)
         self.add_elements(elements, node, p)
 
+    def visit_settings(self, node):
+        definitions = {}
+        for o in node.options:
+            oo = o.split('=')
+            if len(oo) == 1:
+                # No equals, so it's a boolean we set to true
+                definitions[o] = True
+            else:
+                # Two parts
+                definitions[oo[0]] = oo[1]
+
+        # Find the optionn to set into
+        if node.name == 'page':
+            try:
+                _apply_option_definitions(definitions, self.sheet.options)
+                print(self.sheet.options)
+            except AttributeError as ex:
+                self.error(node, f"{ex} for {node.name}")
+        else:
+            raise KeyError(f'Currently unsupported settings for {node.name}')
+
+
+
+
     def visit_style_definitions(self, node) -> None:
         lines: List[str] = node.lines
         current_style = None
@@ -266,3 +304,4 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
+

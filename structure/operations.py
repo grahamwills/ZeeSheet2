@@ -29,7 +29,28 @@ class StylesDirectiveHandler(Directive):
         return [style_definitions(lines)]
 
 
+# noinspection PyPep8Naming
+class settings(nodes.important):
+    def __init__(self, name: str, options: str):
+        super().__init__()
+        self.name = name
+        self.options = options
+
+
+class SettingsDirectiveHandler(Directive):
+    required_arguments = 0
+    optional_arguments = 100
+    has_content = False
+
+    def run(self):
+        return [settings(self.name, self.arguments)]
+
+
+# Register our directives
 directives.register_directive('styles', StylesDirectiveHandler)
+directives.register_directive('page', SettingsDirectiveHandler)
+directives.register_directive('section', SettingsDirectiveHandler)
+directives.register_directive('block', SettingsDirectiveHandler)
 
 
 def text_to_sheet(text: str) -> model.Sheet:
@@ -65,8 +86,8 @@ def prettify(sheet: model.Sheet, width: int = 100) -> str:
         lines.append('')
         lines.append('.. styles::')
         for name, style in sheet.styles.items():
-            lines.append('  ' + name)
-            lines.append('    ' + style.to_definition())
+            lines.append('   ' + name)
+            lines.append('     ' + style.to_definition())
 
     return '\n'.join(lines)
 

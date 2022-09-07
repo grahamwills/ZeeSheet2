@@ -2,7 +2,7 @@ import reprlib
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 from reportlab.lib import fonts, colors
 from reportlab.pdfbase import pdfmetrics as metrics
@@ -11,6 +11,7 @@ from reportlab.pdfgen import canvas
 from common import Rect, Point
 from common import configured_logger
 from structure.model import checkbox_character
+from structure.style import Style
 
 LOGGER = configured_logger(__name__)
 
@@ -78,12 +79,17 @@ class CheckboxSegment:
 
 class PDF(canvas.Canvas):
 
-    def __init__(self, pagesize: Tuple[int, int]) -> None:
+    def __init__(self,
+                 pagesize: Tuple[int, int],
+                 styles:Dict[str, Style]= None,
+                 debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
         self.setLineJoin(1)
         self.setLineCap(1)
         self.font = FontInfo("Helvetica", 14, False, False)
+        self.styles = styles
+        self.debug = debug
 
         # Keep an index to give unique names to form items
         self._name_index = 0

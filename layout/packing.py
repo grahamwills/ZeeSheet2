@@ -1,4 +1,3 @@
-import reprlib
 from dataclasses import dataclass
 from typing import Iterable, Callable, List, Any
 
@@ -54,7 +53,7 @@ class Packer:
         self.margin = margin
         self.padding = padding
 
-    def into_columns(self, width: int, ncol: int = 1) -> PlacedGroupContent:
+    def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
         if n_items < ncol:
             raise ValueError('Cannot have more columns than items in a layout')
@@ -70,7 +69,7 @@ class Packer:
 
         return group
 
-    def find_best_allocation(self, width: int, spans, column_counts: List[int], remaining_items: int,
+    def find_best_allocation(self, width: float, spans, column_counts: List[int], remaining_items: int,
                              index) -> PlacedGroupContent:
         n_spans = len(spans)
         if index == n_spans - 1:
@@ -90,7 +89,7 @@ class Packer:
 
         return best
 
-    def divide_width(self, width: int, ncol: int) -> List[ColumnSpan]:
+    def divide_width(self, width: float, ncol: int) -> List[ColumnSpan]:
         """Divide space evenly, taking into account paddings and margins"""
         left_inset = max(self.margin.left, self.padding.left)
         right_inset = max(self.margin.right, self.padding.right)
@@ -112,7 +111,7 @@ class Packer:
         return result
 
     # noinspection PyUnboundLocalVariable
-    def place_columnwise(self, width: int, assignment: List[ColumnSpan]) -> PlacedGroupContent:
+    def place_columnwise(self, width: float, assignment: List[ColumnSpan]) -> PlacedGroupContent:
         results = []
         last_span = None
         for item, span in zip(self.items, assignment):
