@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 from common import Spacing
+from layout.build import make_complete_styles
 from structure.style import Style, Defaults, set_using_definition
 
 
@@ -109,11 +110,31 @@ class TestStyle(TestCase):
         self.assertEqual('padding:7 0.5in', style.set('box-padding', '7 0.5in').to_definition())
         self.assertEqual('padding:3 2 7 0.5in', style.set('box-padding', '3 2 7 0.5in').to_definition())
 
-
     def test_bad_settings(self):
         style = Style('test')
-        self.assertRaises(AttributeError, lambda: style.set('unknown',  'red'))
-        self.assertRaises(ValueError, lambda: style.set('color',  'a strange hue'))
-        self.assertRaises(ValueError, lambda: style.set('border',  'squiggly'))
-        self.assertRaises(ValueError, lambda: style.set('opacity',  '2'))
-        self.assertRaises(ValueError, lambda: style.set('box-opacity',  '-1'))
+        self.assertRaises(AttributeError, lambda: style.set('unknown', 'red'))
+        self.assertRaises(ValueError, lambda: style.set('color', 'a strange hue'))
+        self.assertRaises(ValueError, lambda: style.set('border', 'squiggly'))
+        self.assertRaises(ValueError, lambda: style.set('opacity', '2'))
+        self.assertRaises(ValueError, lambda: style.set('box-opacity', '-1'))
+
+
+class TestMakeCompleteStyles(TestCase):
+
+    def test_simple_inheritance(self):
+        input = {'default': Defaults.default,
+                 'test': Style('test', 'default').set('margin', '1in')
+                 }
+        output = make_complete_styles(input)
+
+        # All the default styles are added in
+        self.assertEqual(len(output), 6)
+
+        # Default is unchanged, but is a copy
+        self.assertEqual(output['default'], input['default'])
+        self.assertIsNot(output['default'], input['default'])
+
+        # test inherits some parts, but has overrides
+        self.assertEqual(output['test'].text, input['default'].text)
+        self.assertEqual(output['test'].font, input['default'].font)
+        self.assertEqual(output['test'].box.margin, Spacing(72, 72, 72, 72))

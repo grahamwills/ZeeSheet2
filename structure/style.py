@@ -161,7 +161,7 @@ class BoxStyle:
 class Style:
     """ A complete style """
     name: str
-    parent: str = 'default'
+    parent: str = None
     text: TextStyle = field(default_factory=TextStyle)
     font: FontStyle = field(default_factory=FontStyle)
     box: BoxStyle = field(default_factory=BoxStyle)

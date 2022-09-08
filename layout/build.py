@@ -53,6 +53,7 @@ def _all_lineage_definitions(base, style):
         style = base[style.parent] if style.parent else None
     return chained_defs
 
+
 def _to_complete(style: Style, base: Dict[str, Style]) -> Style:
     chained_defs = _all_lineage_definitions(base, style)
 
@@ -61,8 +62,6 @@ def _to_complete(style: Style, base: Dict[str, Style]) -> Style:
     for defs in chained_defs[::-1]:
         structure.style.set_using_definition(result, defs)
     return result
-
-
 
 
 # TODO: Test this
