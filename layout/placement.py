@@ -75,8 +75,9 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     x, y, right, bottom = 0, 0, 0, 0
     area_used = 0
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
+    base_font = pdf.get_font(style)
     for element in run.children:
-        font = pdf.font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
+        font = base_font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
 
         text = element.value
 

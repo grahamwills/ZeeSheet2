@@ -107,7 +107,7 @@ class PlacedRunContent(PlacedContent):
     style: Style  # Style for this item
 
     def _draw(self, pdf: PDF):
-        pdf.draw_text(self.segments)
+        pdf.draw_text(self.style, self.segments)
 
 
 def _debug_draw_rect(pdf, represents, rect):

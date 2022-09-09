@@ -14,7 +14,7 @@ def _makeItem(txt: str) -> Item:
     return item
 
 
-STYLE = Style('test', font=FontStyle('Helvetica', 12))
+STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular'))
 
 
 class TestRunPlacement(unittest.TestCase):

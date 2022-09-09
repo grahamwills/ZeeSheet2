@@ -5,6 +5,7 @@ from io import BytesIO
 from typing import List, Tuple, Union, Dict
 
 from reportlab.lib import fonts, colors
+from reportlab.lib.colors import Color, toColor
 from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
 
@@ -81,24 +82,33 @@ class PDF(canvas.Canvas):
 
     def __init__(self,
                  pagesize: Tuple[int, int],
-                 styles:Dict[str, Style]= None,
+                 styles: Dict[str, Style] = None,
                  debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
         self.setLineJoin(1)
         self.setLineCap(1)
-        self.font = FontInfo("Helvetica", 14, False, False)
         self.styles = styles
         self.debug = debug
 
         # Keep an index to give unique names to form items
         self._name_index = 0
 
+    def get_font(self, style: Style) -> FontInfo:
+        return FontInfo(style.font.family, style.font.size, style.font.is_bold, style.font.is_italic)
+
+    def get_text_color(self, style: Style) -> Color:
+        c = toColor(style.text.color)
+        if style.text.opacity == 1.0:
+            return c
+        else:
+            return Color(c.red, c.green, c.blue, c.alpha * style.text.opacity)
+
     def draw_rect(self, r: Rect, method: DrawMethod):
         self.rect(r.left, r.top, r.width, r.height,
                   fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
 
-    def _draw_checkbox(self, rx, ry, font: FontInfo, state):
+    def _draw_checkbox(self, rx, ry, font: FontInfo, state, color: Color):
         size = font.ascent + font.descent
 
         x, y = self.absolutePosition(rx, ry + size)
@@ -107,15 +117,18 @@ class PDF(canvas.Canvas):
         name = 'f' + str(self._name_index)
         LOGGER.debug("Adding checkbox name='%s' with state=%s ", name, state)
         self.acroForm.checkbox(name=name, x=x, y=y, size=size,
-                               fillColor=_WHITE,
+                               fillColor=_WHITE, borderColor=color,
                                buttonStyle='cross', borderWidth=0.5, checked=state)
 
-    def draw_text(self, segments: List[Union[TextSegment, CheckboxSegment]]):
+    def draw_text(self, style: Style, segments: List[Union[TextSegment, CheckboxSegment]]):
         ss = ', '.join([str(s) for s in segments])
         LOGGER.debug(f"Drawing segments {ss}")
 
+        font = self.get_font(style)
         text = self.beginText()
-        text.setTextOrigin(0, self.font.top_to_baseline)
+        text.setTextOrigin(0, font.top_to_baseline)
+        text_color = self.get_text_color(style)
+        text.setFillColor(text_color)
         off = Point(0, 0)
         current_font = None
         for segment in segments:
@@ -129,7 +142,7 @@ class PDF(canvas.Canvas):
                 # It is text, so just output it
                 text.textOut(segment.text)
             else:
-                self._draw_checkbox(segment.offset.x, segment.offset.y, current_font, segment.state)
+                self._draw_checkbox(segment.offset.x, segment.offset.y, current_font, segment.state, text_color)
 
         self.drawText(text)
 

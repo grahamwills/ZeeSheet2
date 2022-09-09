@@ -1,8 +1,5 @@
+from copy import copy
 from typing import Dict
-
-from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 
 import structure.style
 from common import Extent
@@ -14,14 +11,12 @@ from structure import Sheet, Section, Block, style
 from structure.style import Style
 
 
-def make_pdf(sheet: Sheet, owner: User) -> str:
-    file_name = f"sheets/{owner.username}-sheet.pdf"
+def make_pdf(sheet: Sheet) -> bytes:
     complete_styles = make_complete_styles(sheet.styles)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), styles=complete_styles, debug=sheet.options.debug)
     content = create_sheet(sheet, pdf)
     content.draw(pdf)
-    path = default_storage.save(file_name, ContentFile(pdf.output()))
-    return path[7:]  # remove the 'sheets/' prefix
+    return pdf.output()
 
 
 def create_block(block: Block, extent: Extent, pdf: PDF) -> PlacedContent:
@@ -45,10 +40,10 @@ def _all_lineage_definitions(base, style):
     chained_defs = []
     while style is not None:
         chained_defs.append(style.to_definition())
-        parent = base[style.parent or 'default']
-        if parent == style:
-            break
-        style = parent
+        parent_style_name = style.parent
+        if parent_style_name is None and style.name != 'default' and style.name != '#default':
+            parent_style_name = 'default'
+        style = base[parent_style_name] if parent_style_name else None
     return chained_defs
 
 
@@ -62,12 +57,20 @@ def _to_complete(style: Style, base: Dict[str, Style]) -> Style:
     return result
 
 
-# TODO: Test this
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
     base = source.copy()
     for s in [style.Defaults.default, style.Defaults.title,
               style.Defaults.block, style.Defaults.section, style.Defaults.sheet]:
-        base[s.name] = s
+        if s.name in base:
+            # This style has been redefined, so we need to juggle names
+            # and make the redefined version inherit from the default with a modified name
+            base['#' + s.name] = s
+            redefinition = copy(base[s.name])
+            redefinition.parent = '#' + s.name
+            base[s.name] = redefinition
+        else:
+            base[s.name] = s
+
     results = {}
     for k, v in base.items():
         results[k] = _to_complete(v, base)

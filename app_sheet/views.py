@@ -4,6 +4,7 @@ from typing import List, Dict
 
 from django.contrib import messages
 from django.contrib.auth import login
+from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpRequest, FileResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
@@ -136,7 +137,10 @@ def action_dispatcher(request, sheet_id):
         # Generate PDF and store on disk
         with warnings.catch_warnings(record=True) as warning_messages:
             sheet = text_to_sheet(edit_content)
-            pdf_file = make_pdf(sheet, csd.owner)
+            pdf_bytes = make_pdf(sheet)
+            file_name = f"sheets/{csd.owner.username}-sheet.pdf"
+            path = default_storage.save(file_name, ContentFile(pdf_bytes))
+            pdf_file = path[7:]  # remove the 'sheets/' prefix
             for w in warning_messages:
                 messages.warning(request, str(w.message))
 

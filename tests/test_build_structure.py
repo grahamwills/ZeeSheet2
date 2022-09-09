@@ -1,5 +1,6 @@
 import unittest
 import warnings
+from textwrap import dedent
 
 from structure import text_to_sheet, description
 from structure.model import Element

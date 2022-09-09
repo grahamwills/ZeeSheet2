@@ -1,8 +1,10 @@
 import warnings
+from textwrap import dedent
 from unittest import TestCase
 
 from common import Spacing
 from layout.build import make_complete_styles
+from structure import text_to_sheet
 from structure.style import Style, Defaults, set_using_definition
 
 
@@ -157,13 +159,32 @@ class TestMakeCompleteStyles(TestCase):
         output = make_complete_styles(input)
 
         # All the default styles are added in
-        self.assertEqual(len(output), 6)
+        self.assertEqual(len(output), 7)
 
-        # Default is unchanged, but is a copy
-        self.assertEqual(output['default'], input['default'])
+        # Default points to '#default' as parent
+        self.assertEqual('#default', output['default'].parent)
         self.assertIsNot(output['default'], input['default'])
 
         # test inherits some parts, but has overrides
         self.assertEqual(output['test'].text, input['default'].text)
         self.assertEqual(output['test'].font, input['default'].font)
         self.assertEqual(output['test'].box.margin, Spacing(72, 72, 72, 72))
+
+    def test_override_default_style(self):
+        input = dedent(
+            '''
+                    Block Title
+
+                    - content a
+                    - content b
+
+                    .. styles::
+                       default: 
+                         font-family:Courier
+            '''
+        )
+        sheet = text_to_sheet(input)
+        styles = make_complete_styles(sheet.styles)
+        block = sheet.children[0]
+        self.assertEqual('Courier', styles[block.options.title_style].font.family)
+        self.assertEqual('Courier', styles[block.options.style].font.family)

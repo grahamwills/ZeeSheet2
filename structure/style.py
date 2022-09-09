@@ -57,6 +57,14 @@ class FontStyle:
         if self.style is not None:
             parts.append(f'font-style:{self.style}')
 
+    @property
+    def is_bold(self):
+        return 'bold' in self.style
+
+    @property
+    def is_italic(self):
+        return 'italic' in self.style
+
 
 @dataclass
 class TextStyle:
