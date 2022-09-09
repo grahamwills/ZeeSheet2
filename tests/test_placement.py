@@ -5,12 +5,16 @@ from generate.pdf import PDF, FontInfo
 from layout.content import Error
 from layout.placement import place_run, split_for_wrap, place_block
 from structure import Element, Run, Block, Item
+from structure.style import Style, FontStyle
 
 
 def _makeItem(txt: str) -> Item:
     item = Item([Run([Element(txt, None)])])
     item.tidy()
     return item
+
+
+STYLE = Style('test', font=FontStyle('Helvetica', 12))
 
 
 class TestRunPlacement(unittest.TestCase):
@@ -60,7 +64,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
-        placed = place_run(run, Extent(200, 100), self.pdf)
+        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
         self.assertEqual(1, len(placed.segments))
         s1 = placed.segments[0]
         self.assertEqual('hello to this ', s1.text)
@@ -70,7 +74,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_multiple_plenty_of_space(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(200, 100), self.pdf)
+        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -81,7 +85,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_bold_font(self):
         run = Run([self.E1, self.E2A, self.E3])
-        placed = place_run(run, Extent(200, 100), self.pdf)
+        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -92,7 +96,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_wrapping_1(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(120, 100), self.pdf)
+        placed = place_run(run, Extent(120, 100), STYLE, self.pdf)
         self.assertEqual(4, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -103,7 +107,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_wrapping_2(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(50, 100), self.pdf)
+        placed = place_run(run, Extent(50, 100), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -114,7 +118,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_need_bad_break(self):
         run = Run([self.EX])
-        placed = place_run(run, Extent(45, 100), self.pdf)
+        placed = place_run(run, Extent(45, 100), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -125,7 +129,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_need_bad_breaks_to_fit_vertically(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(50, 65), self.pdf)
+        placed = place_run(run, Extent(50, 65), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
@@ -136,7 +140,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_not_enough_space_no_matter_what_we_try(self):
         run = Run([self.E1, self.EX, self.E3])
-        placed = place_run(run, Extent(80, 60), self.pdf)
+        placed = place_run(run, Extent(80, 60), STYLE, self.pdf)
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |supercalifra|gilisticexpiali', texts)

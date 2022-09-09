@@ -1,11 +1,12 @@
 import reprlib
 import warnings
+from copy import copy
 
 import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
-from common.logging import message_unknown_attribute, message_parse
+from common.logging import message_unknown_attribute, message_parse, message_bad_value
 from . import style
 from .model import *
 
@@ -43,10 +44,18 @@ def _apply_option_definitions(owner: str, definitions: Dict[str, str], options):
     for k, v in definitions.items():
         if k == 'style':
             options.style = v
+        elif k == 'title-style':
+            options.title_style = v
         elif k == 'width':
             options.width = units.toLength(v)
         elif k == 'height':
             options.height = units.toLength(v)
+        elif k == 'title':
+            if v.lower() in ('none', 'simple'):
+                options.title = v.lower()
+            else:
+                message = f"'{v}' is not a legal value for the style attribute {k}. Should be one of none, simple"
+                warnings.warn(message_bad_value(owner, k, message, 'block options'))
         elif isinstance(v, bool):
             if hasattr(options, k):
                 setattr(options, k, v)
@@ -65,6 +74,11 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # Set our stack of what we are processing
         self.process_stack = []
+
+        # Set the current options for each thing that can have options, using the defaults
+        # There is only one sheet, so we don't need to keep track of the current sheet options
+        self.section_options = Section().options
+        self.block_options = Block().options
 
     def get_sheet(self) -> Sheet:
         # Fix up pieces we added, but ended up unused
@@ -206,13 +220,17 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 definitions[oo[0]] = oo[1]
 
         # Find the options to set into
-        if node.name == 'page':
-            try:
-                _apply_option_definitions('page', definitions, self.sheet.options)
-            except AttributeError as ex:
-                self.error(node, f"{ex} for {node.name}")
-        else:
-            raise KeyError(f'Currently unsupported settings for {node.name}')
+        try:
+            if node.name == 'page':
+                _apply_option_definitions(node.name, definitions, self.sheet.options)
+            elif node.name == 'section':
+                _apply_option_definitions(node.name, definitions, self.section_options)
+            elif node.name == 'block':
+                _apply_option_definitions(node.name, definitions, self.block_options)
+            else:
+                raise KeyError(f'Currently unsupported settings for {node.name}')
+        except AttributeError as ex:
+            self.error(node, f"{ex} for {node.name}")
 
     def visit_style_definitions(self, node) -> None:
         lines: List[str] = node.lines
@@ -277,12 +295,16 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
         if self.current_section:
-            self.sheet.children.append(Section())
+            section = Section()
+            self.section_options = section.options = copy(self.section_options)
+            self.sheet.children.append(section)
 
     def _make_new_block(self) -> None:
         # If the current block is undefined,we do not need a new one
         if self.current_block:
-            self.current_section.children.append(Block())
+            block = Block()
+            self.block_options = block.options = copy(self.block_options)
+            self.current_section.children.append(block)
 
     def _make_new_item(self) -> None:
         # If the current run is undefined, we just use that

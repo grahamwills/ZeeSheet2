@@ -6,7 +6,8 @@ from typing import List, Iterable, Any
 from common import Extent, Point, Rect
 from common import configured_logger
 from generate.pdf import TextSegment, PDF, DrawMethod
-from structure import Section, Block, Item, Run, description
+from structure import Section, Block, Item, Run, description, Sheet
+from structure.style import Style
 
 LOGGER = configured_logger(__name__)
 
@@ -75,16 +76,13 @@ class PlacedContent:
             return str(self.represents)
 
     def draw(self, pdf: PDF):
+        pdf.saveState()
+        _debug_draw_rect(pdf, self.represents, self.bounds)
         if self.location:
-            pdf.saveState()
             LOGGER.debug(self.name() + ': Translating by ' + str(self.location))
-            _debug_draw_rect(pdf, self.represents, self.bounds)
             pdf.translate(self.location.x, self.location.y)
-            self._draw(pdf)
-            pdf.restoreState()
-        else:
-            # No need for all that work
-            self._draw(pdf)
+        self._draw(pdf)
+        pdf.restoreState()
 
 
 @dataclass
@@ -106,6 +104,7 @@ class PlacedGroupContent(PlacedContent):
 @dataclass
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
+    style: Style  # Style for this item
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.segments)
@@ -113,7 +112,10 @@ class PlacedRunContent(PlacedContent):
 
 def _debug_draw_rect(pdf, represents, rect):
     if pdf.debug:
-        if isinstance(represents, Section):
+        if isinstance(represents, Sheet):
+            # Don't draw sheet -- we know where it is
+            return
+        elif isinstance(represents, Section):
             r, g, b, a = 1, 0.7, 0, 0.15
         elif isinstance(represents, Block):
             r, g, b, a = 0, 0, 1, 0.15

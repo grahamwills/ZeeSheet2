@@ -3,7 +3,8 @@ from typing import List, Optional, NamedTuple
 from common import Extent, Point
 from generate.pdf import PDF, TextSegment, FontInfo, CheckboxSegment
 from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
-from structure import Run, Item, Block
+from structure import Run, Block
+from structure.style import Style
 
 
 class SplitResult(NamedTuple):
@@ -56,19 +57,19 @@ def split_for_wrap(text: str,
         return SplitResult(None, 0, text, False)
 
 
-def place_run(run: Run, extent: Extent, pdf: PDF) -> PlacedRunContent:
-    placed = _place_run(run, extent, pdf, False)
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
+    placed = _place_run(run, extent, style, pdf, False)
 
     # If it is not clipped, it is good enough
     if not placed.error.clipped:
         return placed
 
     # Try with bad breaks
-    placed1 = _place_run(run, extent, pdf, True)
+    placed1 = _place_run(run, extent, style, pdf, True)
     return placed1 if placed1.better(placed) else placed
 
 
-def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
+def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
     segments = []
 
     x, y, right, bottom = 0, 0, 0, 0
@@ -144,22 +145,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
         acceptable_breaks,
         bounds.area - area_used  # Unused space in square pixels
     )
-    return PlacedRunContent(run, bounds, Point(0, 0), error, segments)
-
-
-def place_item(item: Item, extent: Extent, pdf: PDF) -> PlacedGroupContent:
-    items: List[PlacedContent] = []
-
-    x, y = 0, 0
-    for run in item.children:
-        placed_run = place_run(run, extent, pdf)
-        placed_run.location = Point(x, y)
-        y += placed_run.extent.height
-        items.append(placed_run)
-
-    outer_bounds = Extent(extent.width, y)
-    extra_space = 0
-    return PlacedGroupContent.from_items(item, items, outer_bounds, extra_space)
+    return PlacedRunContent(run, bounds, Point(0, 0), error, segments, style)
 
 
 def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
@@ -167,9 +153,12 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     y = 0
 
     if block.title:
-        placed_title = place_run(block.title, extent, pdf)
+        style = pdf.styles[block.options.title_style]
+        placed_title = place_run(block.title, extent, style, pdf)
         y += placed_title.extent.height
         items.append(placed_title)
+
+    content_style = pdf.styles[block.options.style]
 
     # Find out how many columns we have
     ncols = max(len(item.children) for item in block.children)
@@ -181,7 +170,7 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         for i, run in enumerate(item.children):
             cell_extent = Extent(extent.width / ncols, extent.height)
             x = i * cell_extent.width
-            placed_run = place_run(run, cell_extent, pdf)
+            placed_run = place_run(run, cell_extent, content_style, pdf)
             placed_run.location = Point(x, y)
             y_next = max(y_next, placed_run.bounds.bottom)
             items.append(placed_run)

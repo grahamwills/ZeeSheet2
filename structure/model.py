@@ -29,6 +29,13 @@ class SheetOptions:
 
 
 @dataclass
+class ContainerOptions:
+    title: str
+    style: str
+    title_style = 'default_title'
+
+
+@dataclass
 class Element:
     value: str
     modifier: Optional[str] = None
@@ -241,6 +248,7 @@ class Block(StructureUnit):
     FMT = FormatPieces('\u276e', ' ', '\u276f')
     title: Run = field(default_factory=lambda: Run())
     children: List[Item] = field(default_factory=lambda: [Item()])
+    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='simple', style='default_block'))
 
     def column_count(self) -> int:
         """ Maximum number of runs in each block item """
@@ -256,6 +264,7 @@ class Section(StructureUnit):
     FMT = FormatPieces('', ' ', '')
     title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
+    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='none', style='default_section'))
 
     def tidy(self) -> None:
         self._tidy_title()

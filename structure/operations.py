@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union, Iterable
 
 from docutils import parsers, utils, core, nodes
 from docutils.parsers import rst
@@ -6,7 +6,7 @@ from docutils.parsers.rst import directives, Directive
 
 from . import model, style
 from . import visitors
-from .model import SheetOptions, Sheet
+from .model import SheetOptions, Sheet, Section, Block, ContainerOptions
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -75,13 +75,15 @@ class Prettify:
         self.lines = None
 
         self.current_sheet_options = SheetOptions()
+        self.current_section_options = Section().options
+        self.current_block_options = Block().options
 
     def run(self) -> str:
         self.lines = []
 
         # Output the options if they are not the default
         if self.current_sheet_options != self.sheet.options:
-            self.append_options(self.sheet.options)
+            self.append_sheet_options(self.sheet.options)
 
         # Add lines for each section
         for s in self.sheet.children:
@@ -104,13 +106,26 @@ class Prettify:
     def append(self, txt: str) -> None:
         self.lines.append(txt)
 
-    def append_options(self, options: SheetOptions):
-        w = style.len2str(options.width)
-        h = style.len2str(options.height)
-        s = options.style
-        debug = ' debug' if options.debug else ''
-        self.append(f".. page:: width={w} height={h} style={s}{debug}")
+    def _append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions], default, attributes: str):
+        parts = [f".. {owner}::"]
+        for k in attributes.split():
+            v = getattr(options, k)
+            if v != getattr(default, k):  # Only output attributes which are not the default
+                k = k.replace('_', '-')
+                if v is True:
+                    parts.append(k)
+                else:
+                    if k in {'width', 'height'}:
+                        v = style.len2str(v)
+                    parts.append(k + '=' + v)
+        self.append(' '.join(parts))
         self.append('')
+
+    def append_sheet_options(self, options: SheetOptions):
+        self._append_options('page', options, SheetOptions(), "width height style debug")
+
+    def append_container_options(self, owner: str, options: ContainerOptions,  default:ContainerOptions):
+        self._append_options(owner, options, default, "title style title_style")
 
     def append_item_rst(self, item: model.Item):
         if not item.children:
@@ -129,6 +144,11 @@ class Prettify:
         if block.title:
             self.append(block.title.to_rst(self.width))
             self.append('')
+
+        if block.options != self.current_block_options:
+            # Remember the new one and write it out
+            self.current_block_options = block.options
+            self.append_container_options('block', block.options, Block().options)
 
         if not block.children:
             return
@@ -179,15 +199,21 @@ class Prettify:
             self.append(title)
             self.append('-' * len(title))
             self.append('')
+
+        if section.options != self.current_section_options:
+            # Remember the new one and write it out
+            self.current_section_options = section.options
+            self.append_container_options('section', section.options, Section().options)
+
         if section.children:
             for b in section.children:
                 self.append_block_rst(b)
             self.append('')
 
 
-
-def prettify(sheet:Sheet, width:int=100) -> str:
+def prettify(sheet: Sheet, width: int = 100) -> str:
     return Prettify(sheet, width).run()
+
 
 def description(comp: model.StructureUnit, short: bool = False) -> str:
     try:

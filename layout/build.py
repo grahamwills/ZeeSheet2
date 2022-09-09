@@ -5,7 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 
 import structure.style
-from common import Spacing, Extent
+from common import Extent
 from generate.pdf import PDF
 from layout.content import PlacedContent
 from layout.packing import Packer
@@ -20,28 +20,23 @@ def make_pdf(sheet: Sheet, owner: User) -> str:
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), styles=complete_styles, debug=sheet.options.debug)
     content = create_sheet(sheet, pdf)
     content.draw(pdf)
-    bytes = pdf.output()
-    path = default_storage.save(file_name, ContentFile(bytes))
-    return path[7:]  # remove the 'sheets/'
+    path = default_storage.save(file_name, ContentFile(pdf.output()))
+    return path[7:]  # remove the 'sheets/' prefix
 
 
 def create_block(block: Block, extent: Extent, pdf: PDF) -> PlacedContent:
-    content = place_block(block, extent, pdf)
-    return content
+    return place_block(block, extent, pdf)
 
 
 def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
-    margin = Spacing.balanced(10)
-    padding = Spacing.balanced(10)
-
-    packer = Packer(section, section.children, create_block, margin, padding, pdf)
-    content = packer.into_columns(round(extent.width))
-    return content
+    s = pdf.styles[section.options.style]
+    packer = Packer(section, section.children, create_block, s.box.margin, s.box.padding, pdf)
+    return packer.into_columns(round(extent.width))
 
 
 def create_sheet(sheet: Sheet, pdf: PDF):
-    style = pdf.styles[sheet.options.style]
-    packer = Packer('Sheet', sheet.children, create_section, style.box.margin, style.box.padding, pdf)
+    s = pdf.styles[sheet.options.style]
+    packer = Packer(sheet, sheet.children, create_section, s.box.margin, s.box.padding, pdf)
     content = packer.into_columns(sheet.options.width)
     return content
 
