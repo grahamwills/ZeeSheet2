@@ -103,7 +103,7 @@ def _place_run(run: Run, extent: Extent, pdf: PDF, allow_bad_breaks: bool) -> Pl
             text = None  # Don't handle this as text in the next block
 
         # Handle cases of actual text, wrapping if necessary
-        while text is not None:
+        while text is not None and text != '':
             if y + height > extent.height:
                 # Clipped text; just add the size of the clipped area
                 clipped += height * font.width(text)

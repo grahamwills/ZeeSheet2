@@ -7,7 +7,6 @@ from typing import List, Optional, ClassVar, Dict
 
 from reportlab.lib.units import inch
 
-from structure import style
 from structure.style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
@@ -20,12 +19,14 @@ def checkbox_character(state) -> str:
     else:
         return '\u2610'
 
+
 @dataclass
 class SheetOptions:
     style: str = 'default_sheet'
     width: float = 8.5 * inch
     height: float = 11 * inch
     debug: bool = False
+
 
 @dataclass
 class Element:
@@ -178,6 +179,16 @@ class Run(StructureUnit):
         # We do not need to tidy runs
         pass
 
+    def strip(self):
+        # Remove leading and trailing blanks
+        if self.children:
+            first = self.children[0]
+            last = self.children[-1]
+            if first.modifier is None:
+                first.value = first.value.lstrip()
+            if last.modifier is None:
+                last.value = last.value.rstrip()
+
 
 @dataclass
 class Item(StructureUnit):
@@ -217,6 +228,10 @@ class Item(StructureUnit):
         for run in old:
             if run:
                 self._split_run_into_cells(run)
+
+        # Remove leading and trailing white space in runs
+        for run in self.children:
+            run.strip()
 
         self._tidy_children(keep_empty=True)
 

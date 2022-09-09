@@ -50,7 +50,10 @@ def _all_lineage_definitions(base, style):
     chained_defs = []
     while style is not None:
         chained_defs.append(style.to_definition())
-        style = base[style.parent] if style.parent else None
+        parent = base[style.parent or 'default']
+        if parent == style:
+            break
+        style = parent
     return chained_defs
 
 

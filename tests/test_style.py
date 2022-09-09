@@ -123,7 +123,7 @@ class TestMakeCompleteStyles(TestCase):
 
     def test_simple_inheritance(self):
         input = {'default': Defaults.default,
-                 'test': Style('test', 'default').set('margin', '1in')
+                 'test': Style('test').set('margin', '1in')
                  }
         output = make_complete_styles(input)
 

@@ -10,6 +10,7 @@ from structure import Section, Block, Item, Run, description
 
 LOGGER = configured_logger(__name__)
 
+
 @dataclass
 class Error:
     """ Error from placing one or more items. """
@@ -111,7 +112,7 @@ class PlacedRunContent(PlacedContent):
 
 
 def _debug_draw_rect(pdf, represents, rect):
-    if  pdf.debug:
+    if pdf.debug:
         if isinstance(represents, Section):
             r, g, b, a = 1, 0.7, 0, 0.15
         elif isinstance(represents, Block):

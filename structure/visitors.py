@@ -2,6 +2,7 @@ import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
+from . import style
 from .model import *
 
 # These tags will not  be recorded
@@ -33,7 +34,8 @@ def _line_of(node: docutils.nodes.Node):
         pass
     return _line_of(node.parent)
 
-def _apply_option_definitions(definitions:Dict[str, str], options):
+
+def _apply_option_definitions(definitions: Dict[str, str], options):
     for k, v in definitions.items():
         if k == 'style':
             options.style = v
@@ -209,9 +211,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             raise KeyError(f'Currently unsupported settings for {node.name}')
 
-
-
-
     def visit_style_definitions(self, node) -> None:
         lines: List[str] = node.lines
         current_style = None
@@ -304,4 +303,3 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
-
