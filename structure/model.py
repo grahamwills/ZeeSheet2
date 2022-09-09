@@ -267,11 +267,7 @@ class Sheet(StructureUnit):
     FMT = FormatPieces('', ' --- ', '')
     children: List[Section] = field(default_factory=lambda: [Section()])
     styles: Dict[str, Style] = field(default_factory=lambda: {})
-    problems: List[Problem] = field(default_factory=list)
     options: SheetOptions = field(default_factory=SheetOptions)
-
-    def describe_issues(self):
-        return ' \u2022 '.join(s.message for s in self.problems)
 
     def tidy(self) -> None:
         self._tidy_children()

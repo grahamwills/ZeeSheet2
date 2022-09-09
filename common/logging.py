@@ -44,3 +44,27 @@ def configured_logger(name: str):
         _initialize_logging()
         _logging_initialized = True
     return logging.getLogger(name)
+
+
+def message_parse(message: str, text: str, ancestors: str, line: int = None) -> str:
+    txt = f"{message}, but found '{text}'"
+    if ancestors:
+        text += f' in parse tree elements [{ancestors}]'
+    if line is not None:
+        text += f' at line {line}'
+    return txt
+
+
+def message_syntax(owner: str, text: str, message: str, category: str) -> str:
+    return f"{message}, but found '{text} for {category} '{owner}'. Ignoring the definition"
+
+
+def message_bad_value(owner: str, key: str, message: str, category: str) -> str:
+    return f"For attribute '{key}' of {category} '{owner}': {message}. Ignoring the definition"
+
+
+def message_unknown_attribute(owner: str, key: str, category: str = None) -> str:
+    if category:
+        return f"Unknown attribute '{key}' defined for {category} '{owner}'. Ignoring the definition"
+    else:
+        return f"Unknown attribute '{key}' defined for '{owner}'. Ignoring the definition"

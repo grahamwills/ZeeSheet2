@@ -6,7 +6,7 @@ from docutils.parsers.rst import directives, Directive
 
 from . import model, style
 from . import visitors
-from .model import SheetOptions
+from .model import SheetOptions, Sheet
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -67,130 +67,130 @@ def text_to_sheet(text: str) -> model.Sheet:
     return main_visitor.get_sheet()
 
 
-def append_options(lines: List[str], options: SheetOptions):
-    w = style.len2str(options.width)
-    h = style.len2str(options.height)
-    s = options.style
-    debug = ' debug' if options.debug else ''
-    lines.append(f"..page:: width={w} height={h} style={s}{debug}")
-    lines.append('')
+class Prettify:
+
+    def __init__(self, sheet: model.Sheet, width):
+        self.width = width
+        self.sheet = sheet
+        self.lines = None
+
+        self.current_sheet_options = SheetOptions()
+
+    def run(self) -> str:
+        self.lines = []
+
+        # Output the options if they are not the default
+        if self.current_sheet_options != self.sheet.options:
+            self.append_options(self.sheet.options)
+
+        # Add lines for each section
+        for s in self.sheet.children:
+            self.append_section_rst(s)
+
+        # Remove trailing section definition and blank lines
+        while self.lines and self.lines[-1] == '':
+            self.lines = self.lines[:-1]
+
+        # Handle styles
+        if self.sheet.styles:
+            self.append('')
+            self.append('.. styles::')
+            for name, style in self.sheet.styles.items():
+                self.append('   ' + name)
+                self.append('     ' + style.to_definition())
+
+        return '\n'.join(self.lines)
+
+    def append(self, txt: str) -> None:
+        self.lines.append(txt)
+
+    def append_options(self, options: SheetOptions):
+        w = style.len2str(options.width)
+        h = style.len2str(options.height)
+        s = options.style
+        debug = ' debug' if options.debug else ''
+        self.append(f".. page:: width={w} height={h} style={s}{debug}")
+        self.append('')
+
+    def append_item_rst(self, item: model.Item):
+        if not item.children:
+            return
+        txt = '- ' + item.children[0].to_rst(self.width, indent=2)
+        self.append(txt)
+
+        if len(item.children) > 1:
+            self.append('')
+            for run in item.children[1:]:
+                txt = '  - ' + run.to_rst(self.width, indent=4)
+                self.append(txt.rstrip())
+            self.append('')
+
+    def append_block_rst(self, block: model.Block):
+        if block.title:
+            self.append(block.title.to_rst(self.width))
+            self.append('')
+
+        if not block.children:
+            return
+
+        # Try to show as matrix of aligned cells
+        ncols = block.column_count()
+
+        if ncols > 1:
+            # Create a table of simple text representations and calculate the maximum widths of each column
+            table = [[run.to_rst().strip() for run in item.children] for item in block.children]
+            col_widths = [0] * ncols
+            for row in table:
+                for c, txt in enumerate(row):
+                    col_widths[c] = max(col_widths[c], len(txt))
+            col_widths[-1] = 0  # stops it being left justified with trailing spaces
+
+            indent = 2  # leading '- '
+            column_widths_except_last = sum(col_widths[:1])
+            column_dividers = 3 * (ncols - 1)  # ' | ' between each column
+            space_for_last = self.width - (indent + column_widths_except_last + column_dividers)
+
+            # Require at least 8 characters for the last cell. This is an ad-hoc number
+            if space_for_last >= 8:
+                for row, item in zip(table, block.children):
+                    row_parts = []
+                    for i, txt in enumerate(row):
+                        if i < ncols - 1 or len(txt) <= space_for_last:
+                            # Add the simple text, left-justified
+                            row_parts.append(txt.ljust(col_widths[i]))
+                        else:
+                            # Need to wrap the text onto the next line
+                            txt = item.children[i].to_rst(space_for_last, indent=2).strip()
+                            row_parts.append(txt)
+                    self.append(('- ' + ' | '.join(row_parts).rstrip()))
+                self.append('')
+                return
+
+        # Could not fit onto one line; need to use the simple method
+        for item in block.children:
+            self.append_item_rst(item)
+        self.append('')
+
+    def append_section_rst(self, section: model.Section):
+        """Adds restructured text lines for the given section"""
+        if section.title:
+            # Since the section title has to be underlined, we cannot wrap it
+            title = section.title.to_rst()
+            self.append(title)
+            self.append('-' * len(title))
+            self.append('')
+        if section.children:
+            for b in section.children:
+                self.append_block_rst(b)
+            self.append('')
 
 
-def prettify(sheet: model.Sheet, width: int = 100) -> str:
-    lines = []
 
-    # List the errors and warnings up front
-    append_issues_rst(lines, ERROR_DIRECTIVE, [i for i in sheet.problems if i.is_error])
-    append_issues_rst(lines, WARNING_DIRECTIVE, [i for i in sheet.problems if not i.is_error])
-
-    # Output the options
-    append_options(lines, sheet.options)
-
-    # Add lines for each section
-    for s in sheet.children:
-        append_section_rst(lines, s, width)
-
-    # Remove trailing section definition and blank lines
-    while lines and lines[-1] == '':
-        lines = lines[:-1]
-
-    # Handle styles
-    if sheet.styles:
-        lines.append('')
-        lines.append('.. styles::')
-        for name, style in sheet.styles.items():
-            lines.append('   ' + name)
-            lines.append('     ' + style.to_definition())
-
-    return '\n'.join(lines)
-
+def prettify(sheet:Sheet, width:int=100) -> str:
+    return Prettify(sheet, width).run()
 
 def description(comp: model.StructureUnit, short: bool = False) -> str:
     try:
         return comp.description(short)
     except AttributeError:
         return str(comp)
-
-
-def append_issues_rst(lines: List[str], directive: str, issues: List[model.Problem]):
-    """Convert issues to restructured text directives"""
-    if issues:
-        lines.append(directive)
-        for issue in issues:
-            lines.append(f"   [{issue.lineNo:3}] {issue.message}")
-        lines.append('')
-
-
-def append_item_rst(lines: List[str], item: model.Item, width: int):
-    if not item.children:
-        return
-    txt = '- ' + item.children[0].to_rst(width, indent=2)
-    lines.append(txt)
-
-    if len(item.children) > 1:
-        lines.append('')
-        for run in item.children[1:]:
-            txt = '  - ' + run.to_rst(width, indent=4)
-            lines.append(txt.rstrip())
-        lines.append('')
-
-
-def append_block_rst(lines: List[str], block: model.Block, width: int):
-    if block.title:
-        lines.append(block.title.to_rst(width))
-        lines.append('')
-
-    if not block.children:
-        return
-
-    # Try to show as matrix of aligned cells
-    ncols = block.column_count()
-
-    if ncols > 1:
-        # Create a table of simple text representations and calculate the maximum widths of each column
-        table = [[run.to_rst().strip() for run in item.children] for item in block.children]
-        col_widths = [0] * ncols
-        for row in table:
-            for c, txt in enumerate(row):
-                col_widths[c] = max(col_widths[c], len(txt))
-        col_widths[-1] = 0  # stops it being left justified with trailing spaces
-
-        indent = 2  # leading '- '
-        column_widths_except_last = sum(col_widths[:1])
-        column_dividers = 3 * (ncols - 1)  # ' | ' between each column
-        space_for_last = width - (indent + column_widths_except_last + column_dividers)
-
-        # Require at least 8 characters for the last cell. This is an ad-hoc number
-        if space_for_last >= 8:
-            for row, item in zip(table, block.children):
-                row_parts = []
-                for i, txt in enumerate(row):
-                    if i < ncols - 1 or len(txt) <= space_for_last:
-                        # Add the simple text, left-justified
-                        row_parts.append(txt.ljust(col_widths[i]))
-                    else:
-                        # Need to wrap the text onto the next line
-                        txt = item.children[i].to_rst(space_for_last, indent=2).strip()
-                        row_parts.append(txt)
-                lines.append(('- ' + ' | '.join(row_parts).rstrip()))
-            lines.append('')
-            return lines
-
-    # Could not fit onto one line; need to use the simple method
-    for item in block.children:
-        append_item_rst(lines, item, width)
-    lines.append('')
-
-
-def append_section_rst(lines: List[str], section: model.Section, width: int):
-    """Adds restructured text lines for the given section"""
-    if section.title:
-        # Since the section title has to be underlined, we cannot wrap it
-        title = section.title.to_rst()
-        lines.append(title)
-        lines.append('-' * len(title))
-        lines.append('')
-    if section.children:
-        for b in section.children:
-            append_block_rst(lines, b, width)
-        lines.append('')

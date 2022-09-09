@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Set, Tuple, Iterable
+from warnings import warn
 
 from reportlab.lib import units
 from reportlab.lib.colors import toColor
 
 from common import Spacing
+from common.logging import message_unknown_attribute, message_syntax, message_bad_value
 
 
 def text_to_spacing(text: str) -> Spacing:
@@ -24,6 +26,12 @@ def text_to_spacing(text: str) -> Spacing:
     raise ValueError('Lengths must be a single item, 2 items or all four')
 
 
+def validate_value(key: str, value: str, possibles: Iterable[str]):
+    if value.lower() not in possibles:
+        p = ', '.join(possibles)
+        raise ValueError(f"'{value}' is not a legal value for the style attribute {key}. Should be one of {p}")
+
+
 @dataclass
 class FontStyle:
     family: str = None
@@ -36,11 +44,8 @@ class FontStyle:
         elif key == 'size':
             self.size = float(value)
         elif key in ['style', 'face']:
-            if value.lower() in {'normal', 'regular', 'bold', 'italic', 'bolditalic'}:
-                self.style = value.lower()
-            else:
-                raise ValueError(
-                    f"Unknown value {value} for alignment -- should be one of:regular, bold, italic, boldItalic")
+            validate_value(key, value, ('normal', 'regular', 'bold', 'italic', 'bolditalic'))
+            self.style = value.lower()
         else:
             raise AttributeError(key)
 
@@ -69,10 +74,8 @@ class TextStyle:
         elif key == 'opacity':
             self.opacity = txt2fraction(value)
         elif key in {'align', 'alignment'}:
-            if value in {'left', 'right', 'center'}:
-                self.align = value
-            else:
-                raise ValueError(f"Unknown value {value} for alignment -- should be one of:left, right, center")
+            validate_value(key, value, ('left', 'right', 'center'))
+            self.align = value
         elif key in ['indent', 'indentation']:
             self.indent = units.toLength(value)
         else:
@@ -125,10 +128,8 @@ class BoxStyle:
         elif key == 'borderopacity':
             self.border_opacity = txt2fraction(value)
         elif key in {'border', 'method', 'style', 'bordermethod'}:
-            if value in {'none', 'square', 'rounded'}:
-                self.border = value
-            else:
-                raise ValueError(f"Unknown value {value} for border -- should be one of:none, square, rounded")
+            validate_value(key, value, ('none', 'square', 'rounded'))
+            self.border = value
         elif key == 'margin':
             self.margin = text_to_spacing(value)
         elif key == 'padding':
@@ -170,7 +171,6 @@ class Style:
         if not self.name.isidentifier():
             raise ValueError(f'Style name must be a valid identifier, but was {self.name}')
 
-
     def set(self, name: str, value: str) -> Style:
         key = name.lower().replace('-', '').replace('_', '')
         if key in {'parent', 'inherit'}:
@@ -179,25 +179,28 @@ class Style:
 
         children = ('text', 'font', 'box')
 
-        # Check if the attribute has a child name as prefix
-        for child in children:
-            if key.startswith(child):
+        try:
+            # Check if the attribute has a child name as prefix
+            for child in children:
+                if key.startswith(child):
+                    try:
+                        getattr(self, child).set(key[len(child):], value)
+                        return self
+                    except AttributeError:
+                        pass
+
+            # Just try the children in order. The order is important as
+            # the children may have attributes with the same name
+            for child in children:
                 try:
-                    getattr(self, child).set(key[len(child):], value)
+                    getattr(self, child).set(key, value)
                     return self
                 except AttributeError:
                     pass
 
-        # Just try the children in order. The order is important as
-        # the children may have attributes with the same name
-        for child in children:
-            try:
-                getattr(self, child).set(key, value)
-                return self
-            except AttributeError:
-                pass
-
-        raise AttributeError(name)
+            warn(message_unknown_attribute(self.name, name, category='style'))
+        except ValueError as ex:
+            warn(message_bad_value(self.name, name, str(ex), category='style'))
 
     def to_definition(self):
         parts = []
@@ -235,7 +238,7 @@ def set_using_definition(style: Style, text: str) -> None:
         if d:
             dd = d.split(':')
             if len(dd) != 2:
-                raise ValueError('Style definitions must be of the form KEY:VALUE, but we received: ' + d)
+                warn(message_syntax(style.name, text, 'Style definitions must be of the form KEY:VALUE', 'style'))
             style.set(dd[0].strip(), dd[1].strip())
 
 

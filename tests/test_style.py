@@ -1,3 +1,4 @@
+import warnings
 from unittest import TestCase
 
 from common import Spacing
@@ -112,11 +113,39 @@ class TestStyle(TestCase):
 
     def test_bad_settings(self):
         style = Style('test')
-        self.assertRaises(AttributeError, lambda: style.set('unknown', 'red'))
-        self.assertRaises(ValueError, lambda: style.set('color', 'a strange hue'))
-        self.assertRaises(ValueError, lambda: style.set('border', 'squiggly'))
-        self.assertRaises(ValueError, lambda: style.set('opacity', '2'))
-        self.assertRaises(ValueError, lambda: style.set('box-opacity', '-1'))
+        with warnings.catch_warnings(record=True) as warning_messages:
+            style.set('unknown', 'red')
+            self.assertEqual(1, len(warning_messages))
+            self.assertEqual("Unknown attribute 'unknown' defined for style 'test'. Ignoring the definition",
+                             str(warning_messages[0].message))
+
+        with warnings.catch_warnings(record=True) as warning_messages:
+            style.set('color', 'a strange hue')
+            self.assertEqual(1, len(warning_messages))
+            self.assertEqual("For attribute 'color' of style 'test': Invalid color value 'a strange hue'."
+                             " Ignoring the definition", str(warning_messages[0].message))
+
+        with warnings.catch_warnings(record=True) as warning_messages:
+            style.set('border', 'squiggly')
+            self.assertEqual(1, len(warning_messages))
+            self.assertEqual(
+                "For attribute 'border' of style 'test': 'squiggly' is not a legal value for the style attribute "
+                "border. Should be one of none, square, rounded. Ignoring the definition",
+                str(warning_messages[0].message))
+
+        with warnings.catch_warnings(record=True) as warning_messages:
+            style.set('opacity', '2')
+            self.assertEqual(1, len(warning_messages))
+            self.assertEqual("For attribute 'opacity' of style 'test': "
+                             "Opacity must be in the range [0,1] or [0%, 100%]. Ignoring the definition",
+                             str(warning_messages[0].message))
+
+        with warnings.catch_warnings(record=True) as warning_messages:
+            style.set('box-opacity', '-1')
+            self.assertEqual(1, len(warning_messages))
+            self.assertEqual("For attribute 'box-opacity' of style 'test': "
+                             "Opacity must be in the range [0,1] or [0%, 100%]. Ignoring the definition",
+                             str(warning_messages[0].message))
 
 
 class TestMakeCompleteStyles(TestCase):

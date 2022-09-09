@@ -193,9 +193,6 @@ accompanying text that we should absolutely wrap)
 abcd
 ---
 ################################################
-.. WARNING::
-   [  2] Possible title underline, too short for the title. Treating it as ordinary text because it's so short.
-
 abcd ---
 ################################################
 
@@ -211,9 +208,6 @@ abcdefg
 
 more after
 ################################################
-.. ERROR::
-   [  2] Unexpected section title or transition. (within definition_list • definition_list_item • definition)
-
 abcdefg
 
 more after

@@ -1,18 +1,18 @@
+import warnings
 from datetime import datetime
 from typing import List, Dict
 
 from django.contrib import messages
 from django.contrib.auth import login
 from django.core.files.storage import default_storage
-from django.http import HttpRequest, FileResponse, HttpResponse, HttpResponseForbidden
+from django.http import HttpRequest, FileResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
-from structure import prettify, text_to_sheet
 from layout.build import make_pdf
+from structure import prettify, text_to_sheet
 from .forms import NewUserForm
 from .models import Sheet
-
 
 
 def _group_sheets(field, **kwargs) -> List[Dict]:
@@ -126,17 +126,24 @@ def action_dispatcher(request, sheet_id):
         edit_content = csd.content
     if 'validate' in request.POST:
         # Check that the definition is good and prettify it
-        sheet = text_to_sheet(edit_content)
-        edit_content = prettify(sheet)
+        with warnings.catch_warnings(record=True) as warning_messages:
+            sheet = text_to_sheet(edit_content)
+            edit_content = prettify(sheet)
+            for w in warning_messages:
+                messages.warning(request, str(w.message))
+
     if 'generate' in request.POST:
         # Generate PDF and store on disk
-        sheet = text_to_sheet(edit_content)
-        pdf_file = make_pdf(sheet, csd.owner)
+        with warnings.catch_warnings(record=True) as warning_messages:
+            sheet = text_to_sheet(edit_content)
+            pdf_file = make_pdf(sheet, csd.owner)
+            for w in warning_messages:
+                messages.warning(request, str(w.message))
 
     return show_sheet(request, sheet_id, edit_content, pdf_file)
 
 
-def show_file(request, file_name:str):
+def show_file(request, file_name: str):
     name = request.user.username
     if file_name.startswith(name + '-'):
         pdf = default_storage.open('sheets/' + file_name, 'rb')
@@ -144,12 +151,14 @@ def show_file(request, file_name:str):
     else:
         return HttpResponseForbidden('You cannot access sheets of other users')
 
-def _extract_errors(html:str):
+
+def _extract_errors(html: str):
     items = html.split('<li>')
-    assert len(items) %2 == 1
+    assert len(items) % 2 == 1
     for item in items[1::2]:
         idx = item.find('</li>')
         yield item[:idx].strip()
+
 
 def register_request(request):
     if request.method == "POST":

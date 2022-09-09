@@ -1,7 +1,11 @@
+import reprlib
+import warnings
+
 import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
+from common.logging import message_unknown_attribute, message_parse
 from . import style
 from .model import *
 
@@ -23,7 +27,7 @@ def _tag(node: docutils.nodes.Node):
 
 def _line_of(node: docutils.nodes.Node):
     if not node:
-        return -999
+        return None
     if 'line' in node:
         return node['line']
     try:
@@ -35,7 +39,7 @@ def _line_of(node: docutils.nodes.Node):
     return _line_of(node.parent)
 
 
-def _apply_option_definitions(definitions: Dict[str, str], options):
+def _apply_option_definitions(owner: str, definitions: Dict[str, str], options):
     for k, v in definitions.items():
         if k == 'style':
             options.style = v
@@ -44,9 +48,12 @@ def _apply_option_definitions(definitions: Dict[str, str], options):
         elif k == 'height':
             options.height = units.toLength(v)
         elif isinstance(v, bool):
-            setattr(options, k, v)
+            if hasattr(options, k):
+                setattr(options, k, v)
+            else:
+                warnings.warn(message_unknown_attribute(owner, k))
         else:
-            raise AttributeError(f'Unknown option {k}')
+            warnings.warn(message_unknown_attribute(owner, k))
 
 
 class StructureBuilder(docutils.nodes.NodeVisitor):
@@ -136,10 +143,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         # The departure will not be noted, so must not record this
         level = node.attributes['level']
         message = node.children[0].astext()
-        if level > 2:
-            self.error(node, message)
-        else:
-            self.warning(node, message)
+        self.error(node, message)
 
         # No processing of children
         raise docutils.nodes.SkipChildren
@@ -176,7 +180,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         if node.astext() == '|':
             pass
         else:
-            self.warning(node, 'Problematic syntax')
+            self.error(node, 'Problematic syntax')
 
     def visit_substitution_reference(self, node: docutils.nodes.Node) -> None:
         # Treat the pipe symbols as actual text both before and after
@@ -201,11 +205,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 # Two parts
                 definitions[oo[0]] = oo[1]
 
-        # Find the optionn to set into
+        # Find the options to set into
         if node.name == 'page':
             try:
-                _apply_option_definitions(definitions, self.sheet.options)
-                print(self.sheet.options)
+                _apply_option_definitions('page', definitions, self.sheet.options)
             except AttributeError as ex:
                 self.error(node, f"{ex} for {node.name}")
         else:
@@ -223,8 +226,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                     name = name[:-1].strip()
                 if not name.isidentifier():
                     self.error(node, f"{name} is not a valid identifier for a style")
-                if name in self.sheet.styles:
-                    self.warning(node, f"{name} is being modified. It's better to define it all in one go")
                 current_style = Style(name)
                 self.sheet.styles[name] = current_style
             else:
@@ -245,16 +246,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         what = _tag(node)
         expected = self.process_stack.pop()
         if expected != what:
-            message = f"Expected to be finishing {expected}, but encountered {what}"
-            raise RuntimeError(message)
-
-    def warning(self, node: docutils.nodes.Node, message: str):
-        text = self._issue_description(message)
-        self.sheet.problems.append(Problem(_line_of(node), False, text))
+            raise RuntimeError(f"Expected to be finishing {expected}, but encountered {what}")
 
     def error(self, node: docutils.nodes.Node, message: str):
-        text = self._issue_description(message)
-        self.sheet.problems.append(Problem(_line_of(node), True, text))
+        ancestors = self._processing(n=5).strip()
+        text = reprlib.repr(node.astext())
+        warnings.warn(message_parse(message, text, ancestors, line=_line_of(node)))
 
     def add_elements(self, elements, node, p):
         if p in BLOCK_TITLE_ANCESTRY:
@@ -265,14 +262,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             self.current_run.children += elements
         else:
             self.error(node, 'Unexpected text encountered')
-
-    def _issue_description(self, message):
-        ancestors = self._processing(n=5).strip()
-        text = message
-        if ancestors:
-            text += ' (within ' + ancestors + ')'
-        text = text.replace('\n', ' ')
-        return text
 
     def _processing(self, n: int = 2, skip_last: bool = False):
         """Text form of where we are in the processing tree"""

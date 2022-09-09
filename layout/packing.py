@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from typing import Iterable, Callable, List, Any
 
@@ -55,8 +56,6 @@ class Packer:
 
     def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
-        if n_items < ncol:
-            raise ValueError('Cannot have more columns than items in a layout')
         spans = self.divide_width(width, ncol)
 
         ss = ", ".join(str(s) for s in spans)
