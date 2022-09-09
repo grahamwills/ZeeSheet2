@@ -48,7 +48,7 @@ class FontStyle:
         if self.family:
             parts.append(f'font-family:{self.family}')
         if self.size is not None:
-            parts.append(f'font-size:{_num2str(self.size)}')
+            parts.append(f'font-size:{num2str(self.size)}')
         if self.style is not None:
             parts.append(f'font-style:{self.style}')
 
@@ -67,7 +67,7 @@ class TextStyle:
             toColor(value)  # Check it is valid
             self.color = value
         elif key == 'opacity':
-            self.opacity = _txt2fraction(value)
+            self.opacity = txt2fraction(value)
         elif key in {'align', 'alignment'}:
             if value in {'left', 'right', 'center'}:
                 self.align = value
@@ -82,15 +82,15 @@ class TextStyle:
         if self.color:
             parts.append(f'text-color:{self.color}')
         if self.opacity is not None:
-            parts.append(f'text-opacity:{_num2str(self.opacity)}')
+            parts.append(f'text-opacity:{num2str(self.opacity)}')
         if self.align is not None:
             parts.append(f'text-align:{self.align}')
         if self.indent is not None:
-            parts.append(f'text-indent:{_num2str(self.indent)}')
+            parts.append(f'text-indent:{num2str(self.indent)}')
 
 
 def spacing_to_text(spacing: Spacing) -> str:
-    parts = (_len2str(spacing.left), _len2str(spacing.right), _len2str(spacing.top), _len2str(spacing.bottom))
+    parts = (len2str(spacing.left), len2str(spacing.right), len2str(spacing.top), len2str(spacing.bottom))
     if parts[0] == parts[1] == parts[2] == parts[3]:
         return '{}'.format(parts[0])
     if parts[0] == parts[1] and parts[2] == parts[3]:
@@ -118,12 +118,12 @@ class BoxStyle:
             toColor(value)  # Check it is valid
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
-            self.opacity = _txt2fraction(value)
+            self.opacity = txt2fraction(value)
         elif key == 'bordercolor':
             toColor(value)  # Check it is valid
             self.border_color = value
         elif key == 'borderopacity':
-            self.border_opacity = _txt2fraction(value)
+            self.border_opacity = txt2fraction(value)
         elif key in {'border', 'method', 'style', 'bordermethod'}:
             if value in {'none', 'square', 'rounded'}:
                 self.border = value
@@ -142,15 +142,15 @@ class BoxStyle:
         if self.border:
             parts.append(f'border:{self.border}')
         if self.width:
-            parts.append(f'border-width:{_len2str(self.width)}')
+            parts.append(f'border-width:{len2str(self.width)}')
         if self.border_color:
             parts.append(f'border-color:{self.border_color}')
         if self.border_opacity is not None:
-            parts.append(f'border-opacity:{_num2str(self.border_opacity)}')
+            parts.append(f'border-opacity:{num2str(self.border_opacity)}')
         if self.color:
             parts.append(f'background:{self.color}')
         if self.opacity is not None:
-            parts.append(f'background-opacity:{_num2str(self.opacity)}')
+            parts.append(f'background-opacity:{num2str(self.opacity)}')
         if self.margin is not None:
             parts.append(f'margin:{spacing_to_text(self.margin)}')
         if self.padding is not None:
@@ -239,7 +239,7 @@ def set_using_definition(style: Style, text: str) -> None:
             style.set(dd[0].strip(), dd[1].strip())
 
 
-def _txt2fraction(value: str) -> float:
+def txt2fraction(value: str) -> float:
     if value[-1] == '%':
         v = float(value[:-1]) / 100
     else:
@@ -250,7 +250,7 @@ def _txt2fraction(value: str) -> float:
         raise ValueError("Opacity must be in the range [0,1] or [0%, 100%]")
 
 
-def _num2str(x: float) -> str:
+def num2str(x: float) -> str:
     if x == int(x):
         return str(int(x))
     else:
@@ -258,11 +258,11 @@ def _num2str(x: float) -> str:
         return f'{x:.2f}'.rstrip('0')
 
 
-def _len2str(x: float) -> str:
+def len2str(x: float) -> str:
     if x == 0:
         return 0
     if x % 72 == 0:
         return f'{int(x) // 72}in'
     if x % 9 == 0:
         return f'{int(x) / 72}in'
-    return _num2str(x)
+    return num2str(x)

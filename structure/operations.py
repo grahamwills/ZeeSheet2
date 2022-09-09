@@ -4,8 +4,9 @@ from docutils import parsers, utils, core, nodes
 from docutils.parsers import rst
 from docutils.parsers.rst import directives, Directive
 
-from . import model
+from . import model, style
 from . import visitors
+from .model import SheetOptions
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -66,12 +67,24 @@ def text_to_sheet(text: str) -> model.Sheet:
     return main_visitor.get_sheet()
 
 
+def append_options(lines: List[str], options: SheetOptions):
+    w = style.len2str(options.width)
+    h = style.len2str(options.height)
+    s = options.style
+    debug = ' debug' if options.debug else ''
+    lines.append(f"..page:: width={w} height={h} style={s}{debug}")
+    lines.append('')
+
+
 def prettify(sheet: model.Sheet, width: int = 100) -> str:
     lines = []
 
     # List the errors and warnings up front
     append_issues_rst(lines, ERROR_DIRECTIVE, [i for i in sheet.problems if i.is_error])
     append_issues_rst(lines, WARNING_DIRECTIVE, [i for i in sheet.problems if not i.is_error])
+
+    # Output the options
+    append_options(lines, sheet.options)
 
     # Add lines for each section
     for s in sheet.children:
