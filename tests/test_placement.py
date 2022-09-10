@@ -1,7 +1,8 @@
 import unittest
 
 from common import Extent, Point, Rect
-from generate.pdf import PDF, FontInfo
+from generate.pdf import PDF
+from generate.fonts import Font, FontLibrary
 from layout.content import Error
 from layout.placement import place_run, split_for_wrap, place_block
 from structure import Element, Run, Block, Item
@@ -23,10 +24,10 @@ class TestRunPlacement(unittest.TestCase):
     E2A = Element('brave new', 'strong')
     E3 = Element(' world')
     EX = Element('supercalifragilisticexpialidocious')
-    pdf = PDF((1000, 1000))
+    pdf = PDF((1000, 1000), font_lib=FontLibrary())
 
     def test_split_line(self):
-        font = FontInfo('Helvetica', 14, False, False)
+        font = self.pdf.font_lib.get_font('Helvetica', 14, False, False)
         head, w, tail, bad = split_for_wrap('hello everyone in the room ', 40, font)
         self.assertEqual('hello', head)
         self.assertEqual('everyone in the room ', tail)
@@ -43,7 +44,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(font.width('hello everyone in'), w)
 
     def test_split_line_allowing_bad_breaks(self):
-        font = FontInfo('Helvetica', 14, False, False)
+        font = self.pdf.font_lib.get_font('Helvetica', 14, False, False)
         head, w, tail, bad = split_for_wrap('hello everyone in the room ', 40, font, True)
         self.assertEqual('hello', head)
         self.assertEqual(False, bad)
@@ -159,7 +160,7 @@ class TestRunPlacement(unittest.TestCase):
 
     class TestBlockPlacement(unittest.TestCase):
         title = Run([Element('A simple title')])
-        pdf = PDF((1000, 1000))
+        pdf = PDF((1000, 1000), FontLibrary())
 
         def test_simple_block(self):
             # Title with line below

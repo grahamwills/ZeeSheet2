@@ -4,13 +4,13 @@ from enum import Enum
 from io import BytesIO
 from typing import List, Tuple, Union, Dict
 
-from reportlab.lib import fonts, colors
+from reportlab.lib import colors
 from reportlab.lib.colors import Color, toColor
-from reportlab.pdfbase import pdfmetrics as metrics
 from reportlab.pdfgen import canvas
 
 from common import Rect, Point
 from common import configured_logger
+from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character
 from structure.style import Style
 
@@ -26,43 +26,10 @@ class DrawMethod(Enum):
 
 
 @dataclass
-class FontInfo:
-    name: str
-    size: float
-    bold: bool
-    italic: bool
-
-    def __post_init__(self):
-        self.ps_name = fonts.tt2ps(self.name, 1 if self.bold else 0, 1 if self.italic else 0)
-        a, d = metrics.getAscentDescent(self.ps_name, self.size)
-        self.ascent = abs(a)
-        self.descent = abs(d)
-
-    def width(self, text: str) -> float:
-        """Measures the width of the text"""
-        return metrics.stringWidth(text, self.ps_name, self.size)
-
-    @property
-    def line_spacing(self):
-        """The distance between two lines"""
-        return (self.ascent + self.descent) * 1.2
-
-    @property
-    def top_to_baseline(self):
-        """The distance from the notional top to the baseline for the font"""
-        # We split the leading half above the text and half below it
-        leading = self.line_spacing - (self.ascent + self.descent)
-        return self.ascent + leading / 2
-
-    def modify(self, bold: bool, italic: bool):
-        return FontInfo(self.name, self.size, bold or self.bold, italic or self.italic)
-
-
-@dataclass
 class TextSegment:
     text: str
     offset: Point
-    font: FontInfo
+    font: Font
 
     def __str__(self):
         return reprlib.repr(self.text) + '@' + str(self.offset)
@@ -72,7 +39,7 @@ class TextSegment:
 class CheckboxSegment:
     state: bool
     offset: Point
-    font: FontInfo
+    font: Font
 
     def __str__(self):
         return checkbox_character(self.state) + '@' + str(self.offset)
@@ -82,10 +49,12 @@ class PDF(canvas.Canvas):
 
     def __init__(self,
                  pagesize: Tuple[int, int],
+                 font_lib: FontLibrary,
                  styles: Dict[str, Style] = None,
                  debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
+        self.font_lib = font_lib
         self.setLineJoin(1)
         self.setLineCap(1)
         self.styles = styles
@@ -94,8 +63,8 @@ class PDF(canvas.Canvas):
         # Keep an index to give unique names to form items
         self._name_index = 0
 
-    def get_font(self, style: Style) -> FontInfo:
-        return FontInfo(style.font.family, style.font.size, style.font.is_bold, style.font.is_italic)
+    def get_font(self, style: Style) -> Font:
+        return self.font_lib.get_font(style.font.family, style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
 
     def get_text_color(self, style: Style) -> Color:
         c = toColor(style.text.color)
@@ -108,7 +77,7 @@ class PDF(canvas.Canvas):
         self.rect(r.left, r.top, r.width, r.height,
                   fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
 
-    def _draw_checkbox(self, rx, ry, font: FontInfo, state, color: Color):
+    def _draw_checkbox(self, rx, ry, font: Font, state, color: Color):
         size = font.ascent + font.descent
 
         x, y = self.absolutePosition(rx, ry + size)
@@ -134,7 +103,7 @@ class PDF(canvas.Canvas):
         for segment in segments:
             if segment.font != current_font:
                 current_font = segment.font
-                text.setFont(current_font.ps_name, current_font.size, current_font.line_spacing)
+                text.setFont(current_font.name, current_font.size, current_font.line_spacing)
             if segment.offset:
                 text.moveCursor(segment.offset.x - off.x, segment.offset.y - off.y)
                 off = segment.offset

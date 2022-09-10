@@ -1,7 +1,8 @@
 from typing import List, Optional, NamedTuple
 
 from common import Extent, Point
-from generate.pdf import PDF, TextSegment, FontInfo, CheckboxSegment
+from generate.pdf import PDF, TextSegment, CheckboxSegment
+from generate.fonts import Font
 from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
 from structure import Run, Block
 from structure.style import Style
@@ -17,7 +18,7 @@ class SplitResult(NamedTuple):
 
 def split_for_wrap(text: str,
                    available: float,
-                   font: FontInfo,
+                   font: Font,
                    allow_bad_breaks: bool = False) -> SplitResult:
     """
         Splits the text into two parts to facilitate wrapping

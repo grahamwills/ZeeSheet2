@@ -3,6 +3,7 @@ from typing import Dict
 
 import structure.style
 from common import Extent
+from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout.content import PlacedContent
 from layout.packing import Packer
@@ -10,10 +11,12 @@ from layout.placement import place_block
 from structure import Sheet, Section, Block, style
 from structure.style import Style
 
+FONT_LIB = FontLibrary()
 
 def make_pdf(sheet: Sheet) -> bytes:
     complete_styles = make_complete_styles(sheet.styles)
-    pdf = PDF((int(sheet.options.width), int(sheet.options.height)), styles=complete_styles, debug=sheet.options.debug)
+    pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
+              styles=complete_styles, debug=sheet.options.debug)
     content = create_sheet(sheet, pdf)
     content.draw(pdf)
     return pdf.output()
