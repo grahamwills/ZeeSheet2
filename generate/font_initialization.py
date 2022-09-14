@@ -8,11 +8,9 @@
 """
 import re
 from collections import defaultdict
-from typing import Tuple
 
 import fontTools.ttLib as ttLib
 import fontTools.varLib.mutator
-from reportlab.pdfbase import pdfmetrics
 
 from fonts import *
 
@@ -77,7 +75,7 @@ def find_or_default(name, variants, default):
 
 def read_files_for_faces() -> Dict[str, Dict[str, str]]:
     files = list(FONT_DIR.glob('*.ttf'))
-    result = defaultdict(lambda : {})
+    result = defaultdict(lambda: {})
     for i, f in enumerate(sorted(files)):
         tt = ttLib.TTFont(f.absolute())
         family = tt['name'].getBestFamilyName()
@@ -99,7 +97,7 @@ def read_files_for_faces() -> Dict[str, Dict[str, str]]:
             face = f.stem[len(family):]
         else:
             p = f.stem.rfind('-')
-            if p <0:
+            if p < 0:
                 if f.stem.endswith('Bold'):
                     family, face = f.stem[:-4], 'Bold'
                 elif f.stem.endswith('Italic'):
@@ -109,7 +107,7 @@ def read_files_for_faces() -> Dict[str, Dict[str, str]]:
                 else:
                     face = 'Regular'
             else:
-                face = f.stem[p+1:]
+                face = f.stem[p + 1:]
 
         if not face:
             face = 'Regular'
@@ -131,15 +129,15 @@ def build_family_info():
         key = name.lower()
         variants = faces[key]
         if not variants:
-            variants = faces[key.replace(' ','')]
+            variants = faces[key.replace(' ', '')]
         if not variants:
-            variants = faces[key.replace(' ','-')]
+            variants = faces[key.replace(' ', '-')]
         while not variants and ' ' in key:
             v = key.rfind(' ')
             key = key[:v]
             variants = faces[key]
             if not variants:
-                variants = faces[key.replace(' ','')]
+                variants = faces[key.replace(' ', '')]
 
         if not variants:
             print('unfound:', name)
@@ -148,9 +146,8 @@ def build_family_info():
 
     with open(FONT_DIR / '_INDEX.txt', 'wt') as f:
         for (name, cat, variants) in sorted(defs):
-            ss = ";".join(f"{a}:{b}" for a,b in sorted(variants.items()))
+            ss = ";".join(f"{a}:{b}" for a, b in sorted(variants.items()))
             f.write(f"{name}|{cat}|{ss}\n")
-
 
 
 def read_names_from_google_pb_files():
@@ -160,7 +157,7 @@ def read_names_from_google_pb_files():
 
     # Sigh. Why name files differently and make these special cases
     categories = {
-        'Recursive-MonoCasual':'monospace',
+        'Recursive-MonoCasual': 'monospace',
         'Recursive-MonoLinear': 'monospace',
         'Recursive-SansCasual': 'sans-serif',
         'Recursive-SansLinear': 'sans-serif',
@@ -178,7 +175,35 @@ def read_names_from_google_pb_files():
     return categories
 
 
+def generate_docs():
+    lib = FontLibrary()
+    families = sorted(lib.families())
+    categories = "builtin sans-serif serif monospace handwriting display".split()
+    all_faces = [f for f in families if f.contains_standard_faces()]
+    print('Font Families with Regular, Bold, Italic and BoldItalic variations')
+    print('==================================================================')
+    print()
+    for c in categories:
+        title = f"Category: {c[0].upper()}{c[1:]}"
+        print(title)
+        print('-' * len(title))
+        names = [f.name for f in all_faces if f.category == c]
+        print(", ".join(names))
+        print()
+
+    print('Individual Fonts')
+    print('================')
+    for c in categories:
+        names = [family.name + ' ' + v for family in families if family.category == c for v in family.faces.keys()]
+        title = f"Category: {c[0].upper()}{c[1:]}"
+        print(title)
+        print('-' * len(title))
+        print(", ".join(names))
+        print()
+
+
 if __name__ == '__main__':
     # copy_fonts_locally()
     # convert_variable_fonts()
-    build_family_info()
+    # build_family_info()
+    generate_docs()

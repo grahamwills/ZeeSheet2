@@ -82,13 +82,15 @@ class Point(NamedTuple):
 
 
 class Extent(NamedTuple):
-
     width: float
     height: float
 
     @property
     def area(self):
         return self.width * self.height
+
+    def __round__(self, n=None):
+        return Extent(round(self.width, n), round(self.height, n))
 
 
 class Rect(namedtuple('Rect', 'left right top bottom')):

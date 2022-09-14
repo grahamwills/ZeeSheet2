@@ -56,6 +56,7 @@ class TestStyle(TestCase):
         style = Style('test')
         self.assertEqual('font-size:1', style.set('font-size', '1.0').to_definition())
         self.assertEqual('font-size:2', style.set('fontSize', '2').to_definition())
+        self.assertEqual('font-size:2; font-style:bold', style.set('bold', None).to_definition())
 
         style = Style('test')
         self.assertEqual('text-align:right', style.set('text-align', 'right').to_definition())

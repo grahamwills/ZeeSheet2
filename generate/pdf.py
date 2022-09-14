@@ -1,4 +1,5 @@
 import reprlib
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
@@ -12,7 +13,7 @@ from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character
-from structure.style import Style
+from structure.style import Style, Defaults
 
 LOGGER = configured_logger(__name__)
 
@@ -50,7 +51,7 @@ class PDF(canvas.Canvas):
     def __init__(self,
                  pagesize: Tuple[int, int],
                  font_lib: FontLibrary,
-                 styles: Dict[str, Style] = None,
+                 styles: Dict[str, Style],
                  debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
@@ -64,9 +65,26 @@ class PDF(canvas.Canvas):
         self._name_index = 0
 
     def get_font(self, style: Style) -> Font:
-        return self.font_lib.get_font(style.font.family, style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
+        try:
+            font = self.font_lib.get_font(style.font.family, style.font.size, bold=style.font.is_bold,
+                                          italic=style.font.is_italic)
+        except KeyError:
+            sim = self.font_lib.similar_names(style.font.family)
+            if len(sim) == 1:
+                warnings.warn(f"Unknown font family '{style.font.family}'. "
+                              f"Using similarly-named family '{sim[0]}' instead")
+            else:
+                ss = ', '.join("'" + s + "'" for s in sim)
+                warnings.warn(f"Unknown font family '{style.font.family}'. Did you mean one of {ss}? "
+                              f"Using '{sim[0]}' instead")
+            font = self.font_lib.get_font(sim[0], style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
+        return font.standardize()
 
     def get_text_color(self, style: Style) -> Color:
+        s = style.text.color
+        if s[0] == '#' and len(s) == 4:
+            # Also handle the '#RGB' format
+            c = '#' + s[1] + s[1]+ s[2]+ s[2]+ s[3]+ s[3]
         c = toColor(style.text.color)
         if style.text.opacity == 1.0:
             return c

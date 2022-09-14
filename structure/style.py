@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Set, Tuple, Iterable
+from typing import List, Iterable, Optional
 from warnings import warn
 
 from reportlab.lib import units
@@ -39,12 +39,17 @@ class FontStyle:
     style: str = None
 
     def set(self, key: str, value):
+        FACES = ('normal', 'regular', 'bold', 'italic', 'bolditalic')
         if key in ['font', 'fontfamily', 'family']:
             self.family = value
         elif key == 'size':
             self.size = float(value)
+        elif value is None and key.lower() in FACES:
+            self.style = key.lower()
+        elif key == 'size':
+            self.size = float(value)
         elif key in ['style', 'face']:
-            validate_value(key, value, ('normal', 'regular', 'bold', 'italic', 'bolditalic'))
+            validate_value(key, value, FACES)
             self.style = value.lower()
         else:
             raise AttributeError(key)
@@ -176,10 +181,10 @@ class Style:
     box: BoxStyle = field(default_factory=BoxStyle)
 
     def __post_init__(self):
-        if not self.name.isidentifier():
+        if not self.name.replace('-', '_').isidentifier():
             raise ValueError(f'Style name must be a valid identifier, but was {self.name}')
 
-    def set(self, name: str, value: str) -> Style:
+    def set(self, name: str, value: Optional[str]) -> Style:
         key = name.lower().replace('-', '').replace('_', '')
         if key in {'parent', 'inherit'}:
             self.parent = value
@@ -207,8 +212,10 @@ class Style:
                     pass
 
             warn(message_unknown_attribute(self.name, name, category='style'))
+            return self
         except ValueError as ex:
             warn(message_bad_value(self.name, name, str(ex), category='style'))
+            return self
 
     def to_definition(self):
         parts = []
@@ -234,20 +241,27 @@ class Defaults:
             'none', 1.0, 'black', 1.0,
             Spacing.balanced(0.0), Spacing.balanced(0.0)))
 
-    title = Style('default_title').set('font-size', '14').set('font-face', 'bold')
-    block = Style('default_block').set('border', 'square').set('margin', '4').set('padding', '2')
-    section = Style('default_section').set('margin', '8').set('padding', '4')
-    sheet = Style('default_sheet').set('margin', '0.75in').set('padding', '8')
+    title = Style('default-title').set('font-size', '14').set('font-face', 'bold')
+    block = Style('default-block').set('border', 'square').set('margin', '4').set('padding', '2')
+    section = Style('default-section').set('margin', '8').set('padding', '4')
+    sheet = Style('default-sheet').set('margin', '0.75in').set('padding', '8')
+
+    @classmethod
+    def all(cls):
+        return {s.name: s for s in [Defaults.default, Defaults.sheet, Defaults.block, Defaults.title, Defaults.section]}
 
 
 def set_using_definition(style: Style, text: str) -> None:
     definitions = re.split('\W*[,;]\W*', text)
     for d in definitions:
         if d:
-            dd = d.split(':')
-            if len(dd) != 2:
+            dd = re.split('[:=]', d)
+            if len(dd) == 1:
+                style.set(d.strip(), None)
+            elif len(dd) == 2:
+                style.set(dd[0].strip(), dd[1].strip())
+            else:
                 warn(message_syntax(style.name, text, 'Style definitions must be of the form KEY:VALUE', 'style'))
-            style.set(dd[0].strip(), dd[1].strip())
 
 
 def txt2fraction(value: str) -> float:

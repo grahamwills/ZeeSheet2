@@ -1,11 +1,12 @@
 import unittest
 
 from common import Extent, Point, Rect
+from generate.fonts import FontLibrary
 from generate.pdf import PDF
-from generate.fonts import Font, FontLibrary
+from layout.build import make_complete_styles
 from layout.content import Error
 from layout.placement import place_run, split_for_wrap, place_block
-from structure import Element, Run, Block, Item
+from structure import Element, Run, Block, Item, Sheet
 from structure.style import Style, FontStyle
 
 
@@ -24,7 +25,7 @@ class TestRunPlacement(unittest.TestCase):
     E2A = Element('brave new', 'strong')
     E3 = Element(' world')
     EX = Element('supercalifragilisticexpialidocious')
-    pdf = PDF((1000, 1000), font_lib=FontLibrary())
+    pdf = PDF((1000, 1000), font_lib=FontLibrary(), styles=None)
 
     def test_split_line(self):
         font = self.pdf.font_lib.get_font('Helvetica', 14, False, False)
@@ -158,37 +159,51 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('c', item.children[2].to_rst())
         self.assertEqual('d', item.children[3].to_rst())
 
-    class TestBlockPlacement(unittest.TestCase):
-        title = Run([Element('A simple title')])
-        pdf = PDF((1000, 1000), FontLibrary())
+class TestBlockPlacement(unittest.TestCase):
 
-        def test_simple_block(self):
-            # Title with line below
-            block = Block(self.title, [_makeItem('hello world')])
-            placed = place_block(block, Extent(200, 100), self.pdf)
-            group = placed.group
-            self.assertEqual(2, len(group))
-            self.assertEqual(Point(0, 0), group[0].location)
-            self.assertEqual(Point(0, 16), round(group[1].location))
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.title = Run([Element('A simple title')])
+        styles = make_complete_styles(Sheet().styles)
 
-        def test_table(self):
-            # Title with 5 cells defined by 3 items
-            items = [
-                _makeItem('hello|this is me'),
-                _makeItem('goodbye     | thanks'),
-                _makeItem('for all the fish')
-            ]
-            block = Block(self.title, items)
-            placed = place_block(block, Extent(300, 100), self.pdf)
-            group = placed.group
-            self.assertEqual(6, len(group))
+        cls.pdf = PDF((1000, 1000), FontLibrary(), styles=styles)
 
-            # Title
-            self.assertEqual(Point(0, 0), group[0].location)
+    def test_empty_block(self):
+        # Title by itself
+        block = Block(self.title, [])
+        placed = place_block(block, Extent(200, 100), self.pdf)
+        group = placed.group
+        self.assertEqual(1, len(group))
+        self.assertEqual(Point(0, 0), group[0].location)
 
-            # Contents on the grid
-            self.assertEqual(Point(0, 16), round(placed.group[1].location))
-            self.assertEqual(Point(150, 16), round(placed.group[2].location))
-            self.assertEqual(Point(0, 31), round(placed.group[3].location))
-            self.assertEqual(Point(150, 31), round(placed.group[4].location))
-            self.assertEqual(Point(0, 47), round(placed.group[5].location))
+    def test_simple_block(self):
+        # Title with line below
+        block = Block(self.title, [_makeItem('hello world')])
+        placed = place_block(block, Extent(200, 100), self.pdf)
+        group = placed.group
+        self.assertEqual(2, len(group))
+        self.assertEqual(Point(0, 0), group[0].location)
+        self.assertEqual(Point(0, 16), round(group[1].location))
+        self.assertEqual(Extent(79,16), round(group[0].extent))
+
+    def test_table(self):
+        # Title with 5 cells defined by 3 items
+        items = [
+            _makeItem('hello|this is me'),
+            _makeItem('goodbye     | thanks'),
+            _makeItem('for all the fish')
+        ]
+        block = Block(self.title, items)
+        placed = place_block(block, Extent(300, 100), self.pdf)
+        group = placed.group
+        self.assertEqual(6, len(group))
+
+        # Title
+        self.assertEqual(Point(0, 0), group[0].location)
+
+        # Contents on the grid
+        self.assertEqual(Point(0, 16), round(placed.group[1].location))
+        self.assertEqual(Point(150, 16), round(placed.group[2].location))
+        self.assertEqual(Point(0, 29), round(placed.group[3].location))
+        self.assertEqual(Point(150, 29), round(placed.group[4].location))
+        self.assertEqual(Point(0, 42), round(placed.group[5].location))

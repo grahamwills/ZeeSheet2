@@ -242,7 +242,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 name = line.lower()
                 if name.endswith(':'):
                     name = name[:-1].strip()
-                if not name.isidentifier():
+                if not name.replace('-', '_').isidentifier():
                     self.error(node, f"{name} is not a valid identifier for a style")
                 current_style = Style(name)
                 self.sheet.styles[name] = current_style

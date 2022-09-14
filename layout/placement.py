@@ -78,7 +78,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     base_font = pdf.get_font(style)
     for element in run.children:
-        font = base_font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
+        font = base_font.change_face(element.modifier == 'strong', element.modifier == 'emphasis')
 
         text = element.value
 
@@ -160,23 +160,24 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         y += placed_title.extent.height
         items.append(placed_title)
 
-    content_style = pdf.styles[block.options.style]
+    if block.children:
+        content_style = pdf.styles[block.options.style]
 
-    # Find out how many columns we have
-    ncols = max(len(item.children) for item in block.children)
+        # Find out how many columns we have
+        ncols = max(len(item.children) for item in block.children)
 
-    # Evenly space everything and assume everything fits
+        # Evenly space everything and assume everything fits
 
-    y_next = 0
-    for item in block.children:
-        for i, run in enumerate(item.children):
-            cell_extent = Extent(extent.width / ncols, extent.height)
-            x = i * cell_extent.width
-            placed_run = place_run(run, cell_extent, content_style, pdf)
-            placed_run.location = Point(x, y)
-            y_next = max(y_next, placed_run.bounds.bottom)
-            items.append(placed_run)
-        y = y_next
+        y_next = 0
+        for item in block.children:
+            for i, run in enumerate(item.children):
+                cell_extent = Extent(extent.width / ncols, extent.height)
+                x = i * cell_extent.width
+                placed_run = place_run(run, cell_extent, content_style, pdf)
+                placed_run.location = Point(x, y)
+                y_next = max(y_next, placed_run.bounds.bottom)
+                items.append(placed_run)
+            y = y_next
 
     outer_bounds = Extent(extent.width, y)
 
