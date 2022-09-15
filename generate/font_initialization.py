@@ -1,12 +1,11 @@
 """
 
-    This file contaisn code needed to take a download of the full google fonts and package them up
-    suitable for use in the system. It should be run offline and the results uploaded.
+    This file contains code needed to take a download of the full google fonts and package them up
+    suitable for use in the system.
 
-    This code does not need to be run by the service.
+    This code should not be run by the service.
 
 """
-import re
 from collections import defaultdict
 
 import fontTools.ttLib as ttLib
@@ -194,10 +193,18 @@ def generate_docs():
     print('Individual Fonts')
     print('================')
     for c in categories:
-        names = [family.name + ' ' + v for family in families if family.category == c for v in family.faces.keys()]
         title = f"Category: {c[0].upper()}{c[1:]}"
         print(title)
         print('-' * len(title))
+        names = []
+        for family in families:
+            if family.category == c:
+                if len(family.faces) > 1:
+                    item = family.name + '[+' + str(', '.join(set(family.faces.keys())-{'Regular'})) + ']'
+                    names.append(item)
+                else:
+                    names.append(family.name)
+
         print(", ".join(names))
         print()
 
@@ -205,14 +212,27 @@ def generate_docs():
 def copy_temp():
     src = Path('/Users/graham/Desktop/gf_all')
 
-    for f in  src.glob('Noto*.ttf'):
+    for f in src.glob('Noto*.ttf'):
         if not f.stem.endswith('-Regular') and not f.stem.endswith('-Bold') \
                 and not f.stem.endswith('-Italic') and not f.stem.endswith('-BoldItalic'):
-                    f.unlink()
+            f.unlink()
+
+
+def remove_noto_non_canonical():
+    lib = FontLibrary()
+    families = sorted(f for f in lib.families() if f.category != 'builtin')
+    with open(FONT_DIR / '_INDEX2.txt', 'wt') as f:
+        for family in families:
+            if family.name.startswith('Noto'):
+                family.faces = {k: v for k, v in family.faces.items() if k in "Regular Bold Italic BoldItalic".split()}
+            ss = ";".join(f"{a}:{b}" for a, b in sorted(family.faces.items()))
+            f.write(f"{family.name}|{family.category}|{ss}\n")
+
 
 if __name__ == '__main__':
     # copy_fonts_locally()
     # convert_variable_fonts()
     # build_family_info()
-    # generate_docs()
-    copy_temp()
+    generate_docs()
+    # remove_noto_non_canonical()
+    pass
