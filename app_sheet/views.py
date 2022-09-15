@@ -28,7 +28,7 @@ def _group_sheets(field, **kwargs) -> List[Dict]:
 
 def _user_permissions(user, sheet) -> Dict:
     return {
-        'save': user == sheet.owner or user.is_superuser,
+        'save': user == sheet.owner,
         'clone': user.is_authenticated
     }
 
@@ -121,7 +121,10 @@ def action_dispatcher(request, sheet_id):
     if 'save' in request.POST:
         # Save the content to saved
         csd.content = edit_content
-        csd.save()
+        if request.user == csd.owner:
+            csd.save()
+        else:
+            return HttpResponseForbidden('you are not the owner of this sheet')
     if 'revert' in request.POST:
         # Copy the content from the saved data
         edit_content = csd.content
@@ -138,7 +141,7 @@ def action_dispatcher(request, sheet_id):
         with warnings.catch_warnings(record=True) as warning_messages:
             sheet = text_to_sheet(edit_content)
             pdf_bytes = make_pdf(sheet)
-            file_name = f"sheets/{csd.owner.username}-sheet.pdf"
+            file_name = f"sheets/{request.user.username}-sheet.pdf"
             path = default_storage.save(file_name, ContentFile(pdf_bytes))
             pdf_file = path[7:]  # remove the 'sheets/' prefix
             for w in warning_messages:

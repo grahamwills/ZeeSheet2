@@ -97,9 +97,9 @@ class Prettify:
         if self.sheet.styles:
             self.append('')
             self.append('.. styles::')
-            for name, style in self.sheet.styles.items():
+            for name, s in self.sheet.styles.items():
                 self.append('   ' + name)
-                self.append('     ' + style.to_definition())
+                self.append('     ' + s.to_definition())
 
         return '\n'.join(self.lines)
 
@@ -107,7 +107,10 @@ class Prettify:
         self.lines.append(txt)
 
     def _append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions], default, attributes: str):
-        parts = [f".. {owner}::"]
+        if len(self.lines)>1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
+            self.lines = self.lines[:-1]
+        owner_plus = owner + '::'
+        parts = [f".. {owner_plus:9}"]
         for k in attributes.split():
             v = getattr(options, k)
             if v != getattr(default, k):  # Only output attributes which are not the default
@@ -141,14 +144,14 @@ class Prettify:
             self.append('')
 
     def append_block_rst(self, block: model.Block):
-        if block.title:
-            self.append(block.title.to_rst(self.width))
-            self.append('')
-
         if block.options != self.current_block_options:
             # Remember the new one and write it out
             self.current_block_options = block.options
             self.append_container_options('block', block.options, Block().options)
+
+        if block.title:
+            self.append(block.title.to_rst(self.width))
+            self.append('')
 
         if not block.children:
             return
@@ -193,17 +196,17 @@ class Prettify:
 
     def append_section_rst(self, section: model.Section):
         """Adds restructured text lines for the given section"""
+        if section.options != self.current_section_options:
+            # Remember the new one and write it out
+            self.current_section_options = section.options
+            self.append_container_options('section', section.options, Section().options)
+
         if section.title:
             # Since the section title has to be underlined, we cannot wrap it
             title = section.title.to_rst()
             self.append(title)
             self.append('-' * len(title))
             self.append('')
-
-        if section.options != self.current_section_options:
-            # Remember the new one and write it out
-            self.current_section_options = section.options
-            self.append_container_options('section', section.options, Section().options)
 
         if section.children:
             for b in section.children:

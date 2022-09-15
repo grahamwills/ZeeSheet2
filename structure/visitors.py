@@ -6,9 +6,11 @@ import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
-from common.logging import message_unknown_attribute, message_parse, message_bad_value
+from common.logging import message_unknown_attribute, message_parse, message_bad_value, configured_logger
 from . import style
 from .model import *
+
+LOGGER = configured_logger(__name__)
 
 # These tags will not  be recorded
 IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference',
@@ -26,6 +28,7 @@ def _tag(node: docutils.nodes.Node):
     return getattr(node, 'tagname')
 
 
+# noinspection PyUnresolvedReferences
 def _line_of(node: docutils.nodes.Node):
     if not node:
         return None
@@ -75,10 +78,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         # Set our stack of what we are processing
         self.process_stack = []
 
-        # Set the current options for each thing that can have options, using the defaults
+        # Set the current options
         # There is only one sheet, so we don't need to keep track of the current sheet options
-        self.section_options = Section().options
-        self.block_options = Block().options
+        self.section_options = self.current_section.options
+        self.block_options = self.current_block.options
 
     def get_sheet(self) -> Sheet:
         # Fix up pieces we added, but ended up unused
@@ -155,7 +158,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def visit_system_message(self, node: docutils.nodes.system_message) -> None:
         # The departure will not be noted, so must not record this
-        level = node.attributes['level']
         message = node.children[0].astext()
         self.error(node, message)
 
@@ -177,17 +179,17 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     # noinspection PyPep8Naming
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         if self._parent() == 'emphasis':
-            style = 'emphasis'
+            s = 'emphasis'
             p = self.start(node, skip_last=True)
         elif self._parent() == 'strong':
-            style = 'strong'
+            s = 'strong'
             p = self.start(node, skip_last=True)
         else:
-            style = None
+            s = None
             p = self.start(node)
 
         text = node.astext().replace('\n', ' ')
-        elements = Element.text_to_elements(text, style)
+        elements = Element.text_to_elements(text, s)
         self.add_elements(elements, node, p)
 
     def visit_problematic(self, node: docutils.nodes.Node) -> None:
@@ -295,15 +297,13 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def _make_new_section(self) -> None:
         # If the current section is undefined, we just use that
         if self.current_section:
-            section = Section()
-            self.section_options = section.options = copy(self.section_options)
+            section = Section(options=copy(self.section_options))
             self.sheet.children.append(section)
 
     def _make_new_block(self) -> None:
         # If the current block is undefined,we do not need a new one
         if self.current_block:
-            block = Block()
-            self.block_options = block.options = copy(self.block_options)
+            block = Block(options=copy(self.block_options))
             self.current_section.children.append(block)
 
     def _make_new_item(self) -> None:

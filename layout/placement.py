@@ -154,7 +154,7 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     items: List[PlacedContent] = []
     y = 0
 
-    if block.title:
+    if block.title and block.options.title != 'none':
         style = pdf.styles[block.options.title_style]
         placed_title = place_run(block.title, extent, style, pdf)
         y += placed_title.extent.height
