@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import zipfile
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -175,12 +177,27 @@ class FontLibrary():
         try:
             a, d = metrics.getAscentDescent(name, size)
         except KeyError:
-            loc = FONT_DIR / (name + '.ttf')
-            font = TTFont(name, loc.absolute())
+            zipfile_name = self._zipfile(name)
+            with zipfile.ZipFile(zipfile_name.absolute(), 'r') as z:
+                file = z.open(name + '.ttf')
+                font = TTFont(name, file)
             pdfmetrics.registerFont(font)
             a, d = metrics.getAscentDescent(name, size)
 
         return Font(self, name, family, face, size, abs(a), abs(d))
+
+    @staticmethod
+    def _zipfile(name):
+        s = name.lower()
+        if re.match(r'Noto Sans ..-.*', name):
+            stem = 'noto-sans-xx'
+        elif re.match(r'Noto Serif ..-.*', name):
+            stem = 'noto-serif-xx'
+        elif s[0] == 's':
+            stem = 'sa-se' if s[1] < 'h' else 'sh-sz'
+        else:
+            stem = s[0]
+        return FONT_DIR / ('fonts-' + stem + '.zip')
 
     def families(self) -> Iterable[FontFamily]:
         return self.content.values()

@@ -203,23 +203,12 @@ def generate_docs():
 
 
 def copy_temp():
-    src = Path('/Users/graham/Desktop/gf')
-    dest = Path('/Users/graham/Documents/SoftwareProjects/ZeeSheet2/generate/resources/google-fonts')
-    items = {f.stem.split('-')[0] for f in src.glob('*-Bold.ttf')} \
-        .union({f.stem.split('-')[0] for f in src.glob('*-Italic.ttf')})
-    n = 0
-    for name in items:
-        for ext in 'Regular Bold Italic BoldItalic'.split():
-            file = src / (name + '-' + ext + '.ttf')
-            if not file.exists():
-                print('Nope:', file)
-            else:
-                n += 1
-                nfile = dest / file.name
-                print(f"{file.name:40}{nfile}")
-                file.rename(nfile)
+    src = Path('/Users/graham/Desktop/gf_all')
 
-    print('\n', n, ' files')
+    for f in  src.glob('Noto*.ttf'):
+        if not f.stem.endswith('-Regular') and not f.stem.endswith('-Bold') \
+                and not f.stem.endswith('-Italic') and not f.stem.endswith('-BoldItalic'):
+                    f.unlink()
 
 if __name__ == '__main__':
     # copy_fonts_locally()
