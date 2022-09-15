@@ -1,11 +1,15 @@
-from typing import List, Optional, NamedTuple
+import warnings
+from typing import Optional, NamedTuple, Tuple
 
-from common import Extent, Point
-from generate.pdf import PDF, TextSegment, CheckboxSegment
+from common import Extent, Point, Spacing
 from generate.fonts import Font
-from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, Error
+from generate.pdf import PDF, TextSegment, CheckboxSegment
+from layout.content import PlacedGroupContent, PlacedRunContent, Error
 from structure import Run, Block
 from structure.style import Style
+
+# Constant for use when no spacing needed
+_NO_SPACING = Spacing.balanced(0)
 
 
 class SplitResult(NamedTuple):
@@ -150,15 +154,43 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     return PlacedRunContent(run, bounds, Point(0, 0), error, segments, style)
 
 
-def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
-    items: List[PlacedContent] = []
-    y = 0
+def define_title(block: Block, extent: Extent, pdf: PDF) -> Tuple[Spacing, Optional[PlacedRunContent]]:
+    if not block.title or block.options.title == 'none':
+        return _NO_SPACING, None
 
-    if block.title and block.options.title != 'none':
-        style = pdf.styles[block.options.title_style]
-        placed_title = place_run(block.title, extent, style, pdf)
-        y += placed_title.extent.height
-        items.append(placed_title)
+    if block.options.title != 'simple':
+        warnings.warn(f"Border style '{block.options.title}' is not yet supported, treating as 'simple'")
+
+    title_style = pdf.styles[block.options.title_style]
+    title_spacing = title_style.box.margin
+    title_extent = Extent(extent.width - title_spacing.horizontal, extent.height - title_spacing.vertical)
+    placed = place_run(block.title, title_extent, title_style, pdf)
+    spacing = Spacing(top=placed.extent.height + title_spacing.vertical, left=0, right=0, bottom=0)
+    return spacing, placed
+
+
+def locate_title(title: PlacedRunContent, block: Block, content_extent: Extent, pdf: PDF) -> Extent:
+    """ Defines the title location and returns the bounds of everything including the title"""
+    if title is None:
+        return content_extent
+
+    # Handle as if simple - it's at the top
+    margin = pdf.styles[block.options.title_style].box.margin
+    title.location = Point(margin.left, margin.top)
+    return content_extent
+
+
+def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
+    title_spacing, title = define_title(block, extent, pdf)
+    if title:
+        items = [title]
+    else:
+        items = []
+
+    # Reduce space to account for the title
+    inner = Extent(extent.width - title_spacing.horizontal, extent.height - title_spacing.vertical)
+    left = title_spacing.left
+    y = title_spacing.top
 
     if block.children:
         content_style = pdf.styles[block.options.style]
@@ -167,21 +199,21 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         ncols = max(len(item.children) for item in block.children)
 
         # Evenly space everything and assume everything fits
-
-        y_next = 0
+        last_item_bottom = y
         for item in block.children:
             for i, run in enumerate(item.children):
-                cell_extent = Extent(extent.width / ncols, extent.height)
-                x = i * cell_extent.width
+                cell_extent = Extent(inner.width / ncols, inner.height)
+                x = left + i * cell_extent.width
                 placed_run = place_run(run, cell_extent, content_style, pdf)
                 placed_run.location = Point(x, y)
-                y_next = max(y_next, placed_run.bounds.bottom)
+                last_item_bottom = max(last_item_bottom, placed_run.bounds.bottom)
                 items.append(placed_run)
-            y = y_next
+            y = last_item_bottom
 
-    outer_bounds = Extent(extent.width, y)
+    content_extent = Extent(inner.width, y)
+    outer_extent = locate_title(title, block, content_extent, pdf)
 
     # TODO: Fix this
     extra_space = 0
 
-    return PlacedGroupContent.from_items(block, items, outer_bounds, extra_space)
+    return PlacedGroupContent.from_items(block, items, outer_extent, extra_space)

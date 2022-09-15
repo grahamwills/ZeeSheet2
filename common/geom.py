@@ -6,24 +6,31 @@ from typing import NamedTuple, Union, Tuple
 
 
 class Spacing(NamedTuple):
-    left: int
-    right: int
-    top: int
-    bottom: int
+    left: float
+    right: float
+    top: float
+    bottom: float
 
     @property
-    def horizontal(self) -> int:
+    def horizontal(self) -> float:
         return self.left + self.right
 
     @property
-    def vertical(self) -> int:
+    def vertical(self) -> float:
         return self.top + self.bottom
 
     def __str__(self):
         return "[l=%d, r=%d, t=%d, b=%d]" % self
 
+    def __bool__(self):
+        return self.left or self.right or self.top or self.bottom
+
+    def __round__(self, n=None):
+        return Spacing(left=round(self.left, n), right=round(self.right, n),
+                       top=round(self.top, n), bottom=round(self.bottom, n))
+
     @classmethod
-    def balanced(cls, size: int) -> Spacing:
+    def balanced(cls, size: float) -> Spacing:
         return Spacing(size, size, size, size)
 
 
