@@ -155,9 +155,9 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     return PlacedRunContent(run, bounds, Point(0, 0), error, segments, style)
 
 
-def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Spacing, Optional[PlacedContent]]:
+def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
     if not block.title or block.options.title == 'none':
-        return NO_SPACING, None
+        return None, NO_SPACING
 
     if block.options.title != 'simple':
         warnings.warn(f"Border style '{block.options.title}' is not yet supported, treating as 'simple'")
@@ -174,17 +174,15 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Spacing, Optional[P
     overall_extent = title_style.box.outset_to_margin(placed.bounds)
     title_group = PlacedGroupContent.from_items(block, [plaque, placed], overall_extent, 0)
     spacing = Spacing(top=overall_extent.height, left=0, right=0, bottom=0)
-    return spacing, title_group
+    return title_group, spacing
 
 
-def locate_title(title: PlacedContent, block: Block, content_extent: Extent, pdf: PDF) -> Extent:
+def locate_title(title: PlacedContent, block: Block, content_extent: Extent, pdf: PDF) -> None:
     """ Defines the title location and returns the bounds of everything including the title"""
-    if title is None:
-        return content_extent
 
-    # Handle as if simple - it's at the top
-    title.location = Point(0, 0)
-    return content_extent
+    # Currently we only do simple -- at the top
+    if title:
+        title.location = Point(0, 0)
 
 
 def make_frame(owner, bounds: Rect, style: BoxStyle) -> Optional[PlacedRectContent]:
@@ -193,13 +191,13 @@ def make_frame(owner, bounds: Rect, style: BoxStyle) -> Optional[PlacedRectConte
     if has_border or has_background:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
-            bounds = bounds - Spacing.balanced(style.width/2)
+            bounds = bounds - Spacing.balanced(style.width / 2)
         return PlacedRectContent(owner, bounds.extent, bounds.top_left, NO_ERROR, style)
     else:
         return None
 
 
-def make_block_frame(block: Block, outer_extent: Extent, content_extent: Extent, pdf: PDF) -> List[PlacedContent]:
+def frame_the_block(block: Block, outer_extent: Extent, content_extent: Extent, pdf: PDF) -> List[PlacedContent]:
     # Assume simple layout -- Box around everything!
     box_style = pdf.styles[block.options.style].box
     results = [PlacedRectContent(block, outer_extent, Point(0, 0), NO_ERROR, box_style)]
@@ -214,63 +212,67 @@ def make_block_frame(block: Block, outer_extent: Extent, content_extent: Extent,
     return results
 
 
-def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedGroupContent:
+def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
+    """ Margins have already been inset when we get into here"""
+
     main_style = pdf.styles[block.options.style]
-
-    # The Rectangle our container has allocated for us
-    container_bounds = Rect(0, size.width, 0, size.height)
-
-    # Our contents live in this rectangle
-    inner = main_style.box.inset_within_padding(container_bounds)
+    inner_bounds = main_style.box.inset_from_margin_within_padding(Rect(0, size.width, 0, size.height))
 
     # Create the title and insets to allow room for it
-    title_spacing, title = make_title(block, inner, pdf)
-    items = [title] if title else []
+    title, title_spacing = make_title(block, inner_bounds, pdf)
 
     # Reduce space for the items to account for the title
-    item_bounds = inner - title_spacing
+    item_bounds = inner_bounds - title_spacing
 
-    if block.children:
-        content_style = pdf.styles[block.options.style]
-        margin = content_style.box.margin
-        inter_cell_spacing_horizontal = max(margin.left, margin.right)
-        inter_cell_spacing_vertical = max(margin.top, margin.bottom)
+    placed_children = place_block_children(block, item_bounds, pdf)
 
-        # Count the columns
-        ncols = max(len(item.children) for item in block.children)
-
-        # We handle the margins of the children here, reducing the bounds to fit the margin
-        # and subtracting the inter-cell margins from the availabel width
-        interior = item_bounds - margin
-        column_width = (interior.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
-
-        next_top = interior.top
-
-        # Evenly space everything and assume everything fits
-        for item in block.children:
-            row_bottom = next_top
-            for i, run in enumerate(item.children):
-                left = interior.left + i * (column_width + inter_cell_spacing_horizontal)
-                cell_rect = Rect(left, left + column_width, next_top, interior.bottom)
-
-                placed_run = place_run(run, cell_rect.extent, content_style, pdf)
-                placed_run.location = cell_rect.top_left
-                row_bottom = max(row_bottom, placed_run.bounds.bottom)
-                items.append(placed_run)
-            next_top = row_bottom + inter_cell_spacing_vertical
-
-        # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
-        block_bottom = next_top - inter_cell_spacing_vertical + margin.bottom
-
+    if placed_children:
+        locate_title(title, block, placed_children.bounds, pdf)
+        frame_bounds = main_style.box.outset_to_border(placed_children.bounds + title_spacing)
     else:
-        block_bottom = title_spacing.vertical
+        frame_bounds = main_style.box.outset_to_border(title.bounds)
 
-    content_extent = Extent(inner.width, block_bottom)
-    outer_extent = locate_title(title, block, content_extent, pdf)
+    frame = make_frame(block, frame_bounds, main_style.box)
 
-    frame_parts = []  # make_frame(block, outer_extent, content_extent, pdf)
+    # Make all the valid items
+    items = [i for i in (frame, placed_children, title) if i]
+    if not items:
+        raise RuntimeError('Need either a title or content in a block')
+    if len(items) == 1:
+        return items[0]
+    all_bounds = Rect.union(i.bounds for i in items)
+    return PlacedGroupContent.from_items(block, items, all_bounds.extent, 0)
 
-    # TODO: Fix this
-    extra_space = 0
 
-    return PlacedGroupContent.from_items(block, frame_parts + items, outer_extent, extra_space)
+def place_block_children(block, item_bounds:Rect, pdf) -> Optional[PlacedGroupContent]:
+    if not block.children:
+        return None
+    placed_items = []
+    content_style = pdf.styles[block.options.style]
+    inter_cell_spacing_horizontal = 0
+    inter_cell_spacing_vertical = 0
+    # Count the columns
+    ncols = max(len(item.children) for item in block.children)
+    # We handle the margins of the children here, reducing the bounds to fit the margin
+    # and subtracting the inter-cell margins from the availabel width
+    interior = item_bounds # - margin
+    column_width = (interior.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
+    next_top = 0
+    # Evenly space everything and assume everything fits
+    for item in block.children:
+        row_bottom = next_top
+        for i, run in enumerate(item.children):
+            left = i * (column_width + inter_cell_spacing_horizontal)
+            cell_rect = Rect(left, left + column_width, next_top, interior.bottom)
+
+            placed_run = place_run(run, cell_rect.extent, content_style, pdf)
+            placed_run.location = cell_rect.top_left
+            row_bottom = max(row_bottom, placed_run.bounds.bottom)
+            placed_items.append(placed_run)
+        next_top = row_bottom + inter_cell_spacing_vertical
+    # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
+    block_bottom = next_top - inter_cell_spacing_vertical
+    extent = Extent(item_bounds.width, block_bottom)
+    placed_children = PlacedGroupContent.from_items(block, placed_items, extent, 0)
+    placed_children.location = item_bounds.top_left
+    return placed_children

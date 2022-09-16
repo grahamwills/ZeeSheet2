@@ -99,7 +99,7 @@ class Packer:
         for i in range(0, ncol):
             left = left + (column_width + column_gap) * i
             right = left + column_width
-            result.append(ColumnSpan(i, round(left), round(right)))
+            result.append(ColumnSpan(i, left, right))
         return result
 
     def place_columnwise(self, width: float, assignment: List[ColumnSpan]) -> PlacedGroupContent:

@@ -183,6 +183,11 @@ class BoxStyle:
         base = e - (self.margin + self.padding)
         return base.pad(-self.width) if self.has_border() else base
 
+    def inset_from_margin_within_padding(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
+        """ Given we have already applied margin, this applies the padding and border also """
+        base = e - self.padding
+        return base.pad(-self.width) if self.has_border() else base
+
     def outset_to_border(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
         """ Take the inner content area and add padding and border """
         base = e + self.padding
@@ -192,7 +197,6 @@ class BoxStyle:
         """ Take the inner content area and add margin, padding and border """
         base = e + self.margin + self.padding
         return base.pad(self.width) if self.has_border() else base
-
 
 
 @dataclass
