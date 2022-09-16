@@ -276,7 +276,7 @@ class Sheet(StructureUnit):
     FMT = FormatPieces('', ' --- ', '')
     children: List[Section] = field(default_factory=lambda: [Section()])
     styles: Dict[str, Style] = field(default_factory=lambda: {})
-    options: SheetOptions = field(default_factory=SheetOptions)
+    options: SheetOptions = field(default_factory=lambda: SheetOptions())
 
     def tidy(self) -> None:
         self._tidy_children()

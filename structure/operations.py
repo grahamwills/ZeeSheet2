@@ -1,4 +1,4 @@
-from typing import List, Union, Iterable
+from typing import List, Union
 
 from docutils import parsers, utils, core, nodes
 from docutils.parsers import rst
@@ -107,7 +107,7 @@ class Prettify:
         self.lines.append(txt)
 
     def _append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions], default, attributes: str):
-        if len(self.lines)>1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
+        if len(self.lines) > 1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
             self.lines = self.lines[:-1]
         owner_plus = owner + '::'
         parts = [f".. {owner_plus:9}"]
@@ -121,13 +121,16 @@ class Prettify:
                     if k in {'width', 'height'}:
                         v = style.len2str(v)
                     parts.append(k + '=' + v)
-        self.append(' '.join(parts))
-        self.append('')
+
+        if len(parts) > 1:
+            # Only add if there actually were any changed values
+            self.append(' '.join(parts))
+            self.append('')
 
     def append_sheet_options(self, options: SheetOptions):
         self._append_options('page', options, SheetOptions(), "width height style debug")
 
-    def append_container_options(self, owner: str, options: ContainerOptions,  default:ContainerOptions):
+    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
         self._append_options(owner, options, default, "title style title_style")
 
     def append_item_rst(self, item: model.Item):
@@ -144,7 +147,7 @@ class Prettify:
             self.append('')
 
     def append_block_rst(self, block: model.Block):
-        if block.options != self.current_block_options:
+        if True or block.options != self.current_block_options:
             # Write out differences between this and the last options shown
             self.append_container_options('block', block.options, self.current_block_options)
             self.current_block_options = block.options

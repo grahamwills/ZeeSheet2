@@ -17,7 +17,7 @@ class TestStyle(TestCase):
         self.assertEqual(Defaults.default.text.align, 'left')
         self.assertEqual(Defaults.default.font.family, 'Helvetica')
         self.assertEqual(Defaults.default.box.opacity, 1.0)
-        self.assertEqual(Defaults.default.box.padding, Spacing(0, 0, 0, 0))
+        self.assertEqual(Defaults.default.box.padding, Spacing(2, 2, 2, 2))
 
     def test_initialization(self):
         s = Style('allowed_name')
@@ -30,9 +30,9 @@ class TestStyle(TestCase):
     def test_to_definition_default(self):
         self.assertEqual('text-color:black text-opacity:1 text-align:left text-indent:0 '
                          'font-family:Helvetica font-size:12 font-style:normal '
-                         'border-width:1 border-color:black border-opacity:1 '
+                         'border:none border-opacity:1 border-width:1 '
                          'background:none background-opacity:1 '
-                         'margin:0 padding:0', Defaults.default.to_definition())
+                         'margin:0 padding:2', Defaults.default.to_definition())
 
     def test_to_definition_empty(self):
         self.assertEqual('inherit:default', Style('test', 'default').to_definition())
@@ -82,6 +82,12 @@ class TestStyle(TestCase):
         style = Style('test')
         self.assertEqual('background-opacity:0.1', style.set('box-opacity', '0.1').to_definition())
         self.assertEqual('background-opacity:0.8', style.set('box-backgroundOpacity', '80%').to_definition())
+
+        style = Style('test')
+        self.assertEqual('border:green', style.set('border', 'green').to_definition())
+        self.assertEqual('border:red', style.set('box-border', 'red').to_definition())
+        self.assertEqual('border:orange', style.set('border-color', 'orange').to_definition())
+        self.assertEqual('border:yellow', style.set('box-border-color', 'yellow').to_definition())
 
         style = Style('test')
         self.assertEqual('border-opacity:1', style.set('border-opacity', '1').to_definition())

@@ -155,7 +155,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     return PlacedRunContent(run, bounds, Point(0, 0), error, segments, style)
 
 
-def define_title(block: Block, extent: Extent, pdf: PDF) -> Tuple[Spacing, Optional[PlacedRunContent]]:
+def define_title(block: Block, extent: Extent, pdf: PDF) -> Tuple[Spacing, Optional[PlacedContent]]:
     if not block.title or block.options.title == 'none':
         return NO_SPACING, None
 
@@ -166,18 +166,24 @@ def define_title(block: Block, extent: Extent, pdf: PDF) -> Tuple[Spacing, Optio
     title_spacing = title_style.box.margin
     title_extent = Extent(extent.width - title_spacing.horizontal, extent.height - title_spacing.vertical)
     placed = place_run(block.title, title_extent, title_style, pdf)
-    spacing = Spacing(top=placed.extent.height + title_spacing.vertical, left=0, right=0, bottom=0)
-    return spacing, placed
+    placed.location = Point(title_spacing.left, title_spacing.top)
+
+    height = placed.extent.height + title_spacing.vertical
+    plaque_extent = Extent(extent.width, height)
+    plaque = PlacedRectContent(block, plaque_extent, Point(0, 0), NO_ERROR, title_style.box)
+
+    title_group = PlacedGroupContent.from_items(block, [plaque, placed], plaque_extent, 0)
+    spacing = Spacing(top=height, left=0, right=0, bottom=0)
+    return spacing, title_group
 
 
-def locate_title(title: PlacedRunContent, block: Block, content_extent: Extent, pdf: PDF) -> Extent:
+def locate_title(title: PlacedContent, block: Block, content_extent: Extent, pdf: PDF) -> Extent:
     """ Defines the title location and returns the bounds of everything including the title"""
     if title is None:
         return content_extent
 
     # Handle as if simple - it's at the top
-    margin = pdf.styles[block.options.title_style].box.margin
-    title.location = Point(margin.left, margin.top)
+    title.location = Point(0,0)
     return content_extent
 
 
@@ -225,13 +231,12 @@ def place_block(block: Block, extent: Extent, pdf: PDF) -> PlacedGroupContent:
         # Find out how many columns we have
         ncols = max(len(item.children) for item in block.children)
 
-
         # Adjust available space by the margin/padding values
         available_width = inner.width - inset_left - inset_right
         available_height = inner.height - inset_top - inset_bottom
 
         # The width needs to allow space for cell padding between the cells
-        available_width -= (ncols-1) * inter_cell_spacing_horizontal
+        available_width -= (ncols - 1) * inter_cell_spacing_horizontal
 
         cell_extent = Extent(available_width / ncols, available_height)
 

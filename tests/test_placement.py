@@ -159,6 +159,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('c', item.children[2].to_rst())
         self.assertEqual('d', item.children[3].to_rst())
 
+
 class TestBlockPlacement(unittest.TestCase):
 
     @classmethod
@@ -183,8 +184,8 @@ class TestBlockPlacement(unittest.TestCase):
         group = placed.group
         self.assertEqual(3, len(group))
         self.assertEqual(Point(0, 0), group[1].location)
-        self.assertEqual(Extent(79,16), round(group[1].extent))
-        self.assertEqual(Point(0, 16), round(group[2].location))
+        self.assertEqual(Extent(200, 16), round(group[1].extent))
+        self.assertEqual(Point(4, 20), round(group[2].location))
 
     def test_table(self):
         # Title with 5 cells defined by 3 items
@@ -202,8 +203,8 @@ class TestBlockPlacement(unittest.TestCase):
         self.assertEqual(Point(0, 0), group[1].location)
 
         # Contents on the grid
-        self.assertEqual(Point(0, 16), round(placed.group[2].location))
-        self.assertEqual(Point(150, 16), round(placed.group[3].location))
-        self.assertEqual(Point(0, 29), round(placed.group[4].location))
-        self.assertEqual(Point(150, 29), round(placed.group[5].location))
-        self.assertEqual(Point(0, 42), round(placed.group[6].location))
+        self.assertEqual(Point(4, 20), round(placed.group[2].location))
+        self.assertEqual(Point(151, 20), round(placed.group[3].location))
+        self.assertEqual(Point(4, 35), round(placed.group[4].location))
+        self.assertEqual(Point(151, 35), round(placed.group[5].location))
+        self.assertEqual(Point(4, 50), round(placed.group[6].location))

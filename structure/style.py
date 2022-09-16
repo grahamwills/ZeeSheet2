@@ -141,7 +141,7 @@ class BoxStyle:
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
             self.opacity = txt2fraction(value)
-        elif key == 'bordercolor':
+        elif key == 'bordercolor' or key == 'border':
             get_text_color(value)  # Check it is valid
             self.border_color = value
         elif key == 'borderopacity':
@@ -156,12 +156,12 @@ class BoxStyle:
             raise AttributeError(key)
 
     def add_to_definition(self, parts: List[str]) -> None:
-        if self.width:
-            parts.append(f'border-width:{len2str(self.width)}')
         if self.border_color:
-            parts.append(f'border-color:{self.border_color}')
+            parts.append(f'border:{self.border_color}')
         if self.border_opacity is not None:
             parts.append(f'border-opacity:{num2str(self.border_opacity)}')
+        if self.width:
+            parts.append(f'border-width:{len2str(self.width)}')
         if self.color:
             parts.append(f'background:{self.color}')
         if self.opacity is not None:
@@ -228,30 +228,6 @@ class Style:
         return ' '.join(parts)
 
 
-class Defaults:
-    """ Default Values """
-
-    # noinspection PyTypeChecker
-    default = Style(
-        'default',
-        None,
-        TextStyle('black', 1.0, 'left', 0.0),
-        FontStyle('Helvetica', 12.0, 'normal'),
-        BoxStyle(
-            'none', 1.0,
-            1.0, 'none', 1.0,
-            Spacing.balanced(0), Spacing.balanced(2)))
-
-    title = Style('default-title').set('font-size', '14').set('font-face', 'bold')
-    block = Style('default-block').set('margin', '4')
-    section = Style('default-section').set('margin', '8').set('padding', '4')
-    sheet = Style('default-sheet').set('margin', '0.75in').set('padding', '8')
-
-    @classmethod
-    def all(cls):
-        return {s.name: s for s in [Defaults.default, Defaults.sheet, Defaults.block, Defaults.title, Defaults.section]}
-
-
 def set_using_definition(style: Style, text: str) -> None:
     for k, v in common.parse(text):
         style.set(k, v)
@@ -297,3 +273,28 @@ def get_text_color(name: str, opacity: float = 1.0) -> Color:
         return c
     else:
         return Color(c.red, c.green, c.blue, c.alpha * opacity)
+
+
+class Defaults:
+    """ Default Values """
+
+    # noinspection PyTypeChecker
+    default = Style(
+        'default',
+        None,
+        TextStyle('black', 1.0, 'left', 0.0),
+        FontStyle('Helvetica', 12.0, 'normal'),
+        BoxStyle(
+            'none', 1.0,
+            1.0, 'none', 1.0,
+            Spacing.balanced(0), Spacing.balanced(2)))
+
+    title = Style('default-title').set('font-size', '14').set('font-face', 'bold') \
+        .set('background', 'navy').set('text-color', 'white')
+    block = Style('default-block').set('margin', '8').set('border', 'navy')
+    section = Style('default-section').set('margin', '0').set('padding', '8')
+    sheet = Style('default-sheet').set('margin', '0.75in').set('padding', '8')
+
+    @classmethod
+    def all(cls):
+        return {s.name: s for s in [Defaults.default, Defaults.sheet, Defaults.block, Defaults.title, Defaults.section]}
