@@ -2,10 +2,10 @@ import warnings
 from textwrap import dedent
 from unittest import TestCase
 
-from common import Spacing
+from common import Spacing, Rect, Extent
 from layout.build import make_complete_styles
 from structure import text_to_sheet
-from structure.style import Style, Defaults, set_using_definition
+from structure.style import Style, Defaults, set_using_definition, BoxStyle
 
 
 class TestStyle(TestCase):
@@ -142,6 +142,63 @@ class TestStyle(TestCase):
             self.assertEqual("For attribute 'box-opacity' of style 'test': "
                              "Opacity must be in the range [0,1] or [0%, 100%]. Ignoring the definition",
                              str(warning_messages[0].message))
+
+    def test_box_style_has_border(self):
+        self.assertFalse(BoxStyle(border_color='none', border_opacity=1, width=1).has_border())
+        self.assertFalse(BoxStyle(border_color='red', border_opacity=1, width=0).has_border())
+        self.assertTrue(BoxStyle(border_color='red', border_opacity=1, width=1).has_border())
+        self.assertTrue(BoxStyle(border_color='red', border_opacity=0, width=1).has_border())
+
+    def test_box_style_inset_within_margin(self):
+        style = BoxStyle(
+            margin=Spacing(100, 200, 300, 400),
+            padding=Spacing(30, 40, 50, 60),
+            width=3, border_color='red'
+        )
+        base = Rect(1000, 10000, 2000, 20000)
+        self.assertEqual(Rect(1100, 9800, 2300, 19600), style.inset_within_margin(base))
+        self.assertEqual(Extent(8700, 17300), style.inset_within_margin(base.extent))
+
+    def test_box_style_inset_within_padding(self):
+        style = BoxStyle(
+            margin=Spacing(100, 200, 300, 400),
+            padding=Spacing(30, 40, 50, 60),
+            width=3, border_color='red'
+        )
+        base = Rect(1000, 10000, 2000, 20000)
+        self.assertEqual(Rect(1133, 9757, 2353, 19537), style.inset_within_padding(base))
+        self.assertEqual(Extent(9000 - 300 - 70 - 6, 18000 - 700 - 110 - 6), style.inset_within_padding(base.extent))
+
+    def test_box_style_outset_to_border(self):
+        style = BoxStyle(
+            margin=Spacing(100, 200, 300, 400),
+            padding=Spacing(30, 40, 50, 60),
+            width=3, border_color='red'
+        )
+        base = Rect(1000, 2000, 3000, 4000)
+        self.assertEqual(Rect(967, 2043, 2947, 4063), style.outset_to_border(base))
+
+    def test_box_style_outset_to_margin(self):
+        style = BoxStyle(
+            margin=Spacing(100, 200, 300, 400),
+            padding=Spacing(30, 40, 50, 60),
+            width=3, border_color='red'
+        )
+        base = Rect(1000, 2000, 3000, 4000)
+        self.assertEqual(Rect(867, 2243, 2647, 4463), style.outset_to_margin(base))
+
+    def test_box_inset_outset_round_trips(self):
+        style = BoxStyle(
+            margin=Spacing(100, 200, 300, 400),
+            padding=Spacing(30, 40, 50, 60),
+            width=3, border_color='red'
+        )
+        r = Rect(1000, 2000, 3000, 4000)
+        self.assertEqual(r, style.outset_to_margin(style.inset_within_padding(r)))
+        self.assertEqual(r, style.inset_within_padding(style.outset_to_margin(r)))
+
+        # If we go all the way into the padding, then back out to border -- that's the same as into the margin
+        self.assertEqual(style.inset_within_margin(r), style.outset_to_border(style.inset_within_padding(r)))
 
 
 class TestMakeCompleteStyles(TestCase):

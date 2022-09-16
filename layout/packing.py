@@ -40,18 +40,14 @@ def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[C
 class Packer:
     """Packs rectangular content into a given space"""
 
-    def __init__(self,
-                 represents: Any,
-                 items: Iterable[type(StructureUnit)],
-                 place_function: Callable[[type(StructureUnit), Extent, PDF], PlacedContent],
-                 margin: Spacing, padding: Spacing,
+    def __init__(self, represents: Any, items: Iterable[type(StructureUnit)],
+                 place_function: Callable[[type(StructureUnit), Extent, PDF], PlacedContent], margins: Spacing,
                  pdf: PDF = None):
         self.represents = represents
         self.items = list(items)
         self.place_function = place_function
         self.pdf = pdf
-        self.margin = margin
-        self.padding = padding
+        self.margins = margins
 
     def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
@@ -88,42 +84,39 @@ class Packer:
         return best
 
     def divide_width(self, width: float, ncol: int) -> List[ColumnSpan]:
-        """Divide space evenly, taking into account paddings and margins"""
-        left_inset = max(self.margin.left, self.padding.left)
-        right_inset = max(self.margin.right, self.padding.right)
+        """ Divide space evenly, taking into account margins """
 
-        column_spacing = max(self.padding.left, self.padding.right)
-        available = width - left_inset - right_inset - (ncol - 1) * column_spacing
-
+        left = self.margins.left
+        right = width - self.margins.right
+        column_gap = max(self.margins.left, self.margins.right)
+        available = (right - left) - (ncol - 1) * column_gap
         column_width = available / ncol
 
         if column_width < 1:
-            msg = f"Cannot divide space of size {width} into {ncol} columns with given padding and margins"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"Cannot divide space of size {width} into {ncol} columns")
 
         result = []
         for i in range(0, ncol):
-            left = left_inset + (column_width + column_spacing) * i
+            left = left + (column_width + column_gap) * i
             right = left + column_width
             result.append(ColumnSpan(i, round(left), round(right)))
         return result
 
-    # noinspection PyUnboundLocalVariable
     def place_columnwise(self, width: float, assignment: List[ColumnSpan]) -> PlacedGroupContent:
+        row_gap = max(self.margins.top, self.margins.bottom)
+
         results = []
         last_span = None
+        next_top = self.margins.top
         for item, span in zip(self.items, assignment):
             if span != last_span:
-                last_y = 0
-                last_y_with_padding = self.margin.top
+                next_top = self.margins.top
                 last_span = span
 
             placed = self.place_function(item, Extent(span.width, 9e99), self.pdf)
-            y = max(last_y_with_padding, last_y + self.padding.top)
-            placed.location = Point(span.left, y)
-            last_y = placed.bounds.bottom
-            last_y_with_padding = last_y + self.padding.bottom
+            placed.location = Point(span.left, next_top)
             results.append(placed)
+            next_top = placed.bounds.bottom + row_gap
 
         ncols = assignment[-1].index + 1
         column_bottom = [0] * ncols
@@ -135,7 +128,5 @@ class Packer:
         lowest = max(column_bottom)
         wasted = sum((lowest - c) * width for c, width in zip(column_bottom, column_width))
 
-        return PlacedGroupContent.from_items(self.represents,
-                                             results,
-                                             Extent(width, last_y + self.margin.bottom),
-                                             wasted)
+        return PlacedGroupContent.from_items(
+            self.represents, results, Extent(width, lowest + self.margins.bottom), wasted)

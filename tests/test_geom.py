@@ -26,6 +26,22 @@ class GeomTests(unittest.TestCase):
         self.assertEqual(hash(a), hash(Point(0, 0)))
         self.assertEqual(hash(b), hash(Point(3, 4.5)))
 
+    def test_extent_reps(self):
+        self.assertEqual('(1.1 ⨯ 10.0)', str(Extent(1.1234546, 9.98765)))
+        self.assertEqual('(1 ⨯ -9)', str(Extent(1, -9)))
+
+    def test_extent_addition(self):
+        e = Extent(100, 200)
+        self.assertEqual(Extent(103, 207), e + Extent(3, 7))
+        self.assertEqual(Extent(130, 270), e + (30, 70))
+        self.assertEqual(Extent(109, 211), e + Spacing(left=1, right=8, top=4, bottom=7))
+
+    def test_extent_subtraction(self):
+        e = Extent(100, 200)
+        self.assertEqual(Extent(97, 193), e - Extent(3, 7))
+        self.assertEqual(Extent(70, 130), e - (30, 70))
+        self.assertEqual(Extent(91, 189), e - Spacing(left=1, right=8, top=4, bottom=7))
+
     def test_point_unary(self):
         assert -Point(3.0, -4.1) == Point(-3, 4.1)
         assert abs(Point(3.0, 4)) == 5

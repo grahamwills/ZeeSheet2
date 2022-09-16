@@ -1,17 +1,18 @@
 from copy import copy
 from typing import Dict
 
+import layout.placement as placement
 import structure.style
-from common import Extent
+from common import Extent, Rect
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
-from layout.content import PlacedContent
+from layout.content import PlacedContent, PlacedGroupContent
 from layout.packing import Packer
-from layout.placement import place_block
 from structure import Sheet, Section, Block, style
 from structure.style import Style
 
 FONT_LIB = FontLibrary()
+
 
 def make_pdf(sheet: Sheet) -> bytes:
     complete_styles = make_complete_styles(sheet.styles)
@@ -23,19 +24,36 @@ def make_pdf(sheet: Sheet) -> bytes:
 
 
 def create_block(block: Block, extent: Extent, pdf: PDF) -> PlacedContent:
-    return place_block(block, extent, pdf)
+    return placement.place_block(block, extent, pdf)
 
 
 def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     s = pdf.styles[section.options.style]
-    packer = Packer(section, section.children, create_block, s.box.margin, s.box.padding, pdf)
+    packer = Packer(section, section.children, create_block, s.box.margin, pdf)
     return packer.into_columns(round(extent.width))
 
 
 def create_sheet(sheet: Sheet, pdf: PDF):
-    s = pdf.styles[sheet.options.style]
-    packer = Packer(sheet, sheet.children, create_section, s.box.margin, s.box.padding, pdf)
-    content = packer.into_columns(sheet.options.width)
+    sheet_style = pdf.styles[sheet.options.style]
+
+    page = Rect(0, sheet.options.width, 0, sheet.options.height)
+    sheet_bounds = sheet_style.box.inset_within_margin(page)
+    content_bounds = sheet_style.box.inset_within_padding(page)
+
+    if not sheet.children:
+        raise RuntimeError('No content was defined')
+
+    child_style_name = sheet.children[0].options.style
+    child_style = pdf.styles[child_style_name]
+    child_margins = child_style.box.margin
+
+    packer = Packer(sheet, sheet.children, create_section, child_margins, pdf)
+    content = packer.into_columns(content_bounds.width)
+    content.location = content_bounds.top_left
+
+    frame = placement.make_frame(sheet, sheet_bounds, sheet_style.box)
+    if frame:
+        content = PlacedGroupContent.from_items(sheet, [frame, content], sheet_bounds, 0)
     return content
 
 

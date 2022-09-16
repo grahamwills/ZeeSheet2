@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Union
 from warnings import warn
 
 from reportlab.lib import units
 from reportlab.lib.colors import toColor, Color
 
 import common
-from common import Spacing
+from common import Spacing, Rect, Extent
 from common.logging import message_unknown_attribute, message_bad_value
 
 _TRANSPARENT = Color(1, 1, 1, 0)
@@ -170,6 +170,29 @@ class BoxStyle:
             parts.append(f'margin:{spacing_to_text(self.margin)}')
         if self.padding is not None:
             parts.append(f'padding:{spacing_to_text(self.padding)}')
+
+    def has_border(self) -> bool:
+        return self.border_color != 'none' and self.width > 0
+
+    def inset_within_margin(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
+        """ Inset from the containers space to just inside the margin """
+        return e - self.margin
+
+    def inset_within_padding(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
+        """ Inset from the containers space to inside the margin, padding and border """
+        base = e - (self.margin + self.padding)
+        return base.pad(-self.width) if self.has_border() else base
+
+    def outset_to_border(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
+        """ Take the inner content area and add padding and border """
+        base = e + self.padding
+        return base.pad(self.width) if self.has_border() else base
+
+    def outset_to_margin(self, e: Union[Extent, Rect]) -> Union[Extent, Rect]:
+        """ Take the inner content area and add margin, padding and border """
+        base = e + self.margin + self.padding
+        return base.pad(self.width) if self.has_border() else base
+
 
 
 @dataclass

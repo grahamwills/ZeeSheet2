@@ -5,6 +5,13 @@ from collections import namedtuple
 from typing import NamedTuple, Union, Tuple
 
 
+def _f(v: float):
+    if v == int(v):
+        return str(int(v))
+    else:
+        return f"{v:0.1f}"
+
+
 class Spacing(NamedTuple):
     left: float
     right: float
@@ -29,9 +36,47 @@ class Spacing(NamedTuple):
         return Spacing(left=round(self.left, n), right=round(self.right, n),
                        top=round(self.top, n), bottom=round(self.bottom, n))
 
+    def __add__(self, other: Spacing) -> Spacing:
+        return Spacing(self.left + other.left, self.right + other.right,
+                       self.top + other.top, self.bottom + other.bottom)
+
+    def __sub__(self, other: Spacing) -> Spacing:
+        return Spacing(self.left - other.left, self.right - other.right,
+                       self.top - other.top, self.bottom - other.bottom)
+
     @classmethod
     def balanced(cls, size: float) -> Spacing:
         return Spacing(size, size, size, size)
+
+
+class Extent(NamedTuple):
+    width: float
+    height: float
+
+    @property
+    def area(self):
+        return self.width * self.height
+
+    def pad(self, v: float) -> Extent:
+        return Extent(self.width + 2 * v, self.height + 2 * v)
+
+    def __round__(self, n=None):
+        return Extent(round(self.width, n), round(self.height, n))
+
+    def __add__(self, other: Union[Spacing, Extent, Tuple]) -> Extent:
+        try:
+            return Extent(self.width + other.horizontal, self.height + other.vertical)
+        except AttributeError:
+            return Extent(self.width + other[0], self.height + other[1])
+
+    def __sub__(self, other: Union[Spacing, Extent, Tuple]) -> Extent:
+        try:
+            return Extent(self.width - other.horizontal, self.height - other.vertical)
+        except AttributeError:
+            return Extent(self.width - other[0], self.height - other[1])
+
+    def __str__(self):
+        return '(' + _f(self.width) + ' \u2a2f ' + _f(self.height) + ')'
 
 
 class Point(NamedTuple):
@@ -88,18 +133,6 @@ class Point(NamedTuple):
         return Point(d * math.cos(θ), d * math.sin(θ))
 
 
-class Extent(NamedTuple):
-    width: float
-    height: float
-
-    @property
-    def area(self):
-        return self.width * self.height
-
-    def __round__(self, n=None):
-        return Extent(round(self.width, n), round(self.height, n))
-
-
 class Rect(namedtuple('Rect', 'left right top bottom')):
 
     @classmethod
@@ -134,6 +167,13 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
     @property
     def area(self) -> float:
         return self.width * self.height
+
+    @property
+    def top_left(self) -> Point:
+        return Point(self.left, self.top)
+
+    def pad(self, v: float) -> Rect:
+        return Rect(self.left - v, self.right + v, self.top - v, self.bottom + v)
 
     def __round__(self, n=None):
         return Rect(round(self.left, n), round(self.right, n), round(self.top, n), round(self.bottom, n))
