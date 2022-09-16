@@ -197,21 +197,6 @@ def make_frame(owner, bounds: Rect, style: BoxStyle) -> Optional[PlacedRectConte
         return None
 
 
-def frame_the_block(block: Block, outer_extent: Extent, content_extent: Extent, pdf: PDF) -> List[PlacedContent]:
-    # Assume simple layout -- Box around everything!
-    box_style = pdf.styles[block.options.style].box
-    results = [PlacedRectContent(block, outer_extent, Point(0, 0), NO_ERROR, box_style)]
-
-    # Inner frame
-    if outer_extent != content_extent:
-        # Simple layout -> frame is at top
-        box_style = pdf.styles[block.options.title_style].box
-        title_extent = Extent(outer_extent.width, outer_extent.height - content_extent.height)
-        results.append(PlacedRectContent(block, title_extent, Point(0, 0), NO_ERROR, box_style))
-
-    return results
-
-
 def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     """ Margins have already been inset when we get into here"""
 
@@ -227,10 +212,12 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     placed_children = place_block_children(block, item_bounds, pdf)
 
     if placed_children:
-        locate_title(title, block, placed_children.bounds, pdf)
-        frame_bounds = main_style.box.outset_to_border(placed_children.bounds + title_spacing)
+        child_bounds = placed_children.bounds
     else:
-        frame_bounds = main_style.box.outset_to_border(title.bounds)
+        # Zero-height rectangle
+        child_bounds = Rect(item_bounds.left, inner_bounds.right, item_bounds.top, item_bounds.top)
+    locate_title(title, block, child_bounds, pdf)
+    frame_bounds = main_style.box.outset_to_border(child_bounds + title_spacing)
 
     frame = make_frame(block, frame_bounds, main_style.box)
 
@@ -264,7 +251,6 @@ def place_block_children(block, item_bounds:Rect, pdf) -> Optional[PlacedGroupCo
         for i, run in enumerate(item.children):
             left = i * (column_width + inter_cell_spacing_horizontal)
             cell_rect = Rect(left, left + column_width, next_top, interior.bottom)
-
             placed_run = place_run(run, cell_rect.extent, content_style, pdf)
             placed_run.location = cell_rect.top_left
             row_bottom = max(row_bottom, placed_run.bounds.bottom)
