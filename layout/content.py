@@ -5,9 +5,9 @@ from typing import List, Iterable, Any
 
 from common import Extent, Point, Rect
 from common import configured_logger
-from generate.pdf import TextSegment, PDF, DrawMethod
+from generate.pdf import TextSegment, PDF
 from structure import Section, Block, Item, Run, description, Sheet
-from structure.style import Style
+from structure.style import Style, BoxStyle
 
 LOGGER = configured_logger(__name__)
 
@@ -110,6 +110,14 @@ class PlacedRunContent(PlacedContent):
         pdf.draw_text(self.style, self.segments)
 
 
+@dataclass
+class PlacedRectContent(PlacedContent):
+    style: BoxStyle  # Style for this item
+
+    def _draw(self, pdf: PDF):
+        pdf.draw_rect(self.bounds, self.style)
+
+
 def _debug_draw_rect(pdf, represents, rect):
     if pdf.debug:
         if isinstance(represents, Sheet):
@@ -128,5 +136,5 @@ def _debug_draw_rect(pdf, represents, rect):
         pdf.saveState()
         pdf.setFillColorRGB(r, g, b, alpha=a)
         pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
-        pdf.draw_rect(rect, DrawMethod.BOTH)
+        pdf._draw_rect(rect, 1, 1)
         pdf.restoreState()

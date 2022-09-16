@@ -281,15 +281,15 @@ whatever
 
 .. Styles::
   a
-     font-family:Courier; box-style: rounded
+     font-family:Courier
   b:
-     padding: 0.2500in 0.75in; inherit: a;
+     padding: '0.2500in 0.75in' inherit: a
 #################################################
 whatever
 
 .. styles::
    a
-     font-family:Courier; border:rounded
+     font-family:Courier
    b
-     inherit:a; padding:0.25in 0.75in
+     inherit:a padding:'0.25in 0.75in'
 #################################################

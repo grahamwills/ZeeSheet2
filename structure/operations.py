@@ -145,9 +145,9 @@ class Prettify:
 
     def append_block_rst(self, block: model.Block):
         if block.options != self.current_block_options:
-            # Remember the new one and write it out
+            # Write out differences between this and the last options shown
+            self.append_container_options('block', block.options, self.current_block_options)
             self.current_block_options = block.options
-            self.append_container_options('block', block.options, Block().options)
 
         if block.title:
             self.append(block.title.to_rst(self.width))
@@ -197,9 +197,9 @@ class Prettify:
     def append_section_rst(self, section: model.Section):
         """Adds restructured text lines for the given section"""
         if section.options != self.current_section_options:
-            # Remember the new one and write it out
+            # Write out differences between this and the last options shown
+            self.append_container_options('section', section.options, self.current_section_options)
             self.current_section_options = section.options
-            self.append_container_options('section', section.options, Section().options)
 
         if section.title:
             # Since the section title has to be underlined, we cannot wrap it

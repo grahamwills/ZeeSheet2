@@ -1,29 +1,22 @@
 import reprlib
 import warnings
 from dataclasses import dataclass
-from enum import Enum
 from io import BytesIO
 from typing import List, Tuple, Union, Dict
 
 from reportlab.lib import colors
-from reportlab.lib.colors import Color, toColor
+from reportlab.lib.colors import Color
 from reportlab.pdfgen import canvas
 
 from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character
-from structure.style import Style, Defaults
+from structure.style import Style, BoxStyle, get_text_color
 
 LOGGER = configured_logger(__name__)
 
 _WHITE = colors.Color(1, 1, 1)
-
-
-class DrawMethod(Enum):
-    FILL = 1
-    DRAW = 2
-    BOTH = 3
 
 
 @dataclass
@@ -78,22 +71,23 @@ class PDF(canvas.Canvas):
                 warnings.warn(f"Unknown font family '{style.font.family}'. Did you mean one of {ss}? "
                               f"Using '{sim[0]}' instead")
             font = self.font_lib.get_font(sim[0], style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
-        return font.standardize()
+        return font
 
-    def get_text_color(self, style: Style) -> Color:
-        s = style.text.color
-        if s[0] == '#' and len(s) == 4:
-            # Also handle the '#RGB' format
-            c = '#' + s[1] + s[1]+ s[2]+ s[2]+ s[3]+ s[3]
-        c = toColor(style.text.color)
-        if style.text.opacity == 1.0:
-            return c
-        else:
-            return Color(c.red, c.green, c.blue, c.alpha * style.text.opacity)
+    def _draw_rect(self, r: Rect, filled: int, stroked: int):
+        self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
-    def draw_rect(self, r: Rect, method: DrawMethod):
-        self.rect(r.left, r.top, r.width, r.height,
-                  fill=(method != DrawMethod.DRAW), stroke=(method != DrawMethod.FILL))
+    def draw_rect(self, r: Rect, style: BoxStyle):
+        LOGGER.debug(f"Drawing {r} with style {style}")
+        stroke_color = get_text_color(style.border_color, style.border_opacity)
+        stroke_width = style.width
+        self.setStrokeColor(stroke_color)
+        self.setLineWidth(stroke_width)
+        stroked = stroke_width > 0 and stroke_color.alpha > 0
+        fill_color = get_text_color(style.color, style.opacity)
+        self.setFillColor(fill_color)
+        filled = fill_color.alpha > 0
+        if stroked or filled:
+            self._draw_rect(r, filled=filled, stroked=stroked)
 
     def _draw_checkbox(self, rx, ry, font: Font, state, color: Color):
         size = font.ascent + font.descent
@@ -114,7 +108,7 @@ class PDF(canvas.Canvas):
         font = self.get_font(style)
         text = self.beginText()
         text.setTextOrigin(0, font.top_to_baseline)
-        text_color = self.get_text_color(style)
+        text_color = get_text_color(style.text.color, style.text.opacity)
         text.setFillColor(text_color)
         off = Point(0, 0)
         current_font = None
@@ -135,6 +129,6 @@ class PDF(canvas.Canvas):
 
     def output(self) -> bytes:
         self.save()
-        bytes = self.buffer.getvalue()
+        bytes_data = self.buffer.getvalue()
         self.buffer.close()
-        return bytes
+        return bytes_data

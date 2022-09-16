@@ -1,15 +1,24 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import List, Iterable, Optional
 from warnings import warn
 
 from reportlab.lib import units
-from reportlab.lib.colors import toColor
+from reportlab.lib.colors import toColor, Color
 
+import common
 from common import Spacing
-from common.logging import message_unknown_attribute, message_syntax, message_bad_value
+from common.logging import message_unknown_attribute, message_bad_value
+
+_TRANSPARENT = Color(1, 1, 1, 0)
+
+
+def _q(txt: str) -> str:
+    if ' ' in txt:
+        return "'" + txt + "'"
+    else:
+        return txt
 
 
 def text_to_spacing(text: str) -> Spacing:
@@ -46,8 +55,6 @@ class FontStyle:
             self.size = float(value)
         elif value is None and key.lower() in FACES:
             self.style = key.lower()
-        elif key == 'size':
-            self.size = float(value)
         elif key in ['style', 'face']:
             validate_value(key, value, FACES)
             self.style = value.lower()
@@ -56,7 +63,7 @@ class FontStyle:
 
     def add_to_definition(self, parts: List[str]) -> None:
         if self.family:
-            parts.append(f'font-family:{self.family}')
+            parts.append(f'font-family:{_q(self.family)}')
         if self.size is not None:
             parts.append(f'font-size:{num2str(self.size)}')
         if self.style is not None:
@@ -82,7 +89,7 @@ class TextStyle:
         if key.startswith('text'):
             key = key[4:]
         if key in ['color', 'foreground']:
-            toColor(value)  # Check it is valid
+            get_text_color(value)  # Check it is valid
             self.color = value
         elif key == 'opacity':
             self.opacity = txt2fraction(value)
@@ -110,16 +117,15 @@ def spacing_to_text(spacing: Spacing) -> str:
     if parts[0] == parts[1] == parts[2] == parts[3]:
         return '{}'.format(parts[0])
     if parts[0] == parts[1] and parts[2] == parts[3]:
-        return '{} {}'.format(parts[0], parts[2])
+        return "'{} {}'".format(parts[0], parts[2])
     else:
-        return '{} {} {} {}'.format(*parts)
+        return "'{} {} {} {}'".format(*parts)
 
 
 @dataclass
 class BoxStyle:
     color: str = None
     opacity: float = None
-    border: str = None
     width: float = None
     border_color: str = None
     border_opacity: float = None
@@ -131,18 +137,15 @@ class BoxStyle:
             key = key[3:]
 
         if key in {'color', 'backgroundcolor', 'background', 'bg'}:
-            toColor(value)  # Check it is valid
+            get_text_color(value)  # Check it is valid
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
             self.opacity = txt2fraction(value)
         elif key == 'bordercolor':
-            toColor(value)  # Check it is valid
+            get_text_color(value)  # Check it is valid
             self.border_color = value
         elif key == 'borderopacity':
             self.border_opacity = txt2fraction(value)
-        elif key in {'border', 'method', 'style', 'bordermethod'}:
-            validate_value(key, value, ('none', 'square', 'rounded'))
-            self.border = value
         elif key == 'margin':
             self.margin = text_to_spacing(value)
         elif key == 'padding':
@@ -153,8 +156,6 @@ class BoxStyle:
             raise AttributeError(key)
 
     def add_to_definition(self, parts: List[str]) -> None:
-        if self.border:
-            parts.append(f'border:{self.border}')
         if self.width:
             parts.append(f'border-width:{len2str(self.width)}')
         if self.border_color:
@@ -224,7 +225,7 @@ class Style:
         self.text.add_to_definition(parts)
         self.font.add_to_definition(parts)
         self.box.add_to_definition(parts)
-        return '; '.join(parts)
+        return ' '.join(parts)
 
 
 class Defaults:
@@ -237,12 +238,12 @@ class Defaults:
         TextStyle('black', 1.0, 'left', 0.0),
         FontStyle('Helvetica', 12.0, 'normal'),
         BoxStyle(
-            'white', 0.0,
-            'none', 1.0, 'black', 1.0,
-            Spacing.balanced(0.0), Spacing.balanced(0.0)))
+            'none', 1.0,
+            1.0, 'none', 1.0,
+            Spacing.balanced(0), Spacing.balanced(2)))
 
     title = Style('default-title').set('font-size', '14').set('font-face', 'bold')
-    block = Style('default-block').set('border', 'square').set('margin', '4').set('padding', '2')
+    block = Style('default-block').set('margin', '4')
     section = Style('default-section').set('margin', '8').set('padding', '4')
     sheet = Style('default-sheet').set('margin', '0.75in').set('padding', '8')
 
@@ -252,16 +253,8 @@ class Defaults:
 
 
 def set_using_definition(style: Style, text: str) -> None:
-    definitions = re.split('\W*[,;]\W*', text)
-    for d in definitions:
-        if d:
-            dd = re.split('[:=]', d)
-            if len(dd) == 1:
-                style.set(d.strip(), None)
-            elif len(dd) == 2:
-                style.set(dd[0].strip(), dd[1].strip())
-            else:
-                warn(message_syntax(style.name, text, 'Style definitions must be of the form KEY:VALUE', 'style'))
+    for k, v in common.parse(text):
+        style.set(k, v)
 
 
 def txt2fraction(value: str) -> float:
@@ -291,3 +284,16 @@ def len2str(x: float) -> str:
     if x % 9 == 0:
         return f'{int(x) / 72}in'
     return num2str(x)
+
+
+def get_text_color(name: str, opacity: float = 1.0) -> Color:
+    if name.lower() == 'none':
+        return _TRANSPARENT
+    if name[0] == '#' and len(name) == 4:
+        # Also handle the '#RGB' format
+        name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
+    c: Color = toColor(name)
+    if opacity == 1.0:
+        return c
+    else:
+        return Color(c.red, c.green, c.blue, c.alpha * opacity)

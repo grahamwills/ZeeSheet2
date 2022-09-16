@@ -70,14 +70,6 @@ class Font:
     size: float
     ascent: float
     descent: float
-    standardize_factor: float = None
-
-    def __post_init__(self):
-        """ Set the standardization factor"""
-        if self.standardize_factor is None:
-            std_a, std_d = metrics.getAscentDescent('Helvetica')
-            a, d = metrics.getAscentDescent(self.name)
-            self.standardize_factor = ((std_a - std_d) / (a - d)) ** 0.5  # Descent is negative
 
     def width(self, text: str) -> float:
         """Measures the width of the text"""
@@ -94,14 +86,6 @@ class Font:
         # We split the leading half above the text and half below it
         leading = self.line_spacing - (self.ascent + self.descent)
         return self.ascent + leading / 2
-
-    def standardize(self) -> Font:
-        """ Rescales the font to ensure that it's about the same size as the equivalent Helvetica """
-        if 0.0095 < self.standardize_factor < 100.05:
-            return self
-        else:
-            return Font(self.library, self.name, self.family, self.face, self.size * self.standardize_factor,
-                        self.ascent * self.standardize_factor, self.descent * self.standardize_factor, 1.0)
 
     def change_face(self, bold: bool = None, italic: bool = None) -> Font:
         return self.library.get_font(self.family.name, self.size,

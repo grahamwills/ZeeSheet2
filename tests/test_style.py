@@ -16,7 +16,7 @@ class TestStyle(TestCase):
         self.assertEqual(Defaults.default.parent, None)
         self.assertEqual(Defaults.default.text.align, 'left')
         self.assertEqual(Defaults.default.font.family, 'Helvetica')
-        self.assertEqual(Defaults.default.box.opacity, 0.0)
+        self.assertEqual(Defaults.default.box.opacity, 1.0)
         self.assertEqual(Defaults.default.box.padding, Spacing(0, 0, 0, 0))
 
     def test_initialization(self):
@@ -28,12 +28,11 @@ class TestStyle(TestCase):
         self.assertRaises(ValueError, lambda: Style('1badname'))
 
     def test_to_definition_default(self):
-        self.assertEqual('text-color:black; text-opacity:1; text-align:left; text-indent:0; '
-                         'font-family:Helvetica; font-size:12; font-style:normal; '
-                         'border:none; border-width:1; '
-                         'border-color:black; border-opacity:1; '
-                         'background:white; background-opacity:0; '
-                         'margin:0; padding:0', Defaults.default.to_definition())
+        self.assertEqual('text-color:black text-opacity:1 text-align:left text-indent:0 '
+                         'font-family:Helvetica font-size:12 font-style:normal '
+                         'border-width:1 border-color:black border-opacity:1 '
+                         'background:none background-opacity:1 '
+                         'margin:0 padding:0', Defaults.default.to_definition())
 
     def test_to_definition_empty(self):
         self.assertEqual('inherit:default', Style('test', 'default').to_definition())
@@ -52,11 +51,13 @@ class TestStyle(TestCase):
         self.assertEqual('font-family:Arial', style.set('font-family', 'Arial').to_definition())
         self.assertEqual('font-family:Helvetica', style.set('font', 'Helvetica').to_definition())
         self.assertEqual('font-family:Symbol', style.set('font-font', 'Symbol').to_definition())
+        self.assertEqual('font-family:Symbol', style.set('font-font', "Symbol").to_definition())
+        self.assertEqual("font-family:'A Font'", style.set('font-font', "A Font").to_definition())
 
         style = Style('test')
         self.assertEqual('font-size:1', style.set('font-size', '1.0').to_definition())
         self.assertEqual('font-size:2', style.set('fontSize', '2').to_definition())
-        self.assertEqual('font-size:2; font-style:bold', style.set('bold', None).to_definition())
+        self.assertEqual('font-size:2 font-style:bold', style.set('bold', None).to_definition())
 
         style = Style('test')
         self.assertEqual('text-align:right', style.set('text-align', 'right').to_definition())
@@ -71,8 +72,8 @@ class TestStyle(TestCase):
         self.assertEqual('text-color:green', style.set('text-color', 'green').to_definition())
         self.assertEqual('text-color:red', style.set('color', 'red').to_definition())
         self.assertEqual('text-color:purple', style.set('foreground', 'purple').to_definition())
-        self.assertEqual('text-color:purple; text-opacity:1', style.set('textOpacity', '1').to_definition())
-        self.assertEqual('text-color:purple; text-opacity:0.4', style.set('opacity', '40%').to_definition())
+        self.assertEqual('text-color:purple text-opacity:1', style.set('textOpacity', '1').to_definition())
+        self.assertEqual('text-color:purple text-opacity:0.4', style.set('opacity', '40%').to_definition())
 
         style = Style('test')
         self.assertEqual('background:green', style.set('box-color', 'green').to_definition())
@@ -81,12 +82,6 @@ class TestStyle(TestCase):
         style = Style('test')
         self.assertEqual('background-opacity:0.1', style.set('box-opacity', '0.1').to_definition())
         self.assertEqual('background-opacity:0.8', style.set('box-backgroundOpacity', '80%').to_definition())
-
-        style = Style('test')
-        self.assertEqual('border:none', style.set('border', 'none').to_definition())
-        self.assertEqual('border:square', style.set('box-border', 'square').to_definition())
-        self.assertEqual('border:rounded', style.set('border-method', 'rounded').to_definition())
-        self.assertEqual('border:square', style.set('box-style', 'square').to_definition())
 
         style = Style('test')
         self.assertEqual('border-opacity:1', style.set('border-opacity', '1').to_definition())
@@ -101,18 +96,18 @@ class TestStyle(TestCase):
 
         style = Style('test')
         self.assertEqual('padding:2in', style.set('padding', '2in').to_definition())
-        self.assertEqual('padding:7 0.5in', style.set('box-padding', '7 0.5in').to_definition())
-        self.assertEqual('margin:3 2 7 0.5in; padding:7 0.5in', style.set('margin', '3 2 7 0.5in').to_definition())
+        self.assertEqual("padding:'7 0.5in'", style.set('box-padding', '7 0.5in').to_definition())
+        self.assertEqual("margin:'3 2 7 0.5in' padding:'7 0.5in'", style.set('margin', '3 2 7 0.5in').to_definition())
 
         style = Style('test')
         self.assertEqual('padding:2in', style.set('padding', '2in').to_definition())
-        self.assertEqual('padding:7 0.5in', style.set('box-padding', '7 0.5in').to_definition())
-        self.assertEqual('padding:3 2 7 0.5in', style.set('box-padding', '3 2 7 0.5in').to_definition())
+        self.assertEqual("padding:'7 0.5in'", style.set('box-padding', '7 0.5in').to_definition())
+        self.assertEqual("padding:'3 2 7 0.5in'", style.set('box-padding', '3 2 7 0.5in').to_definition())
 
         style = Style('test')
         self.assertEqual('padding:2in', style.set('padding', '2in').to_definition())
-        self.assertEqual('padding:7 0.5in', style.set('box-padding', '7 0.5in').to_definition())
-        self.assertEqual('padding:3 2 7 0.5in', style.set('box-padding', '3 2 7 0.5in').to_definition())
+        self.assertEqual("padding:'7 0.5in'", style.set('box-padding', '7 0.5in').to_definition())
+        self.assertEqual("padding:'3 2 7 0.5in'", style.set('box-padding', '3 2 7 0.5in').to_definition())
 
     def test_bad_settings(self):
         style = Style('test')
@@ -127,14 +122,6 @@ class TestStyle(TestCase):
             self.assertEqual(1, len(warning_messages))
             self.assertEqual("For attribute 'color' of style 'test': Invalid color value 'a strange hue'."
                              " Ignoring the definition", str(warning_messages[0].message))
-
-        with warnings.catch_warnings(record=True) as warning_messages:
-            style.set('border', 'squiggly')
-            self.assertEqual(1, len(warning_messages))
-            self.assertEqual(
-                "For attribute 'border' of style 'test': 'squiggly' is not a legal value for the style attribute "
-                "border. Should be one of none, square, rounded. Ignoring the definition",
-                str(warning_messages[0].message))
 
         with warnings.catch_warnings(record=True) as warning_messages:
             style.set('opacity', '2')

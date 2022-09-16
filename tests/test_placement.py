@@ -173,18 +173,18 @@ class TestBlockPlacement(unittest.TestCase):
         block = Block(self.title, [])
         placed = place_block(block, Extent(200, 100), self.pdf)
         group = placed.group
-        self.assertEqual(1, len(group))
-        self.assertEqual(Point(0, 0), group[0].location)
+        self.assertEqual(2, len(group))
+        self.assertEqual(Point(0, 0), group[1].location)
 
     def test_simple_block(self):
         # Title with line below
         block = Block(self.title, [_makeItem('hello world')])
         placed = place_block(block, Extent(200, 100), self.pdf)
         group = placed.group
-        self.assertEqual(2, len(group))
-        self.assertEqual(Point(0, 0), group[0].location)
-        self.assertEqual(Point(0, 16), round(group[1].location))
-        self.assertEqual(Extent(79,16), round(group[0].extent))
+        self.assertEqual(3, len(group))
+        self.assertEqual(Point(0, 0), group[1].location)
+        self.assertEqual(Extent(79,16), round(group[1].extent))
+        self.assertEqual(Point(0, 16), round(group[2].location))
 
     def test_table(self):
         # Title with 5 cells defined by 3 items
@@ -196,14 +196,14 @@ class TestBlockPlacement(unittest.TestCase):
         block = Block(self.title, items)
         placed = place_block(block, Extent(300, 100), self.pdf)
         group = placed.group
-        self.assertEqual(6, len(group))
+        self.assertEqual(7, len(group))
 
         # Title
-        self.assertEqual(Point(0, 0), group[0].location)
+        self.assertEqual(Point(0, 0), group[1].location)
 
         # Contents on the grid
-        self.assertEqual(Point(0, 16), round(placed.group[1].location))
-        self.assertEqual(Point(150, 16), round(placed.group[2].location))
-        self.assertEqual(Point(0, 29), round(placed.group[3].location))
-        self.assertEqual(Point(150, 29), round(placed.group[4].location))
-        self.assertEqual(Point(0, 42), round(placed.group[5].location))
+        self.assertEqual(Point(0, 16), round(placed.group[2].location))
+        self.assertEqual(Point(150, 16), round(placed.group[3].location))
+        self.assertEqual(Point(0, 29), round(placed.group[4].location))
+        self.assertEqual(Point(150, 29), round(placed.group[5].location))
+        self.assertEqual(Point(0, 42), round(placed.group[6].location))

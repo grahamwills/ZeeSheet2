@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+import re
+from collections import defaultdict
+from typing import List, Tuple
 
 
 class NGram:
@@ -23,10 +25,68 @@ class NGram:
 
     def similarity(self, other):
         if len(self.txt) < len(other.txt):
-            return self.dot(other) / abs(other)**2
+            return self.dot(other) / abs(other) ** 2
         else:
             return self.dot(other) / abs(other) / abs(self)
 
+
+def parse(text: str) -> List[Tuple[str, str]]:
+    results = []
+
+    key = None
+    value = ''
+    state = 'outside'
+    for c in text:
+        if state == 'outside':
+            if not c.isspace():
+                key = c
+                state = 'in key'
+        elif state == 'in key':
+            if c.isspace():
+                state = 'before joiner'
+            elif c == ':' or c == '=':
+                state = 'after joiner'
+                value = ''
+            else:
+                key += c
+        elif state == 'before joiner':
+            if c == ':' or c == '=':
+                state = 'after joiner'
+                value=''
+            elif not c.isspace():
+                # key with no value, we are starting a new key
+                results.append((key, ''))
+                key = c
+                state = 'in key'
+        elif state == 'after joiner':
+            if c == "'" or c =='"':
+                state = 'in quote'
+            elif not c.isspace():
+                state = 'in value'
+                value = c
+        elif state == 'in value':
+            if c.isspace():
+                # finished value
+                results.append((key, value))
+                key = None
+                value = ''
+                state = 'outside'
+            else:
+                value += c
+        elif state == 'in quote':
+            if c == "'" or c =='"':
+                # finished quote (and hence also finished value)
+                results.append((key, value))
+                key = None
+                value = None
+                state = 'outside'
+            else:
+                value += c
+
+    if key:
+        results.append((key, value))
+
+    return results
 
 
 if __name__ == '__main__':
