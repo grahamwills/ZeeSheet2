@@ -116,7 +116,7 @@ class PlacedRectContent(PlacedContent):
 
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
-        pdf.draw_rect(Rect(0,self.extent.width, 0, self.extent.height), self.style)
+        pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
 
 def _debug_draw_rect(pdf, represents, rect):

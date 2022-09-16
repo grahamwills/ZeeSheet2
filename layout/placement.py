@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, NamedTuple, Tuple, List
+from typing import Optional, NamedTuple, Tuple
 
 from common import Extent, Point, Spacing, Rect
 from generate.fonts import Font
@@ -156,6 +156,8 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
 
 
 def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
+    # Margin has not been accounted for
+
     if not block.title or block.options.title == 'none':
         return None, NO_SPACING
 
@@ -168,12 +170,14 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     placed = place_run(block.title, title_bounds.extent, title_style, pdf)
     placed.location = title_bounds.top_left
 
-    plaque_rect = title_style.box.outset_to_border(placed.bounds)
+    r1 = title_style.box.inset_within_margin(inner)
+    r2 = title_style.box.outset_to_border(placed.bounds)
+    plaque_rect = Rect(r1.left, r1.right, r2.top, r2.bottom)
+
     plaque = PlacedRectContent(block, plaque_rect.extent, plaque_rect.top_left, NO_ERROR, title_style.box)
 
-    overall_extent = title_style.box.outset_to_margin(placed.bounds)
-    title_group = PlacedGroupContent.from_items(block, [plaque, placed], overall_extent, 0)
-    spacing = Spacing(top=overall_extent.height, left=0, right=0, bottom=0)
+    title_group = PlacedGroupContent.from_items(block, [plaque, placed], plaque.extent, 0)
+    spacing = Spacing(top=plaque.extent.height + title_style.box.margin.vertical, left=0, right=0, bottom=0)
     return title_group, spacing
 
 
@@ -201,37 +205,36 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.styles[block.options.style]
-    inner_bounds = main_style.box.inset_from_margin_within_padding(Rect(0, size.width, 0, size.height))
+    container = Rect(0, size.width, 0, size.height)
 
     # Create the title and insets to allow room for it
-    title, title_spacing = make_title(block, inner_bounds, pdf)
+    title, title_spacing = make_title(block, container, pdf)
+
+    if not block.children:
+        if not title:
+            raise RuntimeError('Need either a title or content in a block')
+        else:
+            return title
 
     # Reduce space for the items to account for the title
+    inner_bounds = main_style.box.inset_from_margin_within_padding(container)
     item_bounds = inner_bounds - title_spacing
 
     placed_children = place_block_children(block, item_bounds, pdf)
-
-    if placed_children:
-        child_bounds = placed_children.bounds
-    else:
-        # Zero-height rectangle
-        child_bounds = Rect(item_bounds.left, inner_bounds.right, item_bounds.top, item_bounds.top)
-    locate_title(title, block, child_bounds, pdf)
-    frame_bounds = main_style.box.outset_to_border(child_bounds + title_spacing)
+    locate_title(title, block, placed_children.bounds, pdf)
+    frame_bounds = main_style.box.outset_to_border(placed_children.bounds + title_spacing)
 
     frame = make_frame(block, frame_bounds, main_style.box)
 
-    # Make all the valid items
+    # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]
-    if not items:
-        raise RuntimeError('Need either a title or content in a block')
     if len(items) == 1:
         return items[0]
     all_bounds = Rect.union(i.bounds for i in items)
     return PlacedGroupContent.from_items(block, items, all_bounds.extent, 0)
 
 
-def place_block_children(block, item_bounds:Rect, pdf) -> Optional[PlacedGroupContent]:
+def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if not block.children:
         return None
     placed_items = []
@@ -242,7 +245,7 @@ def place_block_children(block, item_bounds:Rect, pdf) -> Optional[PlacedGroupCo
     ncols = max(len(item.children) for item in block.children)
     # We handle the margins of the children here, reducing the bounds to fit the margin
     # and subtracting the inter-cell margins from the availabel width
-    interior = item_bounds # - margin
+    interior = item_bounds  # - margin
     column_width = (interior.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
     next_top = 0
     # Evenly space everything and assume everything fits

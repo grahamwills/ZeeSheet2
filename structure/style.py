@@ -317,10 +317,10 @@ class Defaults:
             Spacing.balanced(0), Spacing.balanced(2)))
 
     title = Style('default-title').set('font-size', '14').set('font-face', 'bold') \
-        .set('background', 'navy').set('text-color', 'white')
-    block = Style('default-block').set('margin', '8').set('border', 'navy')
-    section = Style('default-section').set('margin', '0').set('padding', '8')
-    sheet = Style('default-sheet').set('margin', '0.75in').set('padding', '8')
+        .set('background', '#0074B7').set('text-color', 'white')
+    block = Style('default-block').set('margin', '12').set('border', '#0074B7').set('background', '#BFD7ED')
+    section = Style('default-section').set('margin', '0').set('padding', '0')
+    sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0')
 
     @classmethod
     def all(cls):
