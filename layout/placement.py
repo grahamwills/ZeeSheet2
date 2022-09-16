@@ -237,23 +237,26 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
 def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if not block.children:
         return None
-    placed_items = []
     content_style = pdf.styles[block.options.style]
-    inter_cell_spacing_horizontal = 0
-    inter_cell_spacing_vertical = 0
+    padding = content_style.box.padding
+    inter_cell_spacing_horizontal = max(padding.left, padding.right)
+    inter_cell_spacing_vertical = max(padding.top, padding.bottom)
+
     # Count the columns
     ncols = max(len(item.children) for item in block.children)
+
     # We handle the margins of the children here, reducing the bounds to fit the margin
-    # and subtracting the inter-cell margins from the availabel width
-    interior = item_bounds  # - margin
-    column_width = (interior.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
+    # and subtracting the inter-cell margins from the available width
+    column_width = (item_bounds.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
     next_top = 0
+
     # Evenly space everything and assume everything fits
+    placed_items = []
     for item in block.children:
         row_bottom = next_top
         for i, run in enumerate(item.children):
             left = i * (column_width + inter_cell_spacing_horizontal)
-            cell_rect = Rect(left, left + column_width, next_top, interior.bottom)
+            cell_rect = Rect(left, left + column_width, next_top, item_bounds.bottom)
             placed_run = place_run(run, cell_rect.extent, content_style, pdf)
             placed_run.location = cell_rect.top_left
             row_bottom = max(row_bottom, placed_run.bounds.bottom)
