@@ -302,6 +302,10 @@ def get_text_color(name: str, opacity: float = 1.0) -> Color:
         return Color(c.red, c.green, c.blue, c.alpha * opacity)
 
 
+
+# TODO: IDEA:  Set colors to auto and have them set automatcially based on the other information
+
+
 class Defaults:
     """ Default Values """
 
