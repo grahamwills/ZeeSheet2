@@ -104,7 +104,7 @@ class PlacedRunContent(PlacedContent):
 
 @dataclass
 class PlacedRectContent(PlacedContent):
-    style: BoxStyle  # Style for this item
+    style: Style  # Style for this item
 
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left

@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from typing import List, Iterable, Optional, Union
 from warnings import warn
 
+import reportlab.lib.colors
 from reportlab.lib import units
-from reportlab.lib.colors import toColor, Color
+from reportlab.lib.colors import Color
 
 import common
 from common import Spacing, Rect, Extent
@@ -19,6 +20,13 @@ def _q(txt: str) -> str:
         return "'" + txt + "'"
     else:
         return txt
+
+
+def _check_valid_color(name: str):
+    """ raises a key error if the name is not found"""
+    name = name.lower()
+    if name not in {'none', 'auto'}:
+        reportlab.lib.colors.toColor(name)
 
 
 def text_to_spacing(text: str) -> Spacing:
@@ -89,7 +97,7 @@ class TextStyle:
         if key.startswith('text'):
             key = key[4:]
         if key in ['color', 'foreground']:
-            get_text_color(value)  # Check it is valid
+            _check_valid_color(value)  # Check it is valid
             self.color = value
         elif key == 'opacity':
             self.opacity = txt2fraction(value)
@@ -137,12 +145,12 @@ class BoxStyle:
             key = key[3:]
 
         if key in {'color', 'backgroundcolor', 'background', 'bg'}:
-            get_text_color(value)  # Check it is valid
+            _check_valid_color(value)  # Check it is valid
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
             self.opacity = txt2fraction(value)
         elif key == 'bordercolor' or key == 'border':
-            get_text_color(value)  # Check it is valid
+            _check_valid_color(value)  # Check it is valid
             self.border_color = value
         elif key == 'borderopacity':
             self.border_opacity = txt2fraction(value)
@@ -245,6 +253,29 @@ class Style:
             warn(message_bad_value(self.name, name, str(ex), category='style'))
             return self
 
+    def get_color(self, box:bool=False, border: bool = False) -> Color:
+        if border:
+            name = self.box.border_color
+            opacity = self.box.border_opacity
+        elif box:
+            name = self.box.color
+            opacity = self.box.opacity
+        else:
+            name = self.text.color
+            opacity = self.text.opacity
+
+        if name.lower() == 'none':
+            return _TRANSPARENT
+        if name[0] == '#' and len(name) == 4:
+            # Also handle the '#RGB' format
+            name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
+        c: Color = reportlab.lib.colors.toColor(name)
+        if opacity == 1.0:
+            return c
+        else:
+            return Color(c.red, c.green, c.blue, c.alpha * opacity)
+
+
     def to_definition(self):
         parts = []
         if self.parent:
@@ -287,19 +318,6 @@ def len2str(x: float) -> str:
     if x % 9 == 0:
         return f'{int(x) / 72}in'
     return num2str(x)
-
-
-def get_text_color(name: str, opacity: float = 1.0) -> Color:
-    if name.lower() == 'none':
-        return _TRANSPARENT
-    if name[0] == '#' and len(name) == 4:
-        # Also handle the '#RGB' format
-        name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
-    c: Color = toColor(name)
-    if opacity == 1.0:
-        return c
-    else:
-        return Color(c.red, c.green, c.blue, c.alpha * opacity)
 
 
 # TODO: IDEA:  Set colors to auto and have them set automatically based on the other information

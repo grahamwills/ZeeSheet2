@@ -12,7 +12,7 @@ from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character
-from structure.style import Style, BoxStyle, get_text_color
+from structure.style import Style, BoxStyle
 
 LOGGER = configured_logger(__name__)
 
@@ -76,14 +76,15 @@ class PDF(canvas.Canvas):
     def _draw_rect(self, r: Rect, filled: int, stroked: int):
         self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
-    def draw_rect(self, r: Rect, style: BoxStyle):
-        LOGGER.debug(f"Drawing {r} with style {style}")
-        stroke_color = get_text_color(style.border_color, style.border_opacity)
+    def draw_rect(self, r: Rect, base_style: Style):
+        LOGGER.debug(f"Drawing {r} with style {base_style.name}")
+        style = base_style.box
+        stroke_color = base_style.get_color(border=True)
         stroke_width = style.width
         self.setStrokeColor(stroke_color)
         self.setLineWidth(stroke_width)
         stroked = stroke_width > 0 and stroke_color.alpha > 0
-        fill_color = get_text_color(style.color, style.opacity)
+        fill_color = base_style.get_color(box=True)
         self.setFillColor(fill_color)
         filled = fill_color.alpha > 0
         if stroked or filled:
@@ -108,7 +109,7 @@ class PDF(canvas.Canvas):
         font = self.get_font(style)
         text = self.beginText()
         text.setTextOrigin(0, font.top_to_baseline)
-        text_color = get_text_color(style.text.color, style.text.opacity)
+        text_color = style.get_color()
         text.setFillColor(text_color)
         off = Point(0, 0)
         current_font = None

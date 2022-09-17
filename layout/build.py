@@ -39,7 +39,7 @@ def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
 
     # Make the frame
     frame_bounds = section_style.box.outset_to_border(content.bounds)
-    frame = placement.make_frame(section, frame_bounds, section_style.box)
+    frame = placement.make_frame(frame_bounds, section_style)
     if frame:
         content = PlacedGroupContent.from_items([frame, content])
     return content
@@ -57,7 +57,7 @@ def create_sheet(sheet: Sheet, pdf: PDF):
     content = packer.into_columns(content_bounds.width)
     content.location = content_bounds.top_left
 
-    frame = placement.make_frame(sheet, sheet_bounds, sheet_style.box)
+    frame = placement.make_frame(sheet_bounds, sheet_style)
     if frame:
         content = PlacedGroupContent.from_items([frame, content], sheet_bounds)
     return content

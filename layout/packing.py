@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from typing import Iterable, Callable, List
 
@@ -44,11 +45,16 @@ class ColumnWidthChooser:
             raise RuntimeError(f"Cannot divide space of size {width} into "
                                f"{self.ncols} columns with gasp {self.column_gap}")
 
+
+        widths = [available * p for p in proportions]
+
+        x = 0
         result = []
         for i in range(0, self.ncols):
-            left = self.left + (column_width + self.column_gap) * i
-            right = left + column_width
+            left = x
+            right = x + widths[i]
             result.append(ColumnSpan(i, left, right))
+            x = right + self.column_gap
         return result
 
     def divisions(self, granularity: float) -> List[List[float]]:
@@ -58,10 +64,11 @@ class ColumnWidthChooser:
 
         n_steps = int((self.right - self.left) / granularity)
 
-        if self.ncols == 1:
+        if self.ncols == 2:
             return [[v / n_steps, 1 - v / n_steps] for v in range(1, n_steps)]
 
-        raise NotImplementedError('More than two columns is not implemented')
+        warnings.warn('Fitting sizes for more than two columns is not implemented')
+        return [[1] * self.ncols]
 
 
 def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[ColumnSpan]:
@@ -93,7 +100,7 @@ class Packer:
         left = self.margins.left
         right = self.margins.right
         chooser = ColumnWidthChooser(left, width - right, max(left, right), ncol)
-        divisions = chooser.divisions(granularity=5.0)
+        divisions = chooser.divisions(granularity=10)
 
         best = None
         for div in divisions:
