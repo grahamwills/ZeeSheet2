@@ -13,15 +13,55 @@ LOGGER = configured_logger(__name__)
 @dataclass
 class ColumnSpan:
     index: int
-    left: int
-    right: int
+    left: float
+    right: float
 
     @property
-    def width(self) -> int:
+    def width(self) -> float:
         return self.right - self.left
 
     def __str__(self) -> str:
-        return f"{self.left}:{self.right}"
+        return f"{self.left:0.1f}:{self.right:0.1f}"
+
+
+class ColumnWidthChooser:
+    def __init__(self, left: float, right: float, column_gap: float, ncols: int):
+        self.left = left
+        self.right = right
+        self.ncols = ncols
+        self.column_gap = column_gap
+
+    def divide_width(self, proportions: Iterable[float]):
+        tot = sum(proportions)
+        proportions = [p / tot for p in proportions]
+        assert len(proportions) == self.ncols
+
+        width = self.right - self.left
+        available = width - (self.ncols - 1) * self.column_gap
+        column_width = available / self.ncols
+
+        if column_width < 1:
+            raise RuntimeError(f"Cannot divide space of size {width} into "
+                               f"{self.ncols} columns with gasp {self.column_gap}")
+
+        result = []
+        for i in range(0, self.ncols):
+            left = self.left + (column_width + self.column_gap) * i
+            right = left + column_width
+            result.append(ColumnSpan(i, left, right))
+        return result
+
+    def divisions(self, granularity: float) -> List[List[float]]:
+        """ Choose column divisions to attempt for given granularity"""
+        if self.ncols == 1:
+            return [[1]]
+
+        n_steps = int((self.right - self.left) / granularity)
+
+        if self.ncols == 1:
+            return [[v / n_steps, 1 - v / n_steps] for v in range(1, n_steps)]
+
+        raise NotImplementedError('More than two columns is not implemented')
 
 
 def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[ColumnSpan]:
@@ -50,9 +90,18 @@ class Packer:
 
     def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
-        spans = self.divide_width(width, ncol)
-        group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
-        return group
+        left = self.margins.left
+        right = self.margins.right
+        chooser = ColumnWidthChooser(left, width - right, max(left, right), ncol)
+        divisions = chooser.divisions(granularity=5.0)
+
+        best = None
+        for div in divisions:
+            spans = chooser.divide_width(div)
+            group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
+            if group.better(best):
+                best = group
+        return best
 
     def find_best_allocation(self, width: float, spans, column_counts: List[int], remaining_items: int,
                              index) -> PlacedGroupContent:
@@ -76,22 +125,10 @@ class Packer:
 
     def divide_width(self, width: float, ncol: int) -> List[ColumnSpan]:
         """ Divide space evenly, taking into account margins """
-
         left = self.margins.left
-        right = width - self.margins.right
-        column_gap = max(self.margins.left, self.margins.right)
-        available = (right - left) - (ncol - 1) * column_gap
-        column_width = available / ncol
-
-        if column_width < 1:
-            raise RuntimeError(f"Cannot divide space of size {width} into {ncol} columns")
-
-        result = []
-        for i in range(0, ncol):
-            left = left + (column_width + column_gap) * i
-            right = left + column_width
-            result.append(ColumnSpan(i, left, right))
-        return result
+        right = self.margins.right
+        chooser = ColumnWidthChooser(left, width - right, max(left, right), ncol)
+        return chooser.divide_width([1] * ncol)
 
     def place_columnwise(self, width: float, assignment: List[ColumnSpan]) -> PlacedGroupContent:
         row_gap = max(self.margins.top, self.margins.bottom)

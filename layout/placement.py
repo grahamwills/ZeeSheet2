@@ -5,6 +5,7 @@ from common import Extent, Point, Spacing, Rect
 from generate.fonts import Font
 from generate.pdf import PDF, TextSegment, CheckboxSegment
 from layout.content import PlacedGroupContent, PlacedRunContent, Error, PlacedContent, PlacedRectContent
+from layout.packing import ColumnWidthChooser
 from structure import Run, Block
 from structure.style import Style, BoxStyle
 
@@ -249,13 +250,16 @@ def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupC
     column_width = (item_bounds.width - (ncols - 1) * inter_cell_spacing_horizontal) / ncols
     next_top = 0
 
-    # Evenly space everything and assume everything fits
+    chooser = ColumnWidthChooser(0, item_bounds.width, inter_cell_spacing_horizontal, ncols)
+    column_sizes = chooser.divide_width([1]*ncols)
+
     placed_items = []
     for item in block.children:
         row_bottom = next_top
         for i, run in enumerate(item.children):
-            left = i * (column_width + inter_cell_spacing_horizontal)
-            cell_rect = Rect(left, left + column_width, next_top, item_bounds.bottom)
+            left = column_sizes[i].left
+            right = column_sizes[i].right
+            cell_rect = Rect(left, right, next_top, item_bounds.bottom)
             placed_run = place_run(run, cell_rect.extent, content_style, pdf)
             placed_run.location = cell_rect.top_left
             row_bottom = max(row_bottom, placed_run.bounds.bottom)
