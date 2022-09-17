@@ -3,7 +3,7 @@ from typing import Dict, Union
 
 import layout.placement as placement
 import structure.style
-from common import Extent, Rect, Spacing
+from common import Extent, Rect
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout.content import PlacedContent, PlacedGroupContent

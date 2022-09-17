@@ -1,10 +1,12 @@
-from structure import Run, Element
 import unittest
+
+from structure import Run, Element
+
 
 class RunTests(unittest.TestCase):
 
     def test_wrapping_with_words_as_runs(self):
-        r =  Run()
+        r = Run()
         for s in 'this| is |a |piece| of| text |that| is |somewhat| long'.split('|'):
             r.append(Element(s))
 
@@ -13,7 +15,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual('this is a piece of text\nthat is somewhat long', r.to_rst(25))
 
     def test_wrapping_with_long_runs(self):
-        r =  Run()
+        r = Run()
         r.append(Element('one two '))
         r.append(Element('bright gloomy', 'strong'))
         r.append(Element(' three four five'))
@@ -23,7 +25,7 @@ class RunTests(unittest.TestCase):
         self.assertEqual('one two\n**bright\ngloomy**\nthree four\nfive', r.to_rst(10))
 
     def test_wrapping_with_indent(self):
-        r =  Run()
+        r = Run()
         r.append(Element('one two '))
         r.append(Element('bright gloomy', 'strong'))
         r.append(Element(' three four five'))

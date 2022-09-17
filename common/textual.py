@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from typing import List, Tuple
 
@@ -52,14 +51,14 @@ def parse(text: str) -> List[Tuple[str, str]]:
         elif state == 'before joiner':
             if c == ':' or c == '=':
                 state = 'after joiner'
-                value=''
+                value = ''
             elif not c.isspace():
                 # key with no value, we are starting a new key
                 results.append((key, ''))
                 key = c
                 state = 'in key'
         elif state == 'after joiner':
-            if c == "'" or c =='"':
+            if c == "'" or c == '"':
                 state = 'in quote'
             elif not c.isspace():
                 state = 'in value'
@@ -74,7 +73,7 @@ def parse(text: str) -> List[Tuple[str, str]]:
             else:
                 value += c
         elif state == 'in quote':
-            if c == "'" or c =='"':
+            if c == "'" or c == '"':
                 # finished quote (and hence also finished value)
                 results.append((key, value))
                 key = None

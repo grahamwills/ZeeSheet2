@@ -200,7 +200,7 @@ def generate_docs():
         for family in families:
             if family.category == c:
                 if len(family.faces) > 1:
-                    item = family.name + '[+' + str(', '.join(set(family.faces.keys())-{'Regular'})) + ']'
+                    item = family.name + '[+' + str(', '.join(set(family.faces.keys()) - {'Regular'})) + ']'
                     names.append(item)
                 else:
                     names.append(family.name)

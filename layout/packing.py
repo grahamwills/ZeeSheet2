@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import Iterable, Callable, List, Any
+from typing import Iterable, Callable, List
 
 from common import Extent, Point, Spacing
 from common import configured_logger
 from generate.pdf import PDF
-from structure import StructureUnit, description
+from structure import StructureUnit
 from .content import PlacedContent, PlacedGroupContent
 
 LOGGER = configured_logger(__name__)

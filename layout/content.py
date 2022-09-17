@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Iterable, Any
+from typing import List
 
 from common import Extent, Point, Rect
 from common import configured_logger
 from generate.pdf import TextSegment, PDF
-from structure import Section, Block, Item, Run, description, Sheet
 from structure.style import Style, BoxStyle
 
 LOGGER = configured_logger(__name__)
@@ -82,7 +81,7 @@ class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, items: List[PlacedContent], extent: Extent=None) -> PlacedGroupContent:
+    def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
         error = Error.sum(i.error for i in items)
         if extent is None:
             r = Rect.union(i.bounds for i in items)

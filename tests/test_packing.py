@@ -8,7 +8,6 @@ from layout import packing
 from layout.content import PlacedContent, Error
 from layout.packing import ColumnSpan
 from structure import StructureUnit
-from structure.style import Defaults
 
 NO_SPACING = Spacing(0, 0, 0, 0)
 
