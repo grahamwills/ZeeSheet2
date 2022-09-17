@@ -33,7 +33,7 @@ def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
     child_margins = get_child_margins(pdf, section)
 
-    packer = Packer(section, section.children, create_block, child_margins, pdf)
+    packer = Packer(section.children, create_block, child_margins, pdf)
     content = packer.into_columns(content_bounds.width)
     content.location = content_bounds.top_left
 
@@ -41,7 +41,7 @@ def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     frame_bounds = section_style.box.outset_to_border(content.bounds)
     frame = placement.make_frame(section, frame_bounds, section_style.box)
     if frame:
-        content = PlacedGroupContent.from_items(section, [frame, content], frame_bounds, 0)
+        content = PlacedGroupContent.from_items([frame, content])
     return content
 
 
@@ -53,13 +53,13 @@ def create_sheet(sheet: Sheet, pdf: PDF):
     content_bounds = sheet_style.box.inset_within_padding(page)
     child_margins = get_child_margins(pdf, sheet)
 
-    packer = Packer(sheet, sheet.children, create_section, child_margins, pdf)
+    packer = Packer(sheet.children, create_section, child_margins, pdf)
     content = packer.into_columns(content_bounds.width)
     content.location = content_bounds.top_left
 
     frame = placement.make_frame(sheet, sheet_bounds, sheet_style.box)
     if frame:
-        content = PlacedGroupContent.from_items(sheet, [frame, content], sheet_bounds, 0)
+        content = PlacedGroupContent.from_items([frame, content], sheet_bounds)
     return content
 
 

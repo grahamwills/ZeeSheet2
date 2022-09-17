@@ -152,7 +152,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
         acceptable_breaks,
         bounds.area - area_used  # Unused space in square pixels
     )
-    return PlacedRunContent(run, bounds, Point(0, 0), error, segments, style)
+    return PlacedRunContent(bounds, Point(0, 0), error, segments, style)
 
 
 def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
@@ -174,9 +174,9 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     r2 = title_style.box.outset_to_border(placed.bounds)
     plaque_rect = Rect(r1.left, r1.right, r2.top, r2.bottom)
 
-    plaque = PlacedRectContent(block, plaque_rect.extent, plaque_rect.top_left, NO_ERROR, title_style.box)
+    plaque = PlacedRectContent(plaque_rect.extent, plaque_rect.top_left, NO_ERROR, title_style.box)
 
-    title_group = PlacedGroupContent.from_items(block, [plaque, placed], plaque.extent, 0)
+    title_group = PlacedGroupContent.from_items([plaque, placed], plaque.extent)
     spacing = Spacing(top=plaque.extent.height + title_style.box.margin.vertical, left=0, right=0, bottom=0)
     return title_group, spacing
 
@@ -196,7 +196,7 @@ def make_frame(owner, bounds: Rect, style: BoxStyle) -> Optional[PlacedRectConte
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(owner, bounds.extent, bounds.top_left, NO_ERROR, style)
+        return PlacedRectContent(bounds.extent, bounds.top_left, NO_ERROR, style)
     else:
         return None
 
@@ -230,8 +230,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     items = [i for i in (frame, placed_children, title) if i]
     if len(items) == 1:
         return items[0]
-    all_bounds = Rect.union(i.bounds for i in items)
-    return PlacedGroupContent.from_items(block, items, all_bounds.extent, 0)
+    return PlacedGroupContent.from_items(items)
 
 
 def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
@@ -265,6 +264,6 @@ def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupC
     # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
     block_bottom = next_top - inter_cell_spacing_vertical
     extent = Extent(item_bounds.width, block_bottom)
-    placed_children = PlacedGroupContent.from_items(block, placed_items, extent, 0)
+    placed_children = PlacedGroupContent.from_items(placed_items, extent)
     placed_children.location = item_bounds.top_left
     return placed_children

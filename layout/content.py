@@ -50,7 +50,6 @@ class Error:
 
 @dataclass
 class PlacedContent:
-    represents: Any  # Whatever this represents
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
     error: Error  # How bad the placement was
@@ -69,17 +68,10 @@ class PlacedContent:
     def _draw(self, pdf: PDF):
         raise NotImplementedError('Must be defined in subclass')
 
-    def name(self):
-        try:
-            return description(self.represents, short=True)
-        except AttributeError:
-            return str(self.represents)
-
     def draw(self, pdf: PDF):
         pdf.saveState()
-        _debug_draw_rect(pdf, self.represents, self.bounds)
+        _debug_draw_rect(pdf, self.bounds)
         if self.location:
-            LOGGER.debug(self.name() + ': Translating by ' + str(self.location))
             pdf.translate(self.location.x, self.location.y)
         self._draw(pdf)
         pdf.restoreState()
@@ -90,11 +82,12 @@ class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
 
     @classmethod
-    def from_items(cls, represents, items: Iterable[PlacedContent], extent: Extent,
-                   extra_unused: int) -> PlacedGroupContent:
-        placed = list(items)
-        error = Error.sum(i.error for i in placed) + Error(0, 0, 0, extra_unused)
-        return PlacedGroupContent(represents, extent, Point(0, 0), error, placed)
+    def from_items(cls, items: List[PlacedContent], extent: Extent=None) -> PlacedGroupContent:
+        error = Error.sum(i.error for i in items)
+        if extent is None:
+            r = Rect.union(i.bounds for i in items)
+            extent = r.extent
+        return PlacedGroupContent(extent, Point(0, 0), error, items)
 
     def _draw(self, pdf: PDF):
         for p in self.group:
@@ -119,21 +112,9 @@ class PlacedRectContent(PlacedContent):
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
 
-def _debug_draw_rect(pdf, represents, rect):
+def _debug_draw_rect(pdf, rect):
     if pdf.debug:
-        if isinstance(represents, Sheet):
-            # Don't draw sheet -- we know where it is
-            return
-        elif isinstance(represents, Section):
-            r, g, b, a = 1, 0.7, 0, 0.15
-        elif isinstance(represents, Block):
-            r, g, b, a = 0, 0, 1, 0.15
-        elif isinstance(represents, Item):
-            r, g, b, a = 1, 0, 0, 0.2
-        elif isinstance(represents, Run):
-            r, g, b, a = 1, 0, 1, 0.2
-        else:
-            raise ValueError('Unexpected representation: ' + str(represents))
+        r, g, b, a = 1, 0, 1, 0.2
         pdf.saveState()
         pdf.setFillColorRGB(r, g, b, alpha=a)
         pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)

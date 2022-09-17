@@ -40,10 +40,9 @@ def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[C
 class Packer:
     """Packs rectangular content into a given space"""
 
-    def __init__(self, represents: Any, items: Iterable[type(StructureUnit)],
+    def __init__(self, items: Iterable[type(StructureUnit)],
                  place_function: Callable[[type(StructureUnit), Extent, PDF], PlacedContent], margins: Spacing,
                  pdf: PDF = None):
-        self.represents = represents
         self.items = list(items)
         self.place_function = place_function
         self.pdf = pdf
@@ -52,15 +51,7 @@ class Packer:
     def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
         n_items = len(self.items)
         spans = self.divide_width(width, ncol)
-
-        ss = ", ".join(str(s) for s in spans)
-        LOGGER.debug(f"Packing '{description(self.represents, short=True)}' into columns: {ss}")
-
         group = self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
-
-        for c in group.group:
-            LOGGER.debug(f".. placed {c.name()} into {c.bounds}")
-
         return group
 
     def find_best_allocation(self, width: float, spans, column_counts: List[int], remaining_items: int,
@@ -128,5 +119,6 @@ class Packer:
         lowest = max(column_bottom)
         wasted = sum((lowest - c) * width for c, width in zip(column_bottom, column_width))
 
-        return PlacedGroupContent.from_items(
-            self.represents, results, Extent(width, lowest + self.margins.bottom), wasted)
+        group = PlacedGroupContent.from_items(results, Extent(width, lowest + self.margins.bottom))
+        group.error.extra += wasted
+        return group
