@@ -70,13 +70,21 @@ def split_for_wrap(text: str,
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
     placed = _place_run(run, extent, style, pdf, False)
 
-    # If it is not clipped, it is good enough
-    if not placed.error.clipped:
-        return placed
+    # If it is clipped, try with bad breaks
+    if placed.error.clipped:
+        placed1 = _place_run(run, extent, style, pdf, True)
+        if placed1.better(placed):
+            placed = placed1
 
-    # Try with bad breaks
-    placed1 = _place_run(run, extent, style, pdf, True)
-    return placed1 if placed1.better(placed) else placed
+    # Apply alignment
+    if style.text.align == 'right':
+        placed.offset_content(extent.width - placed.extent.width)
+    elif style.text.align == 'center':
+        placed.offset_content((extent.width - placed.extent.width) / 2)
+
+    # After alignment, it fills the width. Any unused space is captured in the extent
+    placed.extent = Extent(extent.width, placed.extent.height)
+    return placed
 
 
 def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
@@ -154,8 +162,9 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
         clipped,
         bad_breaks,
         acceptable_breaks,
-        bounds.area - area_used  # Unused space in square pixels
+        extent.width * bounds.height - area_used  # Unused space in square pixels
     )
+
     return PlacedRunContent(bounds, Point(0, 0), error, segments, style)
 
 

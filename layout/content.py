@@ -101,6 +101,11 @@ class PlacedRunContent(PlacedContent):
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
 
+    def offset_content(self, dx: float):
+        off = Point(dx, 0)
+        for s in self.segments:
+            s.offset = s.offset + off
+
 
 @dataclass
 class PlacedRectContent(PlacedContent):

@@ -23,6 +23,9 @@ class ColumnSpan:
     def __str__(self) -> str:
         return f"{self.left:0.1f}:{self.right:0.1f}"
 
+    def __round__(self, n=None):
+        return ColumnSpan(self.index, round(self.left, n), round(self.right, n))
+
 
 class ColumnWidthChooser:
     def __init__(self, left: float, right: float, column_gap: float, ncols: int,
@@ -53,7 +56,7 @@ class ColumnWidthChooser:
         result = []
         for i in range(0, self.ncols):
             left = x
-            right = x + widths[i]
+            right = left + widths[i]
             result.append(ColumnSpan(i, left, right))
             x = right + self.column_gap
         return result
@@ -76,7 +79,7 @@ class ColumnWidthChooser:
         # Recurse
         result = []
         for v in range(min, max, self.granularity):
-            for choices in self._divisions(width-v, n - 1):
+            for choices in self._divisions(width - v, n - 1):
                 result.append([float(v)] + choices)
         return result
 
@@ -105,11 +108,16 @@ class Packer:
         self.pdf = pdf
         self.margins = margins
 
-    def into_columns(self, width: float, ncol: int = 1) -> PlacedGroupContent:
+    def into_columns(self, width: float, ncol: int = 1, equal: bool = False) -> PlacedGroupContent:
         n_items = len(self.items)
         left = self.margins.left
         right = self.margins.right
         chooser = ColumnWidthChooser(left, width - right, max(left, right), ncol)
+
+        if equal:
+            spans = chooser.divide_width([1] * ncol)
+            return self.find_best_allocation(width, spans, [0] * ncol, n_items, index=0)
+
         divisions = chooser.divisions()
 
         best = None

@@ -17,7 +17,8 @@ FONT_LIB = FontLibrary()
 def make_pdf(sheet: Sheet) -> bytes:
     # Use inheritanbce to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
-    # Chaneg 'auto' to be actual values
+
+    # Change 'auto' to be actual values
     for s in complete_styles.values():
         style.Defaults.set_auto_values(s)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
@@ -38,7 +39,7 @@ def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     child_margins = get_child_margins(pdf, section)
 
     packer = Packer(section.children, create_block, child_margins, pdf)
-    content = packer.into_columns(content_bounds.width)
+    content = packer.into_columns(content_bounds.width, 1)
     content.location = content_bounds.top_left
 
     # Make the frame
@@ -58,7 +59,7 @@ def create_sheet(sheet: Sheet, pdf: PDF):
     child_margins = get_child_margins(pdf, sheet)
 
     packer = Packer(sheet.children, create_section, child_margins, pdf)
-    content = packer.into_columns(content_bounds.width)
+    content = packer.into_columns(content_bounds.width, 1)
     content.location = content_bounds.top_left
 
     frame = placement.make_frame(sheet_bounds, sheet_style)

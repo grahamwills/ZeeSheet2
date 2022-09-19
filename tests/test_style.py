@@ -28,10 +28,10 @@ class TestStyle(TestCase):
         self.assertRaises(ValueError, lambda: Style('1badname'))
 
     def test_to_definition_default(self):
-        self.assertEqual('text-color:black text-opacity:1 text-align:left text-indent:0 '
+        self.assertEqual('text-color:auto text-opacity:1 text-align:left text-indent:0 '
                          'font-family:Helvetica font-size:12 font-style:normal '
-                         'border:none border-opacity:1 border-width:1 '
-                         'background:none background-opacity:1 '
+                         'border:auto border-opacity:1 border-width:1 '
+                         'background:auto background-opacity:1 '
                          'margin:0 padding:2', Defaults.default.to_definition())
 
     def test_to_definition_empty(self):
