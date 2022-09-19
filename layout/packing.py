@@ -183,4 +183,5 @@ class Packer:
 
         group = PlacedGroupContent.from_items(results, Extent(width, lowest + self.margins.bottom))
         group.error.extra += wasted
+        group.error.child_ss_extra += wasted*wasted
         return group

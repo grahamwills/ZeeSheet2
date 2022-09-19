@@ -1,6 +1,6 @@
 from typing import Optional, NamedTuple, Tuple
 
-from common import Extent, Point, Spacing, Rect
+from common import Extent, Point, Spacing, Rect, configured_logger
 from generate.fonts import Font
 from generate.pdf import PDF, TextSegment, CheckboxSegment
 from layout.content import PlacedGroupContent, PlacedRunContent, Error, PlacedContent, PlacedRectContent
@@ -12,6 +12,7 @@ from structure.style import Style
 NO_SPACING = Spacing.balanced(0)
 NO_ERROR = Error(0, 0, 0, 0)
 
+LOGGER = configured_logger(__name__)
 
 class PlacementError(RuntimeError):
     pass
@@ -248,7 +249,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     return PlacedGroupContent.from_items(items)
 
 
-def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
+def place_block_children(block:Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if not block.children:
         return None
     content_style = pdf.styles[block.options.style]
@@ -285,8 +286,10 @@ def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupC
             extent = Extent(item_bounds.width, block_bottom)
             placed_children = PlacedGroupContent.from_items(placed_items, extent)
             placed_children.location = item_bounds.top_left
+
+            LOGGER.debug(f"Placed using {div}: Error = {placed_children.error}")
+
             if placed_children.better(best):
-                print('BEST', column_sizes, div)
                 best = placed_children
         except PlacementError:
             pass

@@ -6,7 +6,7 @@ from typing import List
 from common import Extent, Point, Rect
 from common import configured_logger
 from generate.pdf import TextSegment, PDF
-from structure.style import Style, BoxStyle
+from structure.style import Style
 
 LOGGER = configured_logger(__name__)
 
@@ -15,12 +15,17 @@ LOGGER = configured_logger(__name__)
 class Error:
     """ Error from placing one or more items. """
     clipped: float  # Approximate pixel size of items clipped out and lost
-    bad_breaks: float  # Measures the error we want to improve above all (counts of bad breaks)
-    breaks: float  # Measures error we'd prefer to reduce if possible (counts of line breaks)
+    bad_breaks: int  # Measures the error we want to improve above all (counts of bad breaks)
+    breaks: int  # Measures error we'd prefer to reduce if possible (counts of line breaks)
     extra: float  # Extra space that this is not using (in pixels)
+    child_ss_extra: float = None  # Sum of squares of child errors
+
+    def __post_init__(self):
+        if self.child_ss_extra is None:
+            self.child_ss_extra = self.extra ** 2
 
     def __str__(self):
-        return f"Error({self.bad_breaks:1.3}, {self.breaks:1.3} • {self.extra:1.3})"
+        return f"Error({self.clipped:1.1f} • {self.bad_breaks}, {self.breaks} • {self.extra:1.1f} • {self.child_ss_extra:1.1f})"
 
     def __add__(self, other: Error):
         return Error(self.clipped + other.clipped,
@@ -35,16 +40,26 @@ class Error:
         return self.clipped * 1e6 + self.bad_breaks * 100 + self.breaks + self.extra * 1e-6
 
     @classmethod
-    def sum(cls, *args):
+    def aggregate(cls, *args):
         mix = list(args[0]) if len(args) == 1 else list(args)
         c = sum(i.clipped for i in mix)
         u = sum(i.bad_breaks for i in mix)
         a = sum(i.breaks for i in mix)
         e = sum(i.extra for i in mix)
-        return Error(c, u, a, e)
+        ss = sum(i.child_ss_extra for i in mix)
+
+        return Error(c, u, a, e, ss)
 
     def better(self, other: Error):
-        return self._score() < other._score()
+        if self.clipped != other.clipped:
+            return self.clipped < other.clipped
+        if self.bad_breaks != other.bad_breaks:
+            return self.bad_breaks < other.bad_breaks
+        if self.breaks != other.breaks:
+            return self.breaks < other.breaks
+
+        # Use the sum of squares of children rather than the raw
+        return self.child_ss_extra < other.child_ss_extra
 
 
 @dataclass
@@ -80,9 +95,13 @@ class PlacedContent:
 class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
 
+    def __post_init__(self):
+        if self.error.child_ss_extra is None:
+            self.error.child_ss_extra.error = sum(i.error.child_ss_extra for i in self.group)
+
     @classmethod
     def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
-        error = Error.sum(i.error for i in items)
+        error = Error.aggregate(i.error for i in items)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
