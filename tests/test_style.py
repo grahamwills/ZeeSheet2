@@ -239,3 +239,64 @@ class TestMakeCompleteStyles(TestCase):
         block = sheet.children[0]
         self.assertEqual('Courier', styles[block.options.title_style].font.family)
         self.assertEqual('Courier', styles[block.options.style].font.family)
+
+
+class TestAuto(TestCase):
+    # Mappings from TEXT BACKGROUND BORDER to new versions with no 'auto'
+    CASES = [
+        "red green blue :           red green blue",
+
+        # Setting the border
+        "black white auto :         black white black",
+        "black cyan auto :          black cyan #006666",
+        "white black auto :         white black none",
+        "white navy auto :          white navy none",
+
+        # Setting the background
+        "black auto black :         black white black",
+        "blue auto black :          blue white black",
+        "blue auto orange :         blue #ffdb99 orange",
+        "white auto black :         white black black",
+        "pink auto black :          pink black black",
+        "pink auto yellow :         pink #666600 yellow",
+
+        # Setting the text
+        "auto black white :         white black white",
+        "auto white black :         black white black",
+        "auto blue white :          white blue white",
+        "auto white blue :          #000066 white blue",
+        "auto cyan pink :           #660012 cyan pink",
+
+        # Setting the border and background
+        "black auto auto :          black white black",
+        "white auto auto :          white black none",
+        "yellow auto auto :         yellow #666600 none",
+        "blue auto auto :           blue #9999ff #000066",
+
+        # Setting the text and border
+        "auto white auto :          black white black",
+        "auto black auto :          white black none",
+        "auto yellow auto :         black yellow #666600",
+        "auto blue auto :           white blue none",
+
+        # Setting the text and background
+        "auto auto black :          black white black",
+        "auto auto white :          white black white",
+        "auto auto yellow :         #ffff99 #666600 yellow",
+        "auto auto blue :           #000066 #9999ff blue",
+
+        "auto auto auto:            black none black"
+
+    ]
+
+    def test_setting_auto_colors(self):
+        for case in self.CASES:
+            pair = case.split(':')
+            before = pair[0].strip()
+            after = pair[1].strip()
+            with self.subTest("Setting auto", input=before, expected=after):
+                txt, bg, bd = tuple(before.split())
+                s = Style('test').set('text-color', txt).set('border', bd).set('background', bg)
+                Defaults.set_auto_values(s)
+                output = s.text.color + ' ' + s.box.color + ' ' + s.box.border_color
+                self.assertEqual(after, output)

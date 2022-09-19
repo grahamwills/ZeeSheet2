@@ -45,10 +45,9 @@ class ColumnWidthChooser:
             raise RuntimeError(f"Cannot divide space of size {width} into "
                                f"{self.ncols} columns with gasp {self.column_gap}")
 
-
         widths = [available * p for p in proportions]
 
-        x = 0
+        x = self.left
         result = []
         for i in range(0, self.ncols):
             left = x

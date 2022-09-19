@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import colorsys
 from dataclasses import dataclass, field
 from typing import List, Iterable, Optional, Union
 from warnings import warn
@@ -10,7 +11,9 @@ from reportlab.lib.colors import Color
 
 import common
 from common import Spacing, Rect, Extent
-from common.logging import message_unknown_attribute, message_bad_value
+from common.logging import message_unknown_attribute, message_bad_value, configured_logger
+
+LOGGER = configured_logger(__name__)
 
 _TRANSPARENT = Color(1, 1, 1, 0)
 
@@ -27,6 +30,25 @@ def _check_valid_color(name: str):
     name = name.lower()
     if name not in {'none', 'auto'}:
         reportlab.lib.colors.toColor(name)
+
+
+def _brightness(c: Color) -> bool:
+    """ Returns true if the color is mostly lighter"""
+
+    # Assuem the background is light if we have an alpha value
+    base = (0.299 * c.red ** 2 + 0.587 * c.green ** 2 + 0.114 * c.blue ** 2) ** 0.5
+    return base * c.alpha + (1 - c.alpha)
+
+
+def _modify_brightness(c: Color, value: float) -> str:
+    h, l, s = colorsys.rgb_to_hls(*c.rgb())
+    r, g, b = (round(i * 255) for i in colorsys.hls_to_rgb(h, value, s))
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
+def _is_grayscale(c: Color) -> bool:
+    h, s, v = colorsys.rgb_to_hsv(*c.rgb())
+    return s < 0.2
 
 
 def text_to_spacing(text: str) -> Spacing:
@@ -253,7 +275,7 @@ class Style:
             warn(message_bad_value(self.name, name, str(ex), category='style'))
             return self
 
-    def get_color(self, box:bool=False, border: bool = False) -> Color:
+    def get_color(self, box: bool = False, border: bool = False) -> Color:
         if border:
             name = self.box.border_color
             opacity = self.box.border_opacity
@@ -270,11 +292,10 @@ class Style:
             # Also handle the '#RGB' format
             name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
         c: Color = reportlab.lib.colors.toColor(name)
-        if opacity == 1.0:
+        if opacity == 1.0 or opacity == None:
             return c
         else:
             return Color(c.red, c.green, c.blue, c.alpha * opacity)
-
 
     def to_definition(self):
         parts = []
@@ -326,23 +347,145 @@ def len2str(x: float) -> str:
 class Defaults:
     """ Default Values """
 
+    DEFAULT_DARK = '#0074B7'
+    DEFAULT_LIGHT = '#BFD7ED'
+
+    DARK = 0.2
+    BRIGHT = 1 - DARK
+
     # noinspection PyTypeChecker
     default = Style(
         'default',
         None,
-        TextStyle('black', 1.0, 'left', 0.0),
+        TextStyle('auto', 1.0, 'left', 0.0),
         FontStyle('Helvetica', 12.0, 'normal'),
         BoxStyle(
-            'none', 1.0,
-            1.0, 'none', 1.0,
+            'auto', 1.0,
+            1.0, 'auto', 1.0,
             Spacing.balanced(0), Spacing.balanced(2)))
 
-    title = Style('default-title').set('font-size', '14').set('font-face', 'bold') \
-        .set('background', '#0074B7').set('text-color', 'white')
-    block = Style('default-block').set('margin', '12').set('border', '#0074B7').set('background', '#BFD7ED')
-    section = Style('default-section').set('margin', '0').set('padding', '0')
-    sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0')
+    title = Style('default-title').set('font-size', '14').set('font-face', 'bold')
+    block = Style('default-block').set('margin', '12')
+    section = Style('default-section').set('margin', '0').set('padding', '0') \
+        .set('border','none').set('background', 'none')
+    sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0') \
+        .set('border','none').set('background', 'none')
 
     @classmethod
     def all(cls):
         return {s.name: s for s in [Defaults.default, Defaults.sheet, Defaults.block, Defaults.title, Defaults.section]}
+
+    @classmethod
+    def set_auto_text_box_border(cls, style: Style):
+        if 'title' in style.name.lower():
+            style.box.color = Defaults.DEFAULT_DARK
+        elif 'block' in style.name.lower():
+            style.box.color = Defaults.DEFAULT_LIGHT
+        else:
+            style.box.color = 'none'
+        cls.set_auto_text_border(style)
+
+    @classmethod
+    def set_auto_text_border(cls, style: Style):
+        bg = style.get_color(box=True)
+        if _brightness(bg) > 0.5:
+            style.text.color = 'black'
+        else:
+            style.text.color = 'white'
+        cls.set_auto_border(style)
+
+    @classmethod
+    def set_auto_box_border(cls, style: Style):
+        text = style.get_color()
+        if _brightness(text) > 0.5:
+            # Light text
+            if _is_grayscale(text):
+                style.box.color = 'black'
+            else:
+                style.box.color = _modify_brightness(text, value=Defaults.DARK)
+        else:
+            # Dark text
+            if _is_grayscale(text):
+                style.box.color = 'white'
+            else:
+                style.box.color = _modify_brightness(text, value=Defaults.BRIGHT)
+        cls.set_auto_border(style)
+
+    @classmethod
+    def set_auto_text_box(cls, style: Style):
+        border = style.get_color(border=True)
+        if _brightness(border) > 0.5:
+            # Light border
+            if _is_grayscale(border):
+                style.text.color = 'white'
+            else:
+                style.text.color = _modify_brightness(border, value=Defaults.BRIGHT)
+        else:
+            # Dark text
+            if _is_grayscale(border):
+                style.text.color = 'black'
+            else:
+                style.text.color = _modify_brightness(border, value=Defaults.DARK)
+        cls.set_auto_box(style)
+
+    @classmethod
+    def set_auto_text(cls, style: Style):
+        bg = style.get_color(box=True)
+        border = style.get_color(border=True)
+        # Set the text to match the border and contrast with the background
+        if _brightness(bg) > 0.5:
+            if _is_grayscale(border):
+                style.text.color = 'black'
+            else:
+                style.text.color = _modify_brightness(border, value=Defaults.DARK)
+        else:
+            if _is_grayscale(border):
+                style.text.color = 'white'
+            else:
+                style.text.color = _modify_brightness(border, value=Defaults.BRIGHT)
+
+    @classmethod
+    def set_auto_box(cls, style: Style):
+        text = style.get_color()
+        border = style.get_color(border=True)
+        # Set the background to match the border and contrast with the text
+        if _brightness(text) > 0.5:
+            if _is_grayscale(border):
+                style.box.color = 'black'
+            else:
+                style.box.color = _modify_brightness(border, value=Defaults.DARK)
+        else:
+            if _is_grayscale(border):
+                style.box.color = 'white'
+            else:
+                style.box.color = _modify_brightness(border, Defaults.BRIGHT)
+
+    @classmethod
+    def set_auto_border(cls, style: Style):
+        bg = style.get_color(box=True)
+        if _brightness(bg) > 0.5:
+            # Bright background, so make the border dark to contrast
+            if _is_grayscale(bg):
+                style.box.border_color = 'black'
+            else:
+                style.box.border_color = _modify_brightness(bg, value=Defaults.DARK)
+        else:
+            # Dark background, no border needed
+            style.box.border_color = 'none'
+
+    @classmethod
+    def set_auto_values(cls, style: Style):
+        method_extension = ''
+        if style.text.color == 'auto':
+            method_extension += '_text'
+        if style.box.color == 'auto':
+            method_extension += '_box'
+        if style.box.border_color == 'auto':
+            method_extension += '_border'
+
+        # Call appropriate method
+        if method_extension:
+            method = getattr(cls, 'set_auto' + method_extension)
+            method(style)
+            LOGGER.debug(f'Set auto styles for {style.name}: '
+                         f'txt={style.text.color}, bg={style.box.color}, bdr={style.box.border_color}')

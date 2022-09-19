@@ -15,7 +15,11 @@ FONT_LIB = FontLibrary()
 
 
 def make_pdf(sheet: Sheet) -> bytes:
+    # Use inheritanbce to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
+    # Chaneg 'auto' to be actual values
+    for s in complete_styles.values():
+        style.Defaults.set_auto_values(s)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
               styles=complete_styles, debug=sheet.options.debug)
     content = create_sheet(sheet, pdf)
