@@ -251,7 +251,7 @@ def place_block_children(block, item_bounds: Rect, pdf) -> Optional[PlacedGroupC
     ncols = max(len(item.children) for item in block.children)
 
     chooser = ColumnWidthChooser(0, item_bounds.width, inter_cell_spacing_horizontal, ncols)
-    divisions = chooser.divisions(granularity=10)
+    divisions = chooser.divisions()
 
     best = None
     for div in divisions:

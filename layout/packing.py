@@ -1,4 +1,3 @@
-import warnings
 from dataclasses import dataclass
 from typing import Iterable, Callable, List
 
@@ -26,7 +25,10 @@ class ColumnSpan:
 
 
 class ColumnWidthChooser:
-    def __init__(self, left: float, right: float, column_gap: float, ncols: int):
+    def __init__(self, left: float, right: float, column_gap: float, ncols: int,
+                 granularity: int = 10, min_width: int = 20):
+        self.min_width = min_width
+        self.granularity = granularity
         self.left = left
         self.right = right
         self.ncols = ncols
@@ -56,18 +58,27 @@ class ColumnWidthChooser:
             x = right + self.column_gap
         return result
 
-    def divisions(self, granularity: float) -> List[List[float]]:
+    def divisions(self) -> List[List[float]]:
         """ Choose column divisions to attempt for given granularity"""
         if self.ncols == 1:
             return [[1]]
 
-        n_steps = int((self.right - self.left) / granularity)
+        width = self.right - self.left
+        divisions = self._divisions(width, self.ncols)
+        return divisions
 
-        if self.ncols == 2:
-            return [[v / n_steps, 1 - v / n_steps] for v in range(1, n_steps)]
+    def _divisions(self, width: float, n: int) -> List[List[float]]:
+        min = int(self.min_width)
+        max = int(width - self.min_width)
+        if n == 2:
+            return [[v, width - v] for v in range(min, max, self.granularity)]
 
-        warnings.warn('Fitting sizes for more than two columns is not implemented')
-        return [[1] * self.ncols]
+        # Recurse
+        result = []
+        for v in range(min, max, self.granularity):
+            for choices in self._divisions(width-v, n - 1):
+                result.append([float(v)] + choices)
+        return result
 
 
 def assign_to_spans(column_counts: List[int], spans: List[ColumnSpan]) -> List[ColumnSpan]:
@@ -99,7 +110,7 @@ class Packer:
         left = self.margins.left
         right = self.margins.right
         chooser = ColumnWidthChooser(left, width - right, max(left, right), ncol)
-        divisions = chooser.divisions(granularity=10)
+        divisions = chooser.divisions()
 
         best = None
         for div in divisions:
