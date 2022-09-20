@@ -3,8 +3,9 @@ from typing import Optional, NamedTuple, Tuple
 from common import Extent, Point, Spacing, Rect, configured_logger
 from generate.fonts import Font
 from generate.pdf import PDF, TextSegment, CheckboxSegment
-from layout.content import PlacedGroupContent, PlacedRunContent, Error, PlacedContent, PlacedRectContent
-from layout.packing import ColumnWidthChooser
+from layout.content import PlacedGroupContent, PlacedRunContent, Error, PlacedContent, PlacedRectContent, \
+    ExtentTooSmallError, ItemDoesNotExistError
+from layout.packing import ColumnPacker
 from structure import Run, Block
 from structure.style import Style
 
@@ -12,10 +13,6 @@ from structure.style import Style
 NO_SPACING = Spacing.balanced(0)
 
 LOGGER = configured_logger(__name__)
-
-
-class PlacementError(RuntimeError):
-    pass
 
 
 class SplitResult(NamedTuple):
@@ -137,7 +134,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
                 split = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=True)
             if not split.fit and not x:
                 # Still failed
-                raise PlacementError('An empty line cannot fit a single character')
+                raise ExtentTooSmallError('An empty line cannot fit a single character')
 
             if split.fit:
                 # Put it on this line
@@ -159,7 +156,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
             # Continue to process the tail text, if it exists
             text = split.next_line
 
-    bounds = Extent(right, bottom)
+    outer = Extent(right, bottom)
     error = Error(
         clipped,
         bad_breaks,
@@ -167,12 +164,10 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
         (extent.width - last_line_width) ** 2
     )
 
-    return PlacedRunContent(bounds, Point(0, 0), error, segments, style)
+    return PlacedRunContent(outer, Point(0, 0), error, segments, style)
 
 
 def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
-    # Margin has not been accounted for
-
     if not block.title or block.options.title == 'none':
         return None, NO_SPACING
 
@@ -189,15 +184,20 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     r1 = title_style.box.inset_within_margin(inner)
     r2 = title_style.box.outset_to_border(placed.bounds)
     plaque_rect = Rect(r1.left, r1.right, r2.top, r2.bottom)
+    plaque_rect_to_draw = plaque_rect
 
-    plaque = PlacedRectContent(plaque_rect.extent, plaque_rect.top_left, None, title_style)
+    if title_style.box.has_border():
+        # Need to reduce the plaque to draw INSIDE the border
+        plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
 
-    title_group = PlacedGroupContent.from_items([plaque, placed], plaque.extent)
-    spacing = Spacing(top=plaque.extent.height + title_style.box.margin.vertical, left=0, right=0, bottom=0)
-    return title_group, spacing
+    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, None, title_style)
+    title_extent = plaque_rect.extent + title_style.box.margin
+    spacing = Spacing(0, 0, title_extent.height, 0)
+
+    return PlacedGroupContent.from_items([plaque, placed], title_extent), spacing
 
 
-def locate_title(title: PlacedContent, block: Block, content_extent: Extent, pdf: PDF) -> None:
+def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf: PDF) -> None:
     """ Defines the title location and returns the bounds of everything including the title"""
 
     # Currently we only do simple -- at the top
@@ -224,8 +224,14 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     main_style = pdf.styles[block.options.style]
     container = Rect(0, size.width, 0, size.height)
 
+    # Inset for just the border; everything lives inside the border
+    if main_style.box.has_border():
+        outer = container - Spacing.balanced(main_style.box.width)
+    else:
+        outer = container
+
     # Create the title and insets to allow room for it
-    title, title_spacing = make_title(block, container, pdf)
+    title, title_spacing = make_title(block, outer, pdf)
 
     if not block.children:
         if not title:
@@ -233,66 +239,53 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
         else:
             return title
 
-    # Reduce space for the items to account for the title
-    inner_bounds = main_style.box.inset_from_margin_within_padding(container)
-    item_bounds = inner_bounds - title_spacing
+    # Reduce space for the items to account for the title.
+    # Inset for padding and border
+    item_bounds = outer - title_spacing
 
     placed_children = place_block_children(block, item_bounds, pdf)
-    locate_title(title, block, placed_children.bounds, pdf)
-    frame_bounds = main_style.box.outset_to_border(placed_children.bounds + title_spacing)
+    locate_title(title, outer, placed_children.bounds, pdf)
 
+    # Frame everything
+    total_height = placed_children.bounds.bottom
+    if title:
+        total_height = max(total_height, title.bounds.bottom)
+    if main_style.box.has_border():
+        total_height += main_style.box.width
+    frame_bounds = Rect(0, size.width, 0, total_height)
     frame = make_frame(frame_bounds, main_style)
 
     # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]
     if len(items) == 1:
         return items[0]
+
     return PlacedGroupContent.from_items(items)
 
 
+class BlockColumnPacker(ColumnPacker):
+    def __init__(self, bounds: Rect, block: Block, pdf: PDF):
+        column_count = max(len(item.children) for item in block.children)
+        self.items = block.children
+        self.pdf = pdf
+        self.content_style = pdf.styles[block.options.style]
+        super().__init__(bounds, len(block.children), column_count, granularity=5)
+
+    def margins_of_item(self, idx) -> Spacing:
+        # All block items share common margins
+        return self.content_style.box.padding
+
+    def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
+        items = self.items[idx[0]]
+        if idx[1] < len(items.children):
+            return place_run(items[idx[1]], extent, self.content_style, self.pdf)
+        else:
+            raise ItemDoesNotExistError()
+
+
 def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
-    if not block.children:
+    if block.children:
+        packer = BlockColumnPacker(item_bounds, block, pdf)
+        return packer.place_table()
+    else:
         return None
-    content_style = pdf.styles[block.options.style]
-    padding = content_style.box.padding
-    inter_cell_spacing_horizontal = max(padding.left, padding.right)
-    inter_cell_spacing_vertical = max(padding.top, padding.bottom)
-
-    # Count the columns
-    ncols = max(len(item.children) for item in block.children)
-
-    chooser = ColumnWidthChooser(0, item_bounds.width, inter_cell_spacing_horizontal, ncols)
-    divisions = chooser.divisions()
-
-    best = None
-    for div in divisions:
-        next_top = 0
-        column_sizes = chooser.divide_width(div)
-
-        try:
-            placed_items = []
-            for item in block.children:
-                row_bottom = next_top
-                for i, run in enumerate(item.children):
-                    left = column_sizes[i].left
-                    right = column_sizes[i].right
-                    cell_rect = Rect(left, right, next_top, item_bounds.bottom)
-                    placed_run = place_run(run, cell_rect.extent, content_style, pdf)
-                    placed_run.location = cell_rect.top_left
-                    row_bottom = max(row_bottom, placed_run.bounds.bottom)
-                    placed_items.append(placed_run)
-                next_top = row_bottom + inter_cell_spacing_vertical
-            # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
-            block_bottom = next_top - inter_cell_spacing_vertical
-            extent = Extent(item_bounds.width, block_bottom)
-            placed_children = PlacedGroupContent.from_items(placed_items, extent)
-            placed_children.location = item_bounds.top_left
-
-            LOGGER.debug(f"Placed using {div}: Error = {placed_children.error}")
-
-            if placed_children.better(best):
-                best = placed_children
-        except PlacementError:
-            pass
-
-    return best

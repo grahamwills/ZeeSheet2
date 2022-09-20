@@ -127,3 +127,13 @@ def _debug_draw_rect(pdf, rect):
         pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
         pdf._draw_rect(rect, 1, 1)
         pdf.restoreState()
+
+
+class ExtentTooSmallError(RuntimeError):
+    """ The space is too small to fit anything """
+    pass
+
+
+class ItemDoesNotExistError(RuntimeError):
+    """ The item requested to be placed does not exist"""
+    pass

@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Iterable, Callable, List
+from typing import Iterable, Callable, List, Tuple, Union, Optional
 
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
 from generate.pdf import PDF
 from structure import StructureUnit
-from .content import PlacedContent, PlacedGroupContent, Error
+from .content import PlacedContent, PlacedGroupContent, Error, ItemDoesNotExistError, ExtentTooSmallError
 
 LOGGER = configured_logger(__name__)
 
@@ -90,23 +90,35 @@ class ColumnPacker:
         self.k = column_count
         self.bounds = bounds
         self.granularity = granularity
+        self.average_spacing = self._average_spacing()
 
-    def place_item(self, item_index: int, extent: Extent) -> PlacedContent:
+    def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+        """ Place an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
 
-    def margins_of_item(self, item_index: int) -> Spacing:
+    def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
+        """ Margin of an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
 
-    def column_count_possibilities(self) -> List[List[int]]:
+    def column_count_possibilities(self, defined: List[int] = None) -> List[List[int]]:
+        if defined is not None:
+            return [defined]
         return items_into_buckets_combinations(self.n, self.k)
 
-    def _gap_horizontal(self) -> float:
-        # Average the different gaps to give a general size for the gaps between columns
-        total = sum(self.margins_of_item(i).horizontal for i in range(0, self.n))
-        return total / self.n
+    def _average_spacing(self) -> Spacing:
+        n = self.n
+        left = sum(self.margins_of_item(i).left for i in range(0, n))
+        right = sum(self.margins_of_item(i).right for i in range(0, n))
+        top = sum(self.margins_of_item(i).top for i in range(0, n))
+        bottom = sum(self.margins_of_item(i).bottom for i in range(0, n))
+        return Spacing(left / n, right / n, top / n, bottom / n)
 
-    def column_width_possibilities(self) -> List[List[float]]:
-        available_space = self.bounds.width - self._gap_horizontal() * (self.k - 1)
+    def column_width_possibilities(self, defined: List[float] = None) -> List[List[float]]:
+        if defined is not None:
+            return [defined]
+
+        col_width = self.average_spacing.horizontal / 2
+        available_space = self.bounds.width - col_width * self.k
 
         # The total number of granularity steps we can fit in
         segment_count = int(available_space / self.granularity)
@@ -164,21 +176,70 @@ class ColumnPacker:
             results.append(fit)
         return results
 
-    def run(self):
-        count_choices = self.column_count_possibilities()
-        width_choices = self.column_width_possibilities()
+    def place_table(self, width_allocations: List[float] = None):
+        """ Expect to have the table structure methods defined and use them for placement """
+
+        # For tables, the margins must be the same; we use the averages, but all margins should be the same
+        width_choices = self.column_width_possibilities(width_allocations)
+
+        best = None
+        for column_sizes in width_choices:
+            try:
+                placed_children = self._place_table(column_sizes, self.bounds)
+                LOGGER.debug(f"Placed using {column_sizes}: Error = {placed_children.error}")
+                if placed_children.better(best):
+                    best = placed_children
+            except ExtentTooSmallError:
+                # Skip this option
+                pass
+        return best
+
+    def _place_table(self, column_sizes, bounds: Rect):
+        col_gap = self.average_spacing.horizontal / 2
+        row_gap = self.average_spacing.vertical / 2
+
+        top = self.average_spacing.top
+        bottom = top
+        placed_items = []
+        for row in range(0, self.n):
+            left = self.average_spacing.left
+            max_row_height = bounds.bottom - top
+            for col in range(0, self.k):
+                cell_extent = Extent(column_sizes[col], max_row_height)
+                try:
+                    placed_cell = self.place_item((row, col), cell_extent)
+                    placed_cell.location = Point(left, top)
+                    bottom = max(bottom, placed_cell.bounds.bottom)
+                    placed_items.append(placed_cell)
+                except ItemDoesNotExistError:
+                    # Just ignore this
+                    # TODO: should have cells merge nicely
+                    pass
+                left += cell_extent.width + col_gap
+            # Update the top for the next row
+            top = bottom + row_gap
+        # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
+        table_bottom = bottom + self.average_spacing.bottom
+        extent = Extent(bounds.extent.width, table_bottom)
+        placed_children = PlacedGroupContent.from_items(placed_items, extent)
+        placed_children.location = bounds.top_left
+        return placed_children
+
+    def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None):
+        count_choices = self.column_count_possibilities(count_allocations)
+        width_choices = self.column_width_possibilities(width_allocations)
 
         best = None
 
-        # Naive
+        # Naively try all combinations
         for counts in count_choices:
             for widths in width_choices:
                 trial = self.make_fits(widths, counts)
                 if self.better(trial, best):
                     best = trial
 
-        all = [placed for fit in best for placed in fit.items]
-        return PlacedGroupContent.from_items(all)
+        all_items = [placed for fit in best for placed in fit.items]
+        return PlacedGroupContent.from_items(all_items)
 
 
 class ColumnWidthChooser:

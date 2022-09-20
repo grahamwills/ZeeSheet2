@@ -10,7 +10,7 @@ from structure import Element, Run, Block, Item, Sheet
 from structure.style import Style, FontStyle
 
 
-def _makeItem(txt: str) -> Item:
+def _make_item(txt: str) -> Item:
     item = Item([Run([Element(txt, None)])])
     item.tidy()
     return item
@@ -158,7 +158,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(Error(1330, 2, 1, 5), round(placed.error))
 
     def test_split_item_into_cells(self):
-        item = _makeItem('a | b         \t| c | d ')
+        item = _make_item('a | b         \t| c | d ')
         item.tidy()
         self.assertEqual(4, len(item.children))
         self.assertEqual('a', item.children[0].to_rst())
@@ -189,9 +189,9 @@ class TestBlockPlacement(unittest.TestCase):
     def test_table(self):
         # Title with 5 cells defined by 3 items
         items = [
-            _makeItem('hello|this is me'),
-            _makeItem('goodbye     | thanks'),
-            _makeItem('for all the fish')
+            _make_item('hello|this is me'),
+            _make_item('goodbye     | thanks'),
+            _make_item('for all the fish')
         ]
         block = Block(self.title, items)
         placed = place_block(block, Extent(300, 100), self.pdf)

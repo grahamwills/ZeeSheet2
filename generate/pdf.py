@@ -57,6 +57,10 @@ class PDF(canvas.Canvas):
         # Keep an index to give unique names to form items
         self._name_index = 0
 
+        # Set defaults
+        self.setLineCap(2)
+        self.setLineJoin(0)
+
     def get_font(self, style: Style) -> Font:
         try:
             font = self.font_lib.get_font(style.font.family, style.font.size, bold=style.font.is_bold,
