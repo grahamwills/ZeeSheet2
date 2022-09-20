@@ -64,14 +64,21 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(True, bad)
         self.assertEqual(font.width('hello everyone in t'), w)
 
+    def test_split_with_checkboxes(self):
+        e = Element('X', 'checkbox')
+        run = Run([e] * 13)
+        placed = place_run(run, Extent(30, 100), STYLE, self.pdf)
+        self.assertEqual(12, len(placed.segments))
+        self.assertEqual(Error(221, 0, 0, 2), round(placed.error))
+
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
-        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(100, 100), STYLE, self.pdf)
         self.assertEqual(1, len(placed.segments))
         s1 = placed.segments[0]
         self.assertEqual('hello to this ', s1.text)
         self.assertEqual(Point(0, 0), s1.offset)
-        self.assertEqual(Error(0, 0, 0, 1947), round(placed.error))
+        self.assertEqual(Error(0, 0, 0, 640), round(placed.error))
 
     def test_multiple_plenty_of_space(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -81,7 +88,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(139, 0)', locs)
-        self.assertEqual(Error(0, 0, 0, 363), round(placed.error))
+        self.assertEqual(Error(0, 0, 0, 546), round(placed.error))
 
     def test_run_aligned_right(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -99,7 +106,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(143, 0)', locs)
-        self.assertEqual(Error(0, 0, 0, 303), round(placed.error))
+        self.assertEqual(Error(0, 0, 0, 380), round(placed.error))
 
     def test_wrapping_1(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -109,7 +116,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave|new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(0, 16)|(26, 16)', locs)
-        self.assertEqual(Error(0, 0, 1, 1045), round(placed.error))
+        self.assertEqual(Error(0, 0, 1, 3247), round(placed.error))
 
     def test_wrapping_2(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -119,7 +126,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to|this |brave|new| world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(Error(0, 0, 4, 1261), round(placed.error))
+        self.assertEqual(Error(0, 0, 4, 160), round(placed.error))
 
     def test_need_bad_break(self):
         run = Run([self.EX])
@@ -129,7 +136,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('superc|alifragil|isticex|pialido|cious', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(Error(0, 4, 0, 414), round(placed.error))
+        self.assertEqual(Error(0, 4, 0, 152), round(placed.error))
 
     def test_need_bad_breaks_to_fit_vertically(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -139,7 +146,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to|this |bra|ve new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(26, 16)|(0, 31)|(0, 47)', locs)
-        self.assertEqual(Error(0, 1, 2, 484), round(placed.error))
+        self.assertEqual(Error(0, 1, 2, 274), round(placed.error))
 
     def test_not_enough_space_no_matter_what_we_try(self):
         run = Run([self.E1, self.EX, self.E3])
@@ -148,7 +155,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |supercalifra|gilisticexpiali', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)', locs)
-        self.assertEqual(Error(1330, 2, 1, 236), round(placed.error))
+        self.assertEqual(Error(1330, 2, 1, 5), round(placed.error))
 
     def test_split_item_into_cells(self):
         item = _makeItem('a | b         \t| c | d ')

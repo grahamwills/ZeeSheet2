@@ -10,9 +10,9 @@ from structure.style import Style
 
 # Constant for use when no spacing needed
 NO_SPACING = Spacing.balanced(0)
-NO_ERROR = Error(0, 0, 0, 0)
 
 LOGGER = configured_logger(__name__)
+
 
 class PlacementError(RuntimeError):
     pass
@@ -95,11 +95,11 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     area_used = 0
     acceptable_breaks, bad_breaks, clipped = 0, 0, 0
     base_font = pdf.get_font(style)
+
+    last_line_width = 0
     for element in run.children:
         font = base_font.change_face(element.modifier == 'strong', element.modifier == 'emphasis')
-
         text = element.value
-
         height = font.line_spacing
 
         # Handle checkbox
@@ -112,15 +112,16 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
                 # Off the right edge - try to place it on the next line
                 x = 0
                 y += height
-                can_be_placed = (height <= extent.height and width <= extent.width)
+                can_be_placed = (y + height <= extent.height and x + width <= extent.width)
             else:
                 can_be_placed = True
 
             if can_be_placed:
                 segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
                 x += width
+                last_line_width = x
             else:
-                clipped += width * height * 10
+                clipped += width * height
             text = None  # Don't handle this as text in the next block
 
         # Handle cases of actual text, wrapping if necessary
@@ -145,7 +146,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
                 right = max(right, x)
                 bottom = max(bottom, y + height)
                 area_used += split.fit_width * height
-
+                last_line_width = x
             if split.next_line:
                 # Start a new line
                 x = 0
@@ -163,7 +164,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
         clipped,
         bad_breaks,
         acceptable_breaks,
-        extent.width * bounds.height - area_used  # Unused space in square pixels
+        (extent.width - last_line_width) ** 2
     )
 
     return PlacedRunContent(bounds, Point(0, 0), error, segments, style)
@@ -189,7 +190,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     r2 = title_style.box.outset_to_border(placed.bounds)
     plaque_rect = Rect(r1.left, r1.right, r2.top, r2.bottom)
 
-    plaque = PlacedRectContent(plaque_rect.extent, plaque_rect.top_left, NO_ERROR, title_style)
+    plaque = PlacedRectContent(plaque_rect.extent, plaque_rect.top_left, None, title_style)
 
     title_group = PlacedGroupContent.from_items([plaque, placed], plaque.extent)
     spacing = Spacing(top=plaque.extent.height + title_style.box.margin.vertical, left=0, right=0, bottom=0)
@@ -212,7 +213,7 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(bounds.extent, bounds.top_left, NO_ERROR, base_style)
+        return PlacedRectContent(bounds.extent, bounds.top_left, None, base_style)
     else:
         return None
 
@@ -249,7 +250,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     return PlacedGroupContent.from_items(items)
 
 
-def place_block_children(block:Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
+def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if not block.children:
         return None
     content_style = pdf.styles[block.options.style]

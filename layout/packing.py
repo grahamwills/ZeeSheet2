@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Iterable, Callable, List
 
-from common import Extent, Point, Spacing
+from common import Extent, Point, Spacing, Rect
 from common import configured_logger
 from generate.pdf import PDF
 from structure import StructureUnit
-from .content import PlacedContent, PlacedGroupContent
+from .content import PlacedContent, PlacedGroupContent, Error
 
 LOGGER = configured_logger(__name__)
 
@@ -27,6 +28,159 @@ class ColumnSpan:
         return ColumnSpan(self.index, round(self.left, n), round(self.right, n))
 
 
+@lru_cache
+def _bin_counts(n: int, m: int) -> int:
+    # Recursion formula for the counts
+    if n < m:
+        return 0
+    elif n == m or m == 1:
+        return 1
+    else:
+        return _bin_counts(n - 1, m - 1) + _bin_counts(n - 1, m)
+
+
+def _items_into_buckets_combinations(item_count: int, bin_count: int) -> List[List[int]]:
+    """ Generates all possible combinations of items into buckets"""
+    if bin_count == 1:
+        return [[item_count]]
+
+    results = []
+    for i in range(1, item_count - bin_count + 2):
+        # i items in the first, recurse to find the possibilities for the other bins
+        for remainder in items_into_buckets_combinations(item_count - i, bin_count - 1):
+            results.append([i] + remainder)
+    return results
+
+
+def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 1500) -> List[List[int]]:
+    counts = _bin_counts(item_count, bin_count)
+    if counts <= limit or item_count < 2 * bin_count:
+        results = _items_into_buckets_combinations(item_count, bin_count)
+        µ = item_count / bin_count
+        return sorted(results, key=lambda array: sum((v - µ) ** 2 for v in array))
+    else:
+        # Try with half the number of items
+        smaller = items_into_buckets_combinations(item_count // 2, bin_count, limit)
+        # Scale up the values
+        results = []
+        if item_count % 2:
+            # Add the extra number to a different bin
+            for i, vals in enumerate(smaller):
+                new_vals = [2 * v for v in vals]
+                results.append(new_vals)
+                new_vals[i % bin_count] += 1
+        else:
+            # Just scale up
+            for vals in smaller:
+                results.append([2 * v for v in vals])
+        return results
+
+
+@dataclass
+class ColumnFit:
+    width: float
+    height: int = 0
+    items: List[PlacedContent] = field(default_factory=lambda: [])
+    clipped_items_count: int = 0
+
+
+class ColumnPacker:
+    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = 10):
+        self.n = item_count
+        self.k = column_count
+        self.bounds = bounds
+        self.granularity = granularity
+
+    def place_item(self, item_index: int, extent: Extent) -> PlacedContent:
+        raise NotImplementedError('This method must be defined by an inheriting class')
+
+    def margins_of_item(self, item_index: int) -> Spacing:
+        raise NotImplementedError('This method must be defined by an inheriting class')
+
+    def column_count_possibilities(self) -> List[List[int]]:
+        return items_into_buckets_combinations(self.n, self.k)
+
+    def _gap_horizontal(self) -> float:
+        # Average the different gaps to give a general size for the gaps between columns
+        total = sum(self.margins_of_item(i).horizontal for i in range(0, self.n))
+        return total / self.n
+
+    def column_width_possibilities(self) -> List[List[float]]:
+        available_space = self.bounds.width - self._gap_horizontal() * (self.k - 1)
+
+        # The total number of granularity steps we can fit in
+        segment_count = int(available_space / self.granularity)
+        segment_allocations = items_into_buckets_combinations(segment_count, self.k)
+        results = []
+        for i, seg_alloc in enumerate(segment_allocations):
+            column_widths = [s * self.granularity for s in seg_alloc]
+            # Add in the additional part for the extra granularity
+            additional = available_space - sum(column_widths)
+            column_widths[i % self.k] += additional
+            results.append(column_widths)
+        return results
+
+    def better(self, a: List[ColumnFit], b: List[ColumnFit]):
+        if b is None:
+            return True
+        clip_a = sum(fit.clipped_items_count for fit in a)
+        clip_b = sum(fit.clipped_items_count for fit in b)
+        if clip_a != clip_b:
+            return clip_a < clip_b
+
+        err_a = Error.aggregate(p.error for fit in a for p in fit.items)
+        err_b = Error.aggregate(p.error for fit in b for p in fit.items)
+
+        if err_a.better(err_b, ignore_unused=True):
+            return True
+        elif err_b.better(err_a, ignore_unused=True):
+            return False
+
+        µ1 = sum(fit.height for fit in a) / self.k
+        µ2 = sum(fit.height for fit in b) / self.k
+
+        v1 = sum((fit.height - µ1) ** 2 for fit in a)
+        v2 = sum((fit.height - µ2) ** 2 for fit in b)
+        if v1 != v2:
+            return v1 < v2
+
+        return err_a.unused_horizontal < err_b.unused_horizontal
+
+    def make_fits(self, widths: List[float], counts: List[int]) -> List[ColumnFit]:
+        at = 0
+        height = self.bounds.height
+        results = []
+        for width, count in zip(widths, counts):
+            fit = ColumnFit(width)
+            y = 0
+            for i in range(at, at + count):
+                if y >= height:
+                    fit.clipped_items_count += 1
+                else:
+                    placed = self.place_item(i, Extent(width, height - y))
+                    placed.location = Point(0, y)
+                    fit.height = placed.bounds.bottom
+                    fit.items.append(placed)
+            results.append(fit)
+        return results
+
+    def run(self):
+        count_choices = self.column_count_possibilities()
+        width_choices = self.column_width_possibilities()
+
+        best = None
+
+        # Naive
+        for counts in count_choices:
+            for widths in width_choices:
+                trial = self.make_fits(widths, counts)
+                if self.better(trial, best):
+                    best = trial
+
+        all = [placed for fit in best for placed in fit.items]
+        return PlacedGroupContent.from_items(all)
+
+
 class ColumnWidthChooser:
     def __init__(self, left: float, right: float, column_gap: float, ncols: int,
                  granularity: int = 10, min_width: int = 20):
@@ -37,7 +191,7 @@ class ColumnWidthChooser:
         self.ncols = ncols
         self.column_gap = column_gap
 
-    def divide_width(self, proportions: Iterable[float]):
+    def divide_width(self, proportions: Iterable[float]) -> List[ColumnSpan]:
         tot = sum(proportions)
         proportions = [p / tot for p in proportions]
         assert len(proportions) == self.ncols
@@ -179,9 +333,6 @@ class Packer:
             column_width[span.index] = span.width
 
         lowest = max(column_bottom)
-        wasted = sum((lowest - c) * width for c, width in zip(column_bottom, column_width))
 
         group = PlacedGroupContent.from_items(results, Extent(width, lowest + self.margins.bottom))
-        group.error.extra += wasted
-        group.error.child_ss_extra += wasted*wasted
         return group

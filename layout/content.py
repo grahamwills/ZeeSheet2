@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, Iterable
 
 from common import Extent, Point, Rect
 from common import configured_logger
@@ -17,56 +17,44 @@ class Error:
     clipped: float  # Approximate pixel size of items clipped out and lost
     bad_breaks: int  # Measures the error we want to improve above all (counts of bad breaks)
     breaks: int  # Measures error we'd prefer to reduce if possible (counts of line breaks)
-    extra: float  # Extra space that this is not using (in pixels)
-    child_ss_extra: float = None  # Sum of squares of child errors
-
-    def __post_init__(self):
-        if self.child_ss_extra is None:
-            self.child_ss_extra = self.extra ** 2
+    unused_horizontal: float  # Extra horizontal space that has not been used
 
     def __str__(self):
-        return f"Error({self.clipped:1.1f} • {self.bad_breaks}, {self.breaks} • {self.extra:1.1f} • {self.child_ss_extra:1.1f})"
-
-    def __add__(self, other: Error):
-        return Error(self.clipped + other.clipped,
-                     self.bad_breaks + other.bad_breaks,
-                     self.breaks + other.breaks,
-                     self.extra + other.extra)
+        return f"Error({self.clipped:1.1f} • {self.bad_breaks} • {self.breaks} • {self.unused_horizontal:1.1f})"
 
     def __round__(self, n=None):
-        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n), round(self.extra, n))
-
-    def _score(self) -> float:
-        return self.clipped * 1e6 + self.bad_breaks * 100 + self.breaks + self.extra * 1e-6
+        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n),
+                     round(self.unused_horizontal, n))
 
     @classmethod
-    def aggregate(cls, *args):
-        mix = list(args[0]) if len(args) == 1 else list(args)
-        c = sum(i.clipped for i in mix)
-        u = sum(i.bad_breaks for i in mix)
-        a = sum(i.breaks for i in mix)
-        e = sum(i.extra for i in mix)
-        ss = sum(i.child_ss_extra for i in mix)
+    def aggregate(cls, mix: Iterable[Error]) -> Optional[Error]:
+        items = [i for i in mix if i is not None]
+        if not items:
+            return None
+        c = sum(i.clipped for i in items)
+        b = sum(i.bad_breaks for i in items)
+        a = sum(i.breaks for i in items)
+        u = min(i.unused_horizontal for i in items if i.unused_horizontal > -1)
+        return Error(c, b, a, u)
 
-        return Error(c, u, a, e, ss)
-
-    def better(self, other: Error):
+    def better(self, other: Error, ignore_unused: bool = False):
         if self.clipped != other.clipped:
             return self.clipped < other.clipped
         if self.bad_breaks != other.bad_breaks:
             return self.bad_breaks < other.bad_breaks
         if self.breaks != other.breaks:
             return self.breaks < other.breaks
-
-        # Use the sum of squares of children rather than the raw
-        return self.child_ss_extra < other.child_ss_extra
+        if ignore_unused:
+            return False
+        else:
+            return self.unused_horizontal < other.unused_horizontal
 
 
 @dataclass
 class PlacedContent:
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
-    error: Error  # How bad the placement was
+    error: Optional[Error]  # How bad the placement was
 
     @property
     def bounds(self):
@@ -94,10 +82,6 @@ class PlacedContent:
 @dataclass
 class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
-
-    def __post_init__(self):
-        if self.error.child_ss_extra is None:
-            self.error.child_ss_extra.error = sum(i.error.child_ss_extra for i in self.group)
 
     @classmethod
     def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
