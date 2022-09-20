@@ -164,15 +164,25 @@ class ColumnPacker:
         results = []
         for width, count in zip(widths, counts):
             fit = ColumnFit(width)
-            y = 0
+            y = self.bounds.top
+            previous_margin = 0
             for i in range(at, at + count):
                 if y >= height:
                     fit.clipped_items_count += 1
                 else:
-                    placed = self.place_item(i, Extent(width, height - y))
-                    placed.location = Point(0, y)
-                    fit.height = placed.bounds.bottom
+                    # Create the rectangle to be fitted into
+                    r = Rect(self.bounds.left, self.bounds.left + width, y, height)
+
+                    # Collapse this margin with the previous: use the larger only, don't add
+                    margins = self.margins_of_item(i)
+                    margins = Spacing(margins.left, margins.right, max(margins.top - previous_margin,0), margins.bottom)
+                    r = r - margins
+                    placed = self.place_item(i, r.extent)
+                    placed.location = r.top_left
+                    y = placed.bounds.bottom + margins.bottom
+                    previous_margin = margins.bottom
                     fit.items.append(placed)
+            fit.height = y
             results.append(fit)
         return results
 
@@ -238,8 +248,11 @@ class ColumnPacker:
                 if self.better(trial, best):
                     best = trial
 
+        height = max(fit.height for fit in best)
+        ext = Extent(self.bounds.width, height)
         all_items = [placed for fit in best for placed in fit.items]
-        return PlacedGroupContent.from_items(all_items)
+
+        return PlacedGroupContent.from_items(all_items, extent=ext)
 
 
 class ColumnWidthChooser:

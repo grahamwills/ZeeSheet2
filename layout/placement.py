@@ -260,7 +260,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     if len(items) == 1:
         return items[0]
 
-    return PlacedGroupContent.from_items(items)
+    block_extent = Extent(size.width,  total_height)
+    return PlacedGroupContent.from_items(items, extent=block_extent)
 
 
 class BlockColumnPacker(ColumnPacker):

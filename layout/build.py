@@ -1,13 +1,13 @@
 from copy import copy
-from typing import Dict, Union
+from typing import Dict, Union, Tuple, Optional, List
 
 import layout.placement as placement
 import structure.style
-from common import Extent, Rect
+from common import Extent, Rect, Spacing
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout.content import PlacedContent, PlacedGroupContent
-from layout.packing import Packer
+from layout.packing import Packer, ColumnPacker
 from structure import Sheet, Section, Block, style
 from structure.style import Style
 
@@ -28,25 +28,36 @@ def make_pdf(sheet: Sheet) -> bytes:
     return pdf.output()
 
 
-def create_block(block: Block, extent: Extent, pdf: PDF) -> PlacedContent:
-    return placement.place_block(block, extent, pdf)
+class SectionPacker(ColumnPacker):
+
+    def __init__(self, bounds: Rect, blocks: List[Block], column_count: int, pdf, granularity: int = 10):
+        self.blocks = blocks
+        self.pdf = pdf
+        super().__init__(bounds, len(blocks), column_count, granularity=granularity)
+
+    def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+        return placement.place_block(self.blocks[item_index], extent, self.pdf)
+
+    def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
+        style_name = self.blocks[item_index].options.style
+        return self.pdf.styles[style_name].box.margin
 
 
 def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     section_style = pdf.styles[section.options.style]
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
-    child_margins = get_child_margins(pdf, section)
 
-    packer = Packer(section.children, create_block, child_margins, pdf)
-    content = packer.into_columns(content_bounds.width, 1)
-    content.location = content_bounds.top_left
+    # Make the content
+    sp = SectionPacker(content_bounds, section.children, 1, pdf)
+    content = sp.place_in_columns()
 
     # Make the frame
     frame_bounds = section_style.box.outset_to_border(content.bounds)
     frame = placement.make_frame(frame_bounds, section_style)
     if frame:
         content = PlacedGroupContent.from_items([frame, content])
+
     return content
 
 
