@@ -1,35 +1,16 @@
-import math
 import unittest
-from dataclasses import dataclass
 
-from common import Spacing, Extent, Rect, Point
-from generate.pdf import PDF
-from layout import packing
-from layout.content import PlacedContent, Error
-from layout.packing import ColumnSpan, items_into_buckets_combinations, _bin_counts, ColumnPacker
-from structure import StructureUnit
-
-NO_SPACING = Spacing(0, 0, 0, 0)
-
-
-@dataclass
-class TestContent(StructureUnit):
-    area: int
-
-
-def place_test_content_with_wrapping(content: StructureUnit, e: Extent, _: PDF) -> PlacedContent:
-    height = math.ceil(content.area / e.width)
-    error = Error(0, 0, 0, 0)
-    return PlacedContent(Extent(e.width, height), Point(0, 0), error)
+from common import Spacing, Rect
+from layout.packing import items_into_buckets_combinations, bin_counts, ColumnPacker
 
 
 class PackingUtilitiesTest(unittest.TestCase):
 
     def test_bin_counts(self):
-        self.assertEqual(6, _bin_counts(5, 3))
-        self.assertEqual(171, _bin_counts(20, 3))
-        self.assertEqual(82251, _bin_counts(40, 5))
-        self.assertEqual(3764376, _bin_counts(100, 5))
+        self.assertEqual(6, bin_counts(5, 3))
+        self.assertEqual(171, bin_counts(20, 3))
+        self.assertEqual(82251, bin_counts(40, 5))
+        self.assertEqual(3764376, bin_counts(100, 5))
 
     def test_items_into_buckets_combinations_small(self):
         a = ' '.join(str(c) for c in items_into_buckets_combinations(5, 2))
@@ -63,69 +44,70 @@ class PackingUtilitiesTest(unittest.TestCase):
 
 
 class TestPacker(ColumnPacker):
+
     def margins_of_item(self, item_index: int) -> Spacing:
         return Spacing.balanced(10)
 
 
 class PackingTest(unittest.TestCase):
 
-    def test_divide_space_simple(self):
-        packer = packing.Packer([], None, NO_SPACING)
-        cols = [round(c) for c in packer.divide_width(100, 3)]
-        self.assertEqual([ColumnSpan(0, 0, 33), ColumnSpan(1, 33, 67), ColumnSpan(2, 67, 100)], cols)
-
-    def test_divide_space_complex(self):
-        packer = packing.Packer([], None, margins=Spacing.balanced(5))
-        cols = [round(c) for c in packer.divide_width(100, 3)]
-        self.assertEqual([ColumnSpan(0, 5, 32), ColumnSpan(1, 37, 63), ColumnSpan(2, 68, 95)], cols)
-
-    def test_no_padding_margins(self):
-        items = [TestContent(i) for i in (500, 1000, 200)]
-        packer = packing.Packer(items, place_test_content_with_wrapping, NO_SPACING)
-        group = packer.into_columns(100, 1)
-        self.assertEqual(Rect(0, 100, 0, 5), round(group.group[0].bounds))
-        self.assertEqual(Rect(0, 100, 5, 15), round(group.group[1].bounds))
-        self.assertEqual(Rect(0, 100, 15, 17), round(group.group[2].bounds))
-        self.assertEqual(Rect(0, 100, 0, 17), round(group.bounds))
-
-    def test_margins(self):
-        items = [TestContent(i) for i in (500, 1000, 200)]
-        margins = Spacing(3, 47, 13, 17)
-        packer = packing.Packer(items, place_test_content_with_wrapping, margins)
-        group = packer.into_columns(100, 1)
-        self.assertEqual(Rect(3, 53, 13, 23), round(group.group[0].bounds))
-        self.assertEqual(Rect(3, 53, 40, 60), round(group.group[1].bounds))
-        self.assertEqual(Rect(3, 53, 77, 81), round(group.group[2].bounds))
-        self.assertEqual(Rect(0, 100, 0, 98), round(group.bounds))
-
-    def test_three_columns_equal(self):
-        items = [TestContent(i) for i in (1500, 1000, 200, 500, 500, 500, 500)]
-        margins = Spacing.balanced(10)
-        packer = packing.Packer(items, place_test_content_with_wrapping, margins)
-        group = packer.into_columns(220, ncol=3, equal=True)
-
-        bds = [round(g.bounds) for g in group.group]
-
-        # Columns should place items into columns 0 -> {0}, 1 -> {1,2,3}, 3 -> {4,5,6}
-        # Each column should have width = 60
-        self.assertEqual(10, bds[0].left)
-        self.assertEqual(70, bds[0].right)
-
-        self.assertEqual(80, bds[1].left)
-        self.assertEqual(140, bds[1].right)
-        self.assertEqual(80, bds[2].left)
-        self.assertEqual(140, bds[2].right)
-        self.assertEqual(80, bds[3].left)
-        self.assertEqual(140, bds[3].right)
-
-        self.assertEqual(150, bds[4].left)
-        self.assertEqual(210, bds[4].right)
-        self.assertEqual(150, bds[5].left)
-        self.assertEqual(210, bds[5].right)
-        self.assertEqual(150, bds[6].left)
-        self.assertEqual(210, bds[6].right)
-
-        # self.assertEqual(Rect(0, 204, 0, 64), group.bounds)
+    # def test_divide_space_simple(self):
+    #     packer = packing.Packer([], None, NO_SPACING)
+    #     cols = [round(c) for c in packer.divide_width(100, 3)]
+    #     self.assertEqual([ColumnSpan(0, 0, 33), ColumnSpan(1, 33, 67), ColumnSpan(2, 67, 100)], cols)
+    #
+    # def test_divide_space_complex(self):
+    #     packer = packing.Packer([], None, margins=Spacing.balanced(5))
+    #     cols = [round(c) for c in packer.divide_width(100, 3)]
+    #     self.assertEqual([ColumnSpan(0, 5, 32), ColumnSpan(1, 37, 63), ColumnSpan(2, 68, 95)], cols)
+    #
+    # def test_no_padding_margins(self):
+    #     items = [TestContent(i) for i in (500, 1000, 200)]
+    #     packer = packing.Packer(items, place_test_content_with_wrapping, NO_SPACING)
+    #     group = packer.into_columns(100, 1)
+    #     self.assertEqual(Rect(0, 100, 0, 5), round(group.group[0].bounds))
+    #     self.assertEqual(Rect(0, 100, 5, 15), round(group.group[1].bounds))
+    #     self.assertEqual(Rect(0, 100, 15, 17), round(group.group[2].bounds))
+    #     self.assertEqual(Rect(0, 100, 0, 17), round(group.bounds))
+    #
+    # def test_margins(self):
+    #     items = [TestContent(i) for i in (500, 1000, 200)]
+    #     margins = Spacing(3, 47, 13, 17)
+    #     packer = packing.Packer(items, place_test_content_with_wrapping, margins)
+    #     group = packer.into_columns(100, 1)
+    #     self.assertEqual(Rect(3, 53, 13, 23), round(group.group[0].bounds))
+    #     self.assertEqual(Rect(3, 53, 40, 60), round(group.group[1].bounds))
+    #     self.assertEqual(Rect(3, 53, 77, 81), round(group.group[2].bounds))
+    #     self.assertEqual(Rect(0, 100, 0, 98), round(group.bounds))
+    #
+    # def test_three_columns_equal(self):
+    #     items = [TestContent(i) for i in (1500, 1000, 200, 500, 500, 500, 500)]
+    #     margins = Spacing.balanced(10)
+    #     packer = packing.Packer(items, place_test_content_with_wrapping, margins)
+    #     group = packer.into_columns(220, ncol=3, equal=True)
+    #
+    #     bds = [round(g.bounds) for g in group.group]
+    #
+    #     # Columns should place items into columns 0 -> {0}, 1 -> {1,2,3}, 3 -> {4,5,6}
+    #     # Each column should have width = 60
+    #     self.assertEqual(10, bds[0].left)
+    #     self.assertEqual(70, bds[0].right)
+    #
+    #     self.assertEqual(80, bds[1].left)
+    #     self.assertEqual(140, bds[1].right)
+    #     self.assertEqual(80, bds[2].left)
+    #     self.assertEqual(140, bds[2].right)
+    #     self.assertEqual(80, bds[3].left)
+    #     self.assertEqual(140, bds[3].right)
+    #
+    #     self.assertEqual(150, bds[4].left)
+    #     self.assertEqual(210, bds[4].right)
+    #     self.assertEqual(150, bds[5].left)
+    #     self.assertEqual(210, bds[5].right)
+    #     self.assertEqual(150, bds[6].left)
+    #     self.assertEqual(210, bds[6].right)
+    #
+    #     # self.assertEqual(Rect(0, 204, 0, 64), group.bounds)
 
     def test_combinations(self):
         cp = TestPacker(Rect(0, 400, 0, 500), item_count=8, column_count=3, granularity=50)
@@ -134,6 +116,6 @@ class PackingTest(unittest.TestCase):
         self.assertEqual('[2, 3, 3] [3, 2, 3] [3, 3, 2] [2, 2, 4] [2, 4, 2] [4, 2, 2] [1, 3, 4] [3, 1, 4] '
                          '[3, 4, 1] [4, 3, 1] [1, 4, 3] [4, 1, 3] [1, 2, 5] [1, 5, 2] [2, 1, 5] [2, 5, 1] '
                          '[5, 1, 2] [5, 2, 1] [1, 1, 6] [1, 6, 1] [6, 1, 1]', cc)
-        self.assertEqual('[110, 100, 150] [100, 160, 100] [150, 100, 110] [60, 150, 150] [150, 60, 150] '
-                         '[150, 150, 60] [60, 100, 200] [100, 60, 200] [100, 200, 60] [210, 100, 50] '
-                         '[50, 210, 100] [200, 50, 110] [60, 50, 250] [50, 260, 50] [250, 50, 60]', cw)
+        self.assertEqual('[120, 100, 150] [100, 170, 100] [150, 100, 120] [70, 150, 150] [150, 70, 150] '
+                         '[150, 150, 70] [70, 100, 200] [100, 70, 200] [100, 200, 70] [220, 100, 50] '
+                         '[50, 220, 100] [200, 50, 120] [70, 50, 250] [50, 270, 50] [250, 50, 70]', cw)

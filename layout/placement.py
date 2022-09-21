@@ -110,6 +110,8 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
                 x = 0
                 y += height
                 can_be_placed = (y + height <= extent.height and x + width <= extent.width)
+                # if can_be_placed:
+                #     acceptable_breaks += 1
             else:
                 can_be_placed = True
 

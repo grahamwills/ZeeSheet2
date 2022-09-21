@@ -7,8 +7,8 @@ from common import Extent, Rect, Spacing
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout.content import PlacedContent, PlacedGroupContent
-from layout.packing import Packer, ColumnPacker
-from structure import Sheet, Section, Block, style
+from layout.packing import ColumnPacker
+from structure import Sheet, Section, style, StructureUnit
 from structure.style import Style
 
 FONT_LIB = FontLibrary()
@@ -30,20 +30,26 @@ def make_pdf(sheet: Sheet) -> bytes:
 
 class SectionPacker(ColumnPacker):
 
-    def __init__(self, bounds: Rect, blocks: List[Block], column_count: int, pdf, granularity: int = 10):
-        self.blocks = blocks
+    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, granularity: int = 10):
+        self.items = items
         self.pdf = pdf
-        super().__init__(bounds, len(blocks), column_count, granularity=granularity)
+        super().__init__(bounds, len(items), column_count, granularity=granularity)
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
-        return placement.place_block(self.blocks[item_index], extent, self.pdf)
+        return placement.place_block(self.items[item_index], extent, self.pdf)
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
-        style_name = self.blocks[item_index].options.style
+        style_name = self.items[item_index].options.style
         return self.pdf.styles[style_name].box.margin
 
 
-def create_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
+class SheetPacker(SectionPacker):
+
+    def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+        return place_section(self.items[item_index], extent, self.pdf)
+
+
+def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
     section_style = pdf.styles[section.options.style]
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
@@ -67,24 +73,18 @@ def create_sheet(sheet: Sheet, pdf: PDF):
     page = Rect(0, extent.width, 0, extent.height)
     sheet_bounds = sheet_style.box.inset_within_margin(page)
     content_bounds = sheet_style.box.inset_within_padding(page)
-    child_margins = get_child_margins(pdf, sheet)
 
-    packer = Packer(sheet.children, create_section, child_margins, pdf)
-    content = packer.into_columns(content_bounds.width, 1)
-    content.location = content_bounds.top_left
+    # Make the content
+    sp = SheetPacker(content_bounds, sheet.children, 1, pdf)
+    content = sp.place_in_columns()
 
-    frame = placement.make_frame(sheet_bounds, sheet_style)
+    # Make the frame
+    frame_bounds = sheet_style.box.outset_to_border(content.bounds)
+    frame = placement.make_frame(frame_bounds, sheet_style)
     if frame:
-        content = PlacedGroupContent.from_items([frame, content], sheet_bounds)
+        content = PlacedGroupContent.from_items([frame, content])
+
     return content
-
-
-def get_child_margins(pdf, component: Union[Sheet, Section]):
-    if not component.children:
-        raise RuntimeError('No content was defined')
-    child_style_name = component.children[0].options.style
-    child_style = pdf.styles[child_style_name]
-    return child_style.box.margin
 
 
 def _all_lineage_definitions(base, style):
