@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import List, Tuple
+from typing import List, Tuple, Any
+
+
+def to_str(v: Any, places: int = 3):
+    try:
+        i = int(v)
+        if i == v:
+            return str(i)
+        else:
+            if abs(v) > 1e6:
+                return str(round(v / 1e6, places)) + 'M'
+            else:
+                return str(round(v, places))
+    except:
+        pass
+    try:
+        return format(v, f'0.{places}f')
+    except:
+        pass
+    return str(v)
 
 
 class NGram:

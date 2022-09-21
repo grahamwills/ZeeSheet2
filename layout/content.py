@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import reprlib
 from dataclasses import dataclass
 from typing import List, Optional, Iterable
 
 from common import Extent, Point, Rect
-from common import configured_logger
+from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
+
+
+def _f(v) -> str:
+    return to_str(v, places=1)
 
 
 @dataclass
@@ -19,7 +24,7 @@ class Error:
     breaks: int  # Measures error we'd prefer to reduce if possible (counts of line breaks)
 
     def __str__(self):
-        return f"Error({self.clipped:1.1f} • {self.bad_breaks} • {self.breaks} )"
+        return f"Error({_f(self.clipped)} • {_f(self.bad_breaks)} • {_f(self.breaks)} )"
 
     def __round__(self, n=None):
         return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
@@ -34,13 +39,17 @@ class Error:
         a = sum(i.breaks for i in items)
         return Error(c, b, a)
 
-    def better(self, other: Error):
+    def compare(self, other):
         if self.clipped != other.clipped:
-            return self.clipped < other.clipped
+            return -1 if self.clipped < other.clipped else 1
         if self.bad_breaks != other.bad_breaks:
-            return self.bad_breaks < other.bad_breaks
+            return -1 if self.bad_breaks < other.bad_breaks else 1
         if self.breaks != other.breaks:
-            return self.breaks < other.breaks
+            return -1 if self.breaks < other.breaks else 1
+        return 0
+
+    def better(self, other: Error):
+        return self.compare(other) < 0
 
 
 @dataclass
@@ -63,6 +72,9 @@ class PlacedContent:
     def _draw(self, pdf: PDF):
         raise NotImplementedError('Must be defined in subclass')
 
+    def __str__(self):
+        return '<bds=' + str(round(self.bounds)) + ", err=" + str(self.error) + '>'
+
     def draw(self, pdf: PDF):
         pdf.saveState()
         _debug_draw_rect(pdf, self.bounds)
@@ -75,6 +87,7 @@ class PlacedContent:
 @dataclass
 class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
+    sum_squares_unused_space: float = None
 
     @classmethod
     def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
@@ -84,16 +97,33 @@ class PlacedGroupContent(PlacedContent):
             extent = r.extent
         return PlacedGroupContent(extent, Point(0, 0), error, items)
 
+    def better(self, other: PlacedGroupContent):
+        """Is our placement better?"""
+        if other is None:
+            return True
+        diff = self.error.compare(other.error)
+        if diff == 0:
+            if self.sum_squares_unused_space is not None and other.sum_squares_unused_space is not None:
+                return self.sum_squares_unused_space < other.sum_squares_unused_space
+            else:
+                return 0
+        else:
+            return diff < 0
+
     def _draw(self, pdf: PDF):
         for p in self.group:
             p.draw(pdf)
+
+    def __str__(self):
+        base = super().__str__()
+        return base[0] + '#items=' + _f(len(self.group))+', ss=' + _f(self.sum_squares_unused_space) + ', ' + base[1:]
 
 
 @dataclass
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
-    unused_space: float # Pixels of emply space we didn't need
+    unused_space: float  # Pixels of emply space we didn't need
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
@@ -102,6 +132,11 @@ class PlacedRunContent(PlacedContent):
         off = Point(dx, 0)
         for s in self.segments:
             s.offset = s.offset + off
+
+    def __str__(self):
+        base = super().__str__()
+        txt = ''.join(s.to_text() for s in self.segments)
+        return base[0] + reprlib.repr(txt) + ', unused=' + _f(self.unused_space) + ', ' + base[1:]
 
 
 @dataclass

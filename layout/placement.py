@@ -119,6 +119,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
             if can_be_placed:
                 segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
                 bottom = max(bottom, y + height)
+                right = max(right, x)
                 x += width
                 last_line_width = x
             else:
@@ -160,7 +161,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
             # Continue to process the tail text, if it exists
             text = split.next_line
 
-        extra_pixels = (extent.width - last_line_width) * height
+    extra_pixels = extent.width - last_line_width
 
     outer = Extent(right, bottom)
     error = Error(

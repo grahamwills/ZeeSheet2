@@ -1,3 +1,4 @@
+from copy import copy
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import List, Tuple, Union, Optional
@@ -137,6 +138,7 @@ class ColumnPacker:
         if v1 != v2:
             return v1 < v2
 
+        return False
 
     def make_fits(self, widths: List[float], counts: List[int]) -> List[ColumnFit]:
         at = 0
@@ -177,7 +179,8 @@ class ColumnPacker:
         for column_sizes in width_choices:
             try:
                 placed_children = self._place_table(column_sizes, self.bounds)
-                LOGGER.debug(f"Placed using {column_sizes}: Error = {placed_children.error}")
+                LOGGER.debug(f"Placed using {column_sizes}: Error = {placed_children.error}, "
+                             f"SS = {placed_children.sum_squares_unused_space}")
                 if placed_children.better(best):
                     best = placed_children
             except ExtentTooSmallError:
@@ -185,13 +188,14 @@ class ColumnPacker:
                 pass
         return best
 
-    def _place_table(self, column_sizes, bounds: Rect):
+    def _place_table(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
         col_gap = self.average_spacing.horizontal / 2
         row_gap = self.average_spacing.vertical / 2
 
         top = self.average_spacing.top
         bottom = top
         placed_items = []
+        unused = copy(column_sizes)
         for row in range(0, self.n):
             left = self.average_spacing.left
             max_row_height = bounds.bottom - top
@@ -202,6 +206,7 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
+                    unused[col] = min(unused[col], placed_cell.unused_space)
                 except ItemDoesNotExistError:
                     # Just ignore this
                     # TODO: should have cells merge nicely
@@ -214,6 +219,7 @@ class ColumnPacker:
         extent = Extent(bounds.extent.width, table_bottom)
         placed_children = PlacedGroupContent.from_items(placed_items, extent)
         placed_children.location = bounds.top_left
+        placed_children.sum_squares_unused_space = sum(v * v for v in unused)
         return placed_children
 
     def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None):

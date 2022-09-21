@@ -28,6 +28,9 @@ class TextSegment:
     def __str__(self):
         return reprlib.repr(self.text) + '@' + str(self.offset)
 
+    def to_text(self):
+        return self.text
+
 
 @dataclass
 class CheckboxSegment:
@@ -37,6 +40,9 @@ class CheckboxSegment:
 
     def __str__(self):
         return checkbox_character(self.state) + '@' + str(self.offset)
+
+    def to_text(self):
+        return checkbox_character(self.state)
 
 
 class PDF(canvas.Canvas):
