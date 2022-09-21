@@ -94,6 +94,7 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
     base_font = pdf.get_font(style)
 
     last_line_width = 0
+    extra_pixels = 0
     for element in run.children:
         font = base_font.change_face(element.modifier == 'strong', element.modifier == 'emphasis')
         text = element.value
@@ -110,13 +111,14 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
                 x = 0
                 y += height
                 can_be_placed = (y + height <= extent.height and x + width <= extent.width)
-                # if can_be_placed:
-                #     acceptable_breaks += 1
+                if can_be_placed:
+                    acceptable_breaks += 1
             else:
                 can_be_placed = True
 
             if can_be_placed:
                 segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
+                bottom = max(bottom, y + height)
                 x += width
                 last_line_width = x
             else:
@@ -158,15 +160,16 @@ def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_break
             # Continue to process the tail text, if it exists
             text = split.next_line
 
+        extra_pixels = (extent.width - last_line_width) * height
+
     outer = Extent(right, bottom)
     error = Error(
         clipped,
         bad_breaks,
         acceptable_breaks,
-        (extent.width - last_line_width) ** 2
     )
 
-    return PlacedRunContent(outer, Point(0, 0), error, segments, style)
+    return PlacedRunContent(outer, Point(0, 0), error, segments, style, extra_pixels)
 
 
 def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
@@ -262,7 +265,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     if len(items) == 1:
         return items[0]
 
-    block_extent = Extent(size.width,  total_height)
+    block_extent = Extent(size.width, total_height)
     return PlacedGroupContent.from_items(items, extent=block_extent)
 
 

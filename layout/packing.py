@@ -1,14 +1,13 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Iterable, Callable, List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional
 
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
-from generate.pdf import PDF
-from structure import StructureUnit
 from .content import PlacedContent, PlacedGroupContent, Error, ItemDoesNotExistError, ExtentTooSmallError
 
 LOGGER = configured_logger(__name__)
+
 
 @lru_cache
 def bin_counts(n: int, m: int) -> int:
@@ -125,9 +124,9 @@ class ColumnPacker:
         err_a = Error.aggregate(p.error for fit in a for p in fit.items)
         err_b = Error.aggregate(p.error for fit in b for p in fit.items)
 
-        if err_a.better(err_b, ignore_unused=True):
+        if err_a.better(err_b):
             return True
-        elif err_b.better(err_a, ignore_unused=True):
+        elif err_b.better(err_a):
             return False
 
         µ1 = sum(fit.height for fit in a) / self.k
@@ -138,7 +137,6 @@ class ColumnPacker:
         if v1 != v2:
             return v1 < v2
 
-        return err_a.unused_horizontal < err_b.unused_horizontal
 
     def make_fits(self, widths: List[float], counts: List[int]) -> List[ColumnFit]:
         at = 0
@@ -157,7 +155,8 @@ class ColumnPacker:
 
                     # Collapse this margin with the previous: use the larger only, don't add
                     margins = self.margins_of_item(i)
-                    margins = Spacing(margins.left, margins.right, max(margins.top - previous_margin,0), margins.bottom)
+                    margins = Spacing(margins.left, margins.right, max(margins.top - previous_margin, 0),
+                                      margins.bottom)
                     r = r - margins
                     placed = self.place_item(i, r.extent)
                     placed.location = r.top_left

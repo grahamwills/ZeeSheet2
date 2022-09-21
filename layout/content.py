@@ -17,14 +17,12 @@ class Error:
     clipped: float  # Approximate pixel size of items clipped out and lost
     bad_breaks: int  # Measures the error we want to improve above all (counts of bad breaks)
     breaks: int  # Measures error we'd prefer to reduce if possible (counts of line breaks)
-    unused_horizontal: float  # Extra horizontal space that has not been used
 
     def __str__(self):
-        return f"Error({self.clipped:1.1f} • {self.bad_breaks} • {self.breaks} • {self.unused_horizontal:1.1f})"
+        return f"Error({self.clipped:1.1f} • {self.bad_breaks} • {self.breaks} )"
 
     def __round__(self, n=None):
-        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n),
-                     round(self.unused_horizontal, n))
+        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
 
     @classmethod
     def aggregate(cls, mix: Iterable[Error]) -> Optional[Error]:
@@ -34,20 +32,15 @@ class Error:
         c = sum(i.clipped for i in items)
         b = sum(i.bad_breaks for i in items)
         a = sum(i.breaks for i in items)
-        u = min(i.unused_horizontal for i in items if i.unused_horizontal > -1)
-        return Error(c, b, a, u)
+        return Error(c, b, a)
 
-    def better(self, other: Error, ignore_unused: bool = False):
+    def better(self, other: Error):
         if self.clipped != other.clipped:
             return self.clipped < other.clipped
         if self.bad_breaks != other.bad_breaks:
             return self.bad_breaks < other.bad_breaks
         if self.breaks != other.breaks:
             return self.breaks < other.breaks
-        if ignore_unused:
-            return False
-        else:
-            return self.unused_horizontal < other.unused_horizontal
 
 
 @dataclass
@@ -100,6 +93,7 @@ class PlacedGroupContent(PlacedContent):
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
+    unused_space: float # Pixels of emply space we didn't need
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
