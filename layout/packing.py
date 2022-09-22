@@ -5,12 +5,13 @@ from typing import List, Tuple, Union, Optional
 
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
-from .content import PlacedContent, PlacedGroupContent, Error, ItemDoesNotExistError, ExtentTooSmallError
+from .content import PlacedContent, PlacedGroupContent, PlacementError, ItemDoesNotExistError, ExtentTooSmallError
 
 LOGGER = configured_logger(__name__)
 
+MIN_BLOCK_DIMENSION = 8
 
-@lru_cache
+@lru_cache(maxsize=10000)
 def bin_counts(n: int, m: int) -> int:
     # Recursion formula for the counts
     if n < m:
@@ -34,7 +35,7 @@ def _items_into_buckets_combinations(item_count: int, bin_count: int) -> List[Li
     return results
 
 
-def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 1500) -> List[List[int]]:
+def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 200) -> List[List[int]]:
     counts = bin_counts(item_count, bin_count)
     if counts <= limit or item_count < 2 * bin_count:
         results = _items_into_buckets_combinations(item_count, bin_count)
@@ -95,15 +96,21 @@ class ColumnPacker:
         bottom = sum(self.margins_of_item(i).bottom for i in range(0, n))
         return Spacing(left / n, right / n, top / n, bottom / n)
 
-    def column_width_possibilities(self, defined: List[float] = None) -> List[List[float]]:
+    def column_width_possibilities(self, defined: List[float] = None, need_gaps: bool = False) -> List[List[float]]:
+        # If need_gaps is true, we need to reduce available space by gaps around and between cells
         if defined is not None:
             return [defined]
 
         col_width = self.average_spacing.horizontal / 2
-        available_space = self.bounds.width - col_width * self.k
+        available_space = self.bounds.width
+        if need_gaps:
+            available_space -= col_width * self.k
 
         # The total number of granularity steps we can fit in
         segment_count = int(available_space / self.granularity)
+        if segment_count < self.k:
+            raise ExtentTooSmallError('Too few segments to place into columns')
+
         segment_allocations = items_into_buckets_combinations(segment_count, self.k)
         results = []
         for i, seg_alloc in enumerate(segment_allocations):
@@ -122,8 +129,8 @@ class ColumnPacker:
         if clip_a != clip_b:
             return clip_a < clip_b
 
-        err_a = Error.aggregate(p.error for fit in a for p in fit.items)
-        err_b = Error.aggregate(p.error for fit in b for p in fit.items)
+        err_a = PlacementError.aggregate(p.error for fit in a for p in fit.items)
+        err_b = PlacementError.aggregate(p.error for fit in b for p in fit.items)
 
         if err_a.better(err_b):
             return True
@@ -144,6 +151,7 @@ class ColumnPacker:
         at = 0
         height = self.bounds.height
         results = []
+        column_left = self.bounds.left
         for width, count in zip(widths, counts):
             fit = ColumnFit(width)
             y = self.bounds.top
@@ -153,13 +161,16 @@ class ColumnPacker:
                     fit.clipped_items_count += 1
                 else:
                     # Create the rectangle to be fitted into
-                    r = Rect(self.bounds.left, self.bounds.left + width, y, height)
-
+                    r = Rect(column_left, column_left + width, y, height)
                     # Collapse this margin with the previous: use the larger only, don't add
                     margins = self.margins_of_item(i)
                     margins = Spacing(margins.left, margins.right, max(margins.top - previous_margin, 0),
                                       margins.bottom)
                     r = r - margins
+
+                    if r.width < MIN_BLOCK_DIMENSION:
+                        raise ExtentTooSmallError('Block cannot be placed in small area')
+
                     placed = self.place_item(i, r.extent)
                     placed.location = r.top_left
                     y = placed.bounds.bottom + margins.bottom
@@ -167,25 +178,34 @@ class ColumnPacker:
                     fit.items.append(placed)
             fit.height = y
             results.append(fit)
+            column_left += width
+            at += count
         return results
 
     def place_table(self, width_allocations: List[float] = None):
         """ Expect to have the table structure methods defined and use them for placement """
 
         # For tables, the margins must be the same; we use the averages, but all margins should be the same
-        width_choices = self.column_width_possibilities(width_allocations)
+        width_choices = self.column_width_possibilities(width_allocations, need_gaps=True)
+
+        if len(width_choices) == 0:
+            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
+        if len(width_choices) > 1:
+            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
+        else:
+            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using widths={width_choices[0]}")
 
         best = None
         for column_sizes in width_choices:
             try:
                 placed_children = self._place_table(column_sizes, self.bounds)
-                LOGGER.debug(f"Placed using {column_sizes}: Error = {placed_children.error}, "
-                             f"SS = {placed_children.sum_squares_unused_space}")
                 if placed_children.better(best):
                     best = placed_children
             except ExtentTooSmallError:
                 # Skip this option
                 pass
+        if best is None:
+            raise ExtentTooSmallError('All width choices failed to produce a good fit')
         return best
 
     def _place_table(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
@@ -226,14 +246,20 @@ class ColumnPacker:
         count_choices = self.column_count_possibilities(count_allocations)
         width_choices = self.column_width_possibilities(width_allocations)
 
-        best = None
+        LOGGER.debug(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
+                     f"and {len(count_choices)} count options")
 
+        best = None
         # Naively try all combinations
         for counts in count_choices:
             for widths in width_choices:
-                trial = self.make_fits(widths, counts)
-                if self.better(trial, best):
-                    best = trial
+                try:
+                    trial = self.make_fits(widths, counts)
+                    if self.better(trial, best):
+                        best = trial
+                except ExtentTooSmallError:
+                    # Just ignore failures
+                    pass
 
         height = max(fit.height for fit in best)
         ext = Extent(self.bounds.width, height)

@@ -2,7 +2,7 @@ import reprlib
 import warnings
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Any
 
 from reportlab.lib import colors
 from reportlab.lib.colors import Color
@@ -12,7 +12,7 @@ from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character
-from structure.style import Style, BoxStyle
+from structure.style import Style
 
 LOGGER = configured_logger(__name__)
 
@@ -24,6 +24,7 @@ class TextSegment:
     text: str
     offset: Point
     font: Font
+    width: float
 
     def __str__(self):
         return reprlib.repr(self.text) + '@' + str(self.offset)
@@ -37,13 +38,13 @@ class CheckboxSegment:
     state: bool
     offset: Point
     font: Font
+    width: float
 
     def __str__(self):
         return checkbox_character(self.state) + '@' + str(self.offset)
 
     def to_text(self):
         return checkbox_character(self.state)
-
 
 class PDF(canvas.Canvas):
 
@@ -143,3 +144,6 @@ class PDF(canvas.Canvas):
         bytes_data = self.buffer.getvalue()
         self.buffer.close()
         return bytes_data
+
+    def __hash__(self):
+        return id(self)

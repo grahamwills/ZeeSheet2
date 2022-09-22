@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import reprlib
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional, Iterable
+from typing import List, Optional, Iterable, Any, Tuple
 
 from common import Extent, Point, Rect
 from common import configured_logger, to_str
@@ -17,7 +18,7 @@ def _f(v) -> str:
 
 
 @dataclass
-class Error:
+class PlacementError:
     """ Error from placing one or more items. """
     clipped: float  # Approximate pixel size of items clipped out and lost
     bad_breaks: int  # Measures the error we want to improve above all (counts of bad breaks)
@@ -27,28 +28,31 @@ class Error:
         return f"Error({_f(self.clipped)} • {_f(self.bad_breaks)} • {_f(self.breaks)} )"
 
     def __round__(self, n=None):
-        return Error(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
+        return PlacementError(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
+
+    def __bool__(self):
+        return self.clipped != 0 or self.bad_breaks != 0 or self.breaks != 0
 
     @classmethod
-    def aggregate(cls, mix: Iterable[Error]) -> Optional[Error]:
+    def aggregate(cls, mix: Iterable[PlacementError]) -> Optional[PlacementError]:
         items = [i for i in mix if i is not None]
         if not items:
             return None
         c = sum(i.clipped for i in items)
         b = sum(i.bad_breaks for i in items)
         a = sum(i.breaks for i in items)
-        return Error(c, b, a)
+        return PlacementError(c, b, a)
 
     def compare(self, other):
         if self.clipped != other.clipped:
             return -1 if self.clipped < other.clipped else 1
         if self.bad_breaks != other.bad_breaks:
             return -1 if self.bad_breaks < other.bad_breaks else 1
-        if self.breaks != other.breaks:
-            return -1 if self.breaks < other.breaks else 1
+        # if self.breaks != other.breaks:
+        #     return -1 if self.breaks < other.breaks else 1
         return 0
 
-    def better(self, other: Error):
+    def better(self, other: PlacementError):
         return self.compare(other) < 0
 
 
@@ -56,7 +60,7 @@ class Error:
 class PlacedContent:
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
-    error: Optional[Error]  # How bad the placement was
+    error: Optional[PlacementError]  # How bad the placement was
 
     @property
     def bounds(self):
@@ -91,7 +95,7 @@ class PlacedGroupContent(PlacedContent):
 
     @classmethod
     def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
-        error = Error.aggregate(i.error for i in items)
+        error = PlacementError.aggregate(i.error for i in items)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
@@ -116,7 +120,7 @@ class PlacedGroupContent(PlacedContent):
 
     def __str__(self):
         base = super().__str__()
-        return base[0] + '#items=' + _f(len(self.group))+', ss=' + _f(self.sum_squares_unused_space) + ', ' + base[1:]
+        return base[0] + '#items=' + _f(len(self.group)) + ', ss=' + _f(self.sum_squares_unused_space) + ', ' + base[1:]
 
 
 @dataclass

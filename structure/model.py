@@ -26,12 +26,14 @@ class SheetOptions:
     width: float = 8.5 * inch
     height: float = 11 * inch
     debug: bool = False
+    columns: int = 1
 
 
 @dataclass
 class ContainerOptions:
     title: str
     style: str
+    columns: int = 1
     title_style = 'default-title'
 
 
@@ -196,6 +198,9 @@ class Run(StructureUnit):
             if last.modifier is None:
                 last.value = last.value.rstrip()
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class Item(StructureUnit):
@@ -257,6 +262,9 @@ class Block(StructureUnit):
     def tidy(self) -> None:
         self._tidy_title()
         self._tidy_children()
+
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass

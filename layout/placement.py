@@ -1,11 +1,13 @@
+from functools import lru_cache
 from typing import Optional, NamedTuple, Tuple
 
 from common import Extent, Point, Spacing, Rect, configured_logger
 from generate.fonts import Font
 from generate.pdf import PDF, TextSegment, CheckboxSegment
-from layout.content import PlacedGroupContent, PlacedRunContent, Error, PlacedContent, PlacedRectContent, \
+from layout.content import PlacedGroupContent, PlacedRunContent, PlacementError, PlacedContent, PlacedRectContent, \
     ExtentTooSmallError, ItemDoesNotExistError
 from layout.packing import ColumnPacker
+from layout.run_builder import RunBuilder
 from structure import Run, Block
 from structure.style import Style
 
@@ -23,56 +25,12 @@ class SplitResult(NamedTuple):
     bad_break: bool
 
 
-def split_for_wrap(text: str,
-                   available: float,
-                   font: Font,
-                   allow_bad_breaks: bool = False) -> SplitResult:
-    """
-        Splits the text into two parts to facilitate wrapping
 
-        :param text: text to break
-        :param available: space available to place into
-        :param font: the font being used
-        :param allow_bad_breaks: if true, can break anywhere
-        :return: the string that fits and the width of that string followed by the remainder of the string,
-        and then a flag for a bad break
-    """
-
-    width = font.width(text)
-    if width <= available:
-        # Easy if it all fits!
-        return SplitResult(text, width, None, False)
-
-    # Search through in order
-    # (might be faster to do a search starting from a fraction (available/width) of the string)
-
-    best = None
-    for at in range(1, len(text) - 1):
-        if allow_bad_breaks or text[at].isspace():
-            head = text[:at]
-            w = font.width(head.rstrip())
-            if w < available:
-                best = head, w
-            else:
-                break
-
-    if best:
-        head = best[0]
-        tail = text[len(head):]
-        split_good = head[-1].isspace() or tail[0].isspace()
-        return SplitResult(head.rstrip(), best[1], tail.lstrip(), not split_good)
-    else:
-        return SplitResult(None, 0, text, False)
-
-
+@lru_cache(maxsize=10000)
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
-    placed = _place_run(run, extent, style, pdf, False)
 
-    # If it is clipped, try with bad breaks
-    if placed.error.clipped:
-        placed1 = _place_run(run, extent, style, pdf, True)
-        if placed1.better(placed):
-            placed = placed1
+    bldr = RunBuilder(run, style, extent, pdf)
+    placed = bldr.build()
 
     # Apply alignment
     if style.text.align == 'right':
@@ -83,94 +41,6 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunCont
     # After alignment, it fills the width. Any unused space is captured in the extent
     placed.extent = Extent(extent.width, placed.extent.height)
     return placed
-
-
-def _place_run(run: Run, extent: Extent, style: Style, pdf: PDF, allow_bad_breaks: bool) -> PlacedRunContent:
-    segments = []
-
-    x, y, right, bottom = 0, 0, 0, 0
-    area_used = 0
-    acceptable_breaks, bad_breaks, clipped = 0, 0, 0
-    base_font = pdf.get_font(style)
-
-    last_line_width = 0
-    extra_pixels = 0
-    for element in run.children:
-        font = base_font.change_face(element.modifier == 'strong', element.modifier == 'emphasis')
-        text = element.value
-        height = font.line_spacing
-
-        # Handle checkbox
-        if element.modifier == 'checkbox':
-            width = (font.ascent + font.descent) * 1.1  # Add a little spacing (as a small percentage of the box size)
-            if y + height > extent.height:
-                # Off the bottom -- cannot be placed
-                can_be_placed = False
-            elif x + width > extent.width:
-                # Off the right edge - try to place it on the next line
-                x = 0
-                y += height
-                can_be_placed = (y + height <= extent.height and x + width <= extent.width)
-                if can_be_placed:
-                    acceptable_breaks += 1
-            else:
-                can_be_placed = True
-
-            if can_be_placed:
-                segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
-                bottom = max(bottom, y + height)
-                right = max(right, x)
-                x += width
-                last_line_width = x
-            else:
-                clipped += width * height
-            text = None  # Don't handle this as text in the next block
-
-        # Handle cases of actual text, wrapping if necessary
-        while text is not None and text != '':
-            if y + height > extent.height:
-                # Clipped text; just add the size of the clipped area
-                clipped += height * font.width(text)
-                break
-
-            split = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=allow_bad_breaks)
-            if not split.fit and not x and not allow_bad_breaks:
-                # Failed to split with whole line available - try again, but allow bad breaks just for this line
-                split = split_for_wrap(text, extent.width - x, font, allow_bad_breaks=True)
-            if not split.fit and not x:
-                # Still failed
-                raise ExtentTooSmallError('An empty line cannot fit a single character')
-
-            if split.fit:
-                # Put it on this line
-                segments.append(TextSegment(split.fit, Point(x, y), font))
-                x += split.fit_width
-                right = max(right, x)
-                bottom = max(bottom, y + height)
-                area_used += split.fit_width * height
-                last_line_width = x
-            if split.next_line:
-                # Start a new line
-                x = 0
-                y += height
-                if split.bad_break:
-                    bad_breaks += 1
-                else:
-                    acceptable_breaks += 1
-
-            # Continue to process the tail text, if it exists
-            text = split.next_line
-
-    extra_pixels = extent.width - last_line_width
-
-    outer = Extent(right, bottom)
-    error = Error(
-        clipped,
-        bad_breaks,
-        acceptable_breaks,
-    )
-
-    return PlacedRunContent(outer, Point(0, 0), error, segments, style, extra_pixels)
 
 
 def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
@@ -290,6 +160,7 @@ class BlockColumnPacker(ColumnPacker):
             raise ItemDoesNotExistError()
 
 
+@lru_cache
 def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if block.children:
         packer = BlockColumnPacker(item_bounds, block, pdf)

@@ -1,6 +1,5 @@
 from copy import copy
-from typing import Dict, Union, Tuple, Optional, List
-
+from typing import Dict, Union, Tuple, Optional, List, Iterable
 import layout.placement as placement
 import structure.style
 from common import Extent, Rect, Spacing
@@ -8,14 +7,14 @@ from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout.content import PlacedContent, PlacedGroupContent
 from layout.packing import ColumnPacker
-from structure import Sheet, Section, style, StructureUnit
+from structure import Sheet, style, StructureUnit
 from structure.style import Style
 
 FONT_LIB = FontLibrary()
 
 
 def make_pdf(sheet: Sheet) -> bytes:
-    # Use inheritanbce to make the values all defined
+    # Use inheritance to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
 
     # Change 'auto' to be actual values
@@ -23,7 +22,7 @@ def make_pdf(sheet: Sheet) -> bytes:
         style.Defaults.set_auto_values(s)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
               styles=complete_styles, debug=sheet.options.debug)
-    content = create_sheet(sheet, pdf)
+    content = build_sheet(sheet, pdf)
     content.draw(pdf)
     return pdf.output()
 
@@ -46,36 +45,32 @@ class SectionPacker(ColumnPacker):
 class SheetPacker(SectionPacker):
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
-        return place_section(self.items[item_index], extent, self.pdf)
+        section = self.items[item_index]
+        section_style = self.pdf.styles[section.options.style]
+        bounds = Rect(0, extent.width, 0, extent.height)
+        content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
+
+        # Make the content
+        sp = SectionPacker(content_bounds, section.children, section.options.columns, self.pdf, granularity=20)
+        content = sp.place_in_columns()
+
+        # Make the frame
+        frame_bounds = section_style.box.outset_to_border(content.bounds)
+        frame = placement.make_frame(frame_bounds, section_style)
+        if frame:
+            content = PlacedGroupContent.from_items([frame, content])
+
+        return content
 
 
-def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedContent:
-    section_style = pdf.styles[section.options.style]
-    bounds = Rect(0, extent.width, 0, extent.height)
-    content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
-
-    # Make the content
-    sp = SectionPacker(content_bounds, section.children, 1, pdf)
-    content = sp.place_in_columns()
-
-    # Make the frame
-    frame_bounds = section_style.box.outset_to_border(content.bounds)
-    frame = placement.make_frame(frame_bounds, section_style)
-    if frame:
-        content = PlacedGroupContent.from_items([frame, content])
-
-    return content
-
-
-def create_sheet(sheet: Sheet, pdf: PDF):
+def build_sheet(sheet: Sheet, pdf: PDF):
     extent = Extent(sheet.options.width, sheet.options.height)
     sheet_style = pdf.styles[sheet.options.style]
     page = Rect(0, extent.width, 0, extent.height)
-    sheet_bounds = sheet_style.box.inset_within_margin(page)
     content_bounds = sheet_style.box.inset_within_padding(page)
 
     # Make the content
-    sp = SheetPacker(content_bounds, sheet.children, 1, pdf)
+    sp = SheetPacker(content_bounds, sheet.children, sheet.options.columns, pdf)
     content = sp.place_in_columns()
 
     # Make the frame
@@ -85,27 +80,6 @@ def create_sheet(sheet: Sheet, pdf: PDF):
         content = PlacedGroupContent.from_items([frame, content])
 
     return content
-
-
-def _all_lineage_definitions(base, style):
-    chained_defs = []
-    while style is not None:
-        chained_defs.append(style.to_definition())
-        parent_style_name = style.parent
-        if parent_style_name is None and style.name != 'default' and style.name != '#default':
-            parent_style_name = 'default'
-        style = base[parent_style_name] if parent_style_name else None
-    return chained_defs
-
-
-def _to_complete(style: Style, base: Dict[str, Style]) -> Style:
-    chained_defs = _all_lineage_definitions(base, style)
-
-    # Reverse order so the higher up ones get overridden
-    result = Style(style.name)
-    for defs in chained_defs[::-1]:
-        structure.style.set_using_definition(result, defs)
-    return result
 
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
@@ -124,5 +98,21 @@ def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
 
     results = {}
     for k, v in base.items():
-        results[k] = _to_complete(v, base)
+        results[k] = to_complete(v, base)
     return results
+
+
+def to_complete(s: Style, base: Dict[str, Style]) -> Style:
+    result = Style(s.name)
+    for ancestor in ancestors_descending(base, s):
+        structure.style.set_using_definition(result, ancestor.to_definition())
+    return result
+
+
+def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
+    parent_style_name = s.parent
+    if parent_style_name is None and s.name != 'default' and s.name != '#default':
+        parent_style_name = 'default'
+    if parent_style_name:
+        yield from ancestors_descending(base, base[parent_style_name])
+    yield s

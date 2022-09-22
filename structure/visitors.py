@@ -45,27 +45,45 @@ def _line_of(node: docutils.nodes.Node):
 
 def _apply_option_definitions(owner: str, definitions: Dict[str, str], options):
     for k, v in definitions.items():
-        if k == 'style':
-            options.style = v
-        elif k == 'title-style':
-            options.title_style = v
-        elif k == 'width':
-            options.width = units.toLength(v)
-        elif k == 'height':
-            options.height = units.toLength(v)
-        elif k == 'title':
-            if v.lower() in ('none', 'simple'):
-                options.title = v.lower()
-            else:
-                message = f"'{v}' is not a legal value for the style attribute {k}. Should be one of none, simple"
-                warnings.warn(message_bad_value(owner, k, message, 'block options'))
-        elif isinstance(v, bool):
-            if hasattr(options, k):
-                setattr(options, k, v)
-            else:
-                warnings.warn(message_unknown_attribute(owner, k))
+        try:
+            _set_option(options, owner, k, v)
+        except AttributeError:
+            warnings.warn(message_unknown_attribute(owner, k, 'option'))
+        except ValueError:
+            warnings.warn(message_bad_value(owner, k, f"Illegal value '{v}'", 'option'))
+        except RuntimeError as ex:
+            warnings.warn(message_bad_value(owner, k, str(ex), 'option'))
+
+
+def _set_option(options, owner, k, v):
+    if k == 'style':
+        options.style = v
+    elif k == 'title-style':
+        options.title_style = v
+    elif k == 'columns' and owner != 'block':
+        i = int(v)
+        if 1 <= i <= 8:
+            options.columns = i
         else:
-            warnings.warn(message_unknown_attribute(owner, k))
+            message = f"columns attribute must be an integer in the range 1 .. 8, but was '{v}'."
+            raise RuntimeError(message)
+    elif k == 'width':
+        options.width = units.toLength(v)
+    elif k == 'height':
+        options.height = units.toLength(v)
+    elif k == 'title':
+        if v.lower() in ('none', 'simple'):
+            options.title = v.lower()
+        else:
+            message = f"'{v}' is not a legal value for the style attribute {k}. Should be one of none, simple"
+            raise RuntimeError(message)
+    elif isinstance(v, bool):
+        if hasattr(options, k):
+            setattr(options, k, v)
+        else:
+            raise AttributeError()
+    else:
+        raise AttributeError()
 
 
 class StructureBuilder(docutils.nodes.NodeVisitor):
@@ -222,17 +240,14 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 definitions[oo[0]] = oo[1]
 
         # Find the options to set into
-        try:
-            if node.name == 'page':
-                _apply_option_definitions(node.name, definitions, self.sheet.options)
-            elif node.name == 'section':
-                _apply_option_definitions(node.name, definitions, self.section_options)
-            elif node.name == 'block':
-                _apply_option_definitions(node.name, definitions, self.block_options)
-            else:
-                raise KeyError(f'Currently unsupported settings for {node.name}')
-        except AttributeError as ex:
-            self.error(node, f"{ex} for {node.name}")
+        if node.name == 'page':
+            _apply_option_definitions(node.name, definitions, self.sheet.options)
+        elif node.name == 'section':
+            _apply_option_definitions(node.name, definitions, self.section_options)
+        elif node.name == 'block':
+            _apply_option_definitions(node.name, definitions, self.block_options)
+        else:
+            raise KeyError(f'Currently unsupported settings for {node.name}')
 
     def visit_style_definitions(self, node) -> None:
         lines: List[str] = node.lines

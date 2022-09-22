@@ -306,6 +306,9 @@ class Style:
         self.box.add_to_definition(parts)
         return ' '.join(parts)
 
+    def __hash__(self):
+        return id(self)
+
 
 def set_using_definition(style: Style, text: str) -> None:
     for k, v in common.parse(text):

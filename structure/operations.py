@@ -107,8 +107,6 @@ class Prettify:
         self.lines.append(txt)
 
     def _append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions], default, attributes: str):
-        if len(self.lines) > 1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
-            self.lines = self.lines[:-1]
         owner_plus = owner + '::'
         parts = [f".. {owner_plus:9}"]
         for k in attributes.split():
@@ -122,8 +120,11 @@ class Prettify:
                         v = style.len2str(v)
                     parts.append(k + '=' + v)
 
+        # Only add if there actually were any changed values
         if len(parts) > 1:
-            # Only add if there actually were any changed values
+            # If we had a previous '.. XXX::' command we do not need a blank line before
+            if len(self.lines) > 1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
+                self.lines = self.lines[:-1]
             self.append(' '.join(parts))
             self.append('')
 

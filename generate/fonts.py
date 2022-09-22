@@ -70,10 +70,15 @@ class Font:
     size: float
     ascent: float
     descent: float
+    _font: pdfmetrics.Font = None
 
+    def __post_init__(self):
+        self._font = pdfmetrics.getFont(self.name)
+
+    @lru_cache(maxsize=10000)
     def width(self, text: str) -> float:
         """Measures the width of the text"""
-        return metrics.stringWidth(text, self.name, self.size)
+        return self._font.stringWidth(text, self.size)
 
     @property
     def line_spacing(self):
@@ -91,6 +96,9 @@ class Font:
         return self.library.get_font(self.family.name, self.size,
                                      'Bold' in self.face if bold is None else bold,
                                      'Italic' in self.face if italic is None else italic)
+
+    def __hash__(self):
+        return hash((self.name, self.size))
 
 
 def read_font_info() -> List[FontFamily]:
