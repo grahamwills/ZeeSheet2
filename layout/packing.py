@@ -313,8 +313,8 @@ class TableAdjuster:
         self.packer = packer
         self.k = len(initial_widths)
 
-        f = self.placed_to_score(start)
-        LOGGER.debug("Optimizing Table. Initial Status: %s ->  %1.3f", initial_widths, f)
+        self.base_score = self.placed_to_score(start)
+        LOGGER.debug("Optimizing Table. Initial Status: %s ->  %1.3f", initial_widths, self.base_score)
 
     @lru_cache(maxsize=1000)
     def make_table(self, widths):
@@ -335,7 +335,7 @@ class TableAdjuster:
         return score
 
     def placed_to_score(self, placed: PlacedGroupContent):
-        return 1e9 * placed.error.clipped + 1e6 * placed.error.breaks + placed.sum_squares_unused_space
+        return 1e9 * placed.error.clipped + 1e6 * placed.error.breaks + placed.sum_squares_unused_space**0.5
 
     def run(self) -> Optional[PlacedGroupContent]:
         x0 = np.asarray([0.5] * (self.k - 1))
@@ -345,7 +345,7 @@ class TableAdjuster:
         initial_simplex = self._unit_simplex()
         solution = scipy.optimize.minimize(lambda x: _score(x, self), method='Nelder-Mead', x0=x0,
                                            bounds=[(0, 1)] * (self.k - 1),
-                                           options={'initial_simplex': initial_simplex, 'fatol': 25, 'xatol': 0.02})
+                                           options={'initial_simplex': initial_simplex, 'fatol': 25, 'xatol': 0.01})
         duration = time.perf_counter() - start
 
         if hasattr(solution, 'success') and not solution.success:
@@ -372,5 +372,4 @@ class TableAdjuster:
     def params_to_widths(self, a) -> Tuple[float]:
         pixel_diffs = (2 * a - 1) * self.total_width / self.k
         last_diff = -sum(pixel_diffs)
-        widths = tuple(float(w + d) for w, d in zip(self.initial_widths, list(pixel_diffs) + [last_diff]))
-        return widths
+        return tuple(float(w + d) for w, d in zip(self.initial_widths, list(pixel_diffs) + [last_diff]))

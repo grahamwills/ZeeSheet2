@@ -52,7 +52,7 @@ class SheetPacker(SectionPacker):
         content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
 
         # Make the content
-        sp = SectionPacker(content_bounds, section.children, section.options.columns, self.pdf, granularity=20)
+        sp = SectionPacker(content_bounds, section.children, section.options.columns, self.pdf, granularity=25)
         content = sp.place_in_columns()
 
         # Make the frame

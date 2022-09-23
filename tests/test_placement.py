@@ -182,7 +182,7 @@ class TestBlockPlacement(unittest.TestCase):
 
         # Contents on the grid
         self.assertEqual(Point(0, 0), round(placed.group[1].group[0].location))
-        self.assertEqual(Point(162, 0), round(placed.group[1].group[1].location))
+        self.assertEqual(Point(160, 0), round(placed.group[1].group[1].location))
         self.assertEqual(Point(0, 13), round(placed.group[1].group[2].location))
-        self.assertEqual(Point(162, 13), round(placed.group[1].group[3].location))
+        self.assertEqual(Point(160, 13), round(placed.group[1].group[3].location))
         self.assertEqual(Point(0, 27), round(placed.group[1].group[4].location))
