@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from copy import copy
+import time
+from copy import copy, Error
 from dataclasses import dataclass, field
 from functools import lru_cache, cached_property
 from typing import List, Tuple, Union, Optional
+
+import numpy as np
+import scipy as scipy
 
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
@@ -101,11 +105,11 @@ class AllColumnsFit:
 
 
 class ColumnPacker:
-    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = 10):
+    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = None):
         self.n = item_count
         self.k = column_count
         self.bounds = bounds
-        self.granularity = granularity
+        self.granularity = granularity or max(bounds.width / column_count / 2, 30)
         self.average_spacing = self._average_spacing()
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
@@ -208,20 +212,29 @@ class ColumnPacker:
 
         best = None
         best_error = PlacementError(9e99, 0, 0)
+        best_widths = None
         for column_sizes in width_choices:
             try:
-                placed_children = self._place_table(column_sizes, self.bounds, best_error)
+                placed_children = self.place_table_given_widths(column_sizes, self.bounds, best_error)
                 if placed_children.better(best):
                     best = placed_children
                     best_error = best.error
+                    best_widths = column_sizes
             except (ExtentTooSmallError, ErrorLimitExceededError):
                 # Skip this option
                 pass
         if best is None:
             raise ExtentTooSmallError('All width choices failed to produce a good fit')
+
+        if self.k > 1:
+            adj = TableAdjuster(self.bounds, best_widths, best, self)
+            better = adj.run()
+            return better or best
+
         return best
 
-    def _place_table(self, column_sizes: List[float], bounds: Rect, limit_error: PlacementError) -> PlacedGroupContent:
+    def place_table_given_widths(self, column_sizes: List[float], bounds: Rect,
+                                 limit_error: PlacementError) -> PlacedGroupContent:
         col_gap = self.average_spacing.horizontal / 2
         row_gap = self.average_spacing.vertical / 2
 
@@ -285,3 +298,79 @@ class ColumnPacker:
         all_items = [placed for fit in best.columns for placed in fit.items]
 
         return PlacedGroupContent.from_items(all_items, extent=ext)
+
+
+def _score(x: List[float], adjuster: TableAdjuster):
+    return adjuster.score(x)
+
+
+class TableAdjuster:
+
+    def __init__(self, bounds: Rect, initial_widths: List[float], start: PlacedGroupContent, packer: ColumnPacker):
+        self.bounds = bounds
+        self.initial_widths = initial_widths
+        self.total_width = sum(initial_widths)
+        self.packer = packer
+        self.k = len(initial_widths)
+
+        f = self.placed_to_score(start)
+        LOGGER.debug("Optimizing Table. Initial Status: %s ->  %1.3f", initial_widths, f)
+
+    @lru_cache(maxsize=1000)
+    def make_table(self, widths):
+        return self.packer.place_table_given_widths(list(widths), self.bounds, PlacementError(9e99, 0, 0))
+
+    def score(self, x: List[float]) -> float:
+        widths = self.params_to_widths(x)
+        low = min(widths)
+        if low < 20:
+            return 1e10
+        try:
+            placed = self.make_table(widths)
+        except Error as ex:
+            LOGGER.fine(f"{widths}: Error is '{ex}'")
+            return 2e10
+        score = self.placed_to_score(placed)
+        LOGGER.fine(f"{widths}: Score is '{score}'")
+        return score
+
+    def placed_to_score(self, placed: PlacedGroupContent):
+        return 1e9 * placed.error.clipped + 1e6 * placed.error.breaks + placed.sum_squares_unused_space
+
+    def run(self) -> Optional[PlacedGroupContent]:
+        x0 = np.asarray([0.5] * (self.k - 1))
+
+        start = time.perf_counter()
+
+        initial_simplex = self._unit_simplex()
+        solution = scipy.optimize.minimize(lambda x: _score(x, self), method='Nelder-Mead', x0=x0,
+                                           bounds=[(0, 1)] * (self.k - 1),
+                                           options={'initial_simplex': initial_simplex, 'fatol': 25, 'xatol': 0.02})
+        duration = time.perf_counter() - start
+
+        if hasattr(solution, 'success') and not solution.success:
+            LOGGER.info("Failed using nelder-mead in %1.2fs after %d evaluations: %s", duration,
+                        solution.nfev, solution.message)
+            return None
+        else:
+            if hasattr(self.make_table, 'cache_info'):
+                LOGGER.debug("Optimizer cache info = %s", str(self.make_table.cache_info()).replace('CacheInfo', ''))
+                self.make_table.cache_clear()
+
+            widths = self.params_to_widths(solution.x)
+            placed = self.make_table(widths)
+            f = self.placed_to_score(placed)
+
+            LOGGER.debug("Solved using nelder-mead in %1.2fs with %d evaluations: %s -> %s ->  %1.3f",
+                         duration, solution.nfev, solution.x, widths, f)
+            return placed
+
+    def _unit_simplex(self):
+        lo = 1 / 1.2 / self.k
+        return [[2 / 3 if j == i else lo for j in range(self.k - 1)] for i in range(self.k)]
+
+    def params_to_widths(self, a) -> Tuple[float]:
+        pixel_diffs = (2 * a - 1) * self.total_width / self.k
+        last_diff = -sum(pixel_diffs)
+        widths = tuple(float(w + d) for w, d in zip(self.initial_widths, list(pixel_diffs) + [last_diff]))
+        return widths

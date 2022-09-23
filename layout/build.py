@@ -30,7 +30,7 @@ def make_pdf(sheet: Sheet) -> bytes:
 
 class SectionPacker(ColumnPacker):
 
-    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, granularity: int = 10):
+    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, granularity: int = 20):
         self.items = items
         self.pdf = pdf
         super().__init__(bounds, len(items), column_count, granularity=granularity)
@@ -117,3 +117,5 @@ def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
     if parent_style_name:
         yield from ancestors_descending(base, base[parent_style_name])
     yield s
+
+

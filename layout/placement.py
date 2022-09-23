@@ -143,11 +143,7 @@ class BlockColumnPacker(ColumnPacker):
         self.items = block.children
         self.pdf = pdf
         self.content_style = pdf.styles[block.options.style]
-        super().__init__(bounds, len(block.children), column_count, granularity=10)
-
-    def place_table(self, width_allocations: List[float] = None):
-        table = super().place_table(width_allocations)
-        return copy(table)
+        super().__init__(bounds, len(block.children), column_count)
 
     def margins_of_item(self, idx) -> Spacing:
         # All block items share common margins
