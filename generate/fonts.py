@@ -92,7 +92,9 @@ class Font:
         leading = self.line_spacing - (self.ascent + self.descent)
         return self.ascent + leading / 2
 
-    def change_face(self, bold: bool = None, italic: bool = None) -> Font:
+    def modify(self, bold: bool = None, italic: bool = None) -> Font:
+        if bold is None and italic is None:
+            return self
         return self.library.get_font(self.family.name, self.size,
                                      'Bold' in self.face if bold is None else bold,
                                      'Italic' in self.face if italic is None else italic)

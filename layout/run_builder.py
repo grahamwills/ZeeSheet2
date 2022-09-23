@@ -23,26 +23,30 @@ class RunBuilder:
         height = self.extent.height
         error = PlacementError(0, 0, 0)
 
+        # Keep same line spacing regarkdess of font changes
+        line_spacing = self.font.line_spacing
+
         x = 0
         y = 0
+        right = 0
+        last_top_right = (0,0)
         for element in self.elements:
             text = element.value
             modifier = element.modifier
-            font = self.font.change_face(element.modifier == 'strong', element.modifier == 'emphasis')
-            line_spacing = self.font.line_spacing
+            font = self.font
+            if modifier:
+                font = font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
 
             while text:
 
-                if x == 0 and y > 0:
+                if y > 0 and x ==0:
                     # No leading white space on new lines
                     text = text.lstrip()
-                    if not text:
-                        break
 
                 # If it does not fit vertically, record how much was clipped (in pixels) and do nothing else
                 if y + line_spacing > height:
                     if y == 0:
-                        raise ExtentTooSmallError(f'Height of {height} was too small to fit anything')
+                        raise ExtentTooSmallError()
                     error.clipped += font.width(text) * line_spacing
                     text = None
                     continue
@@ -51,8 +55,10 @@ class RunBuilder:
                     # Try to place checkbox on the line
                     checkbox_width = (font.ascent + font.descent) * 1.1
                     if x + checkbox_width <= width:
-                        segments.append(CheckboxSegment(text == 'X', Point(x, y), font, checkbox_width))
+                        segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
                         x += checkbox_width
+                        last_top_right = (x,y)
+                        right = max(right, x)
                         text = None
 
                 else:
@@ -60,15 +66,19 @@ class RunBuilder:
                     text_width = font.width(text)
                     if x + text_width <= width:
                         # Happy path; it all fits
-                        segments.append(TextSegment(text, Point(x, y), font, text_width))
+                        segments.append(TextSegment(text, Point(x, y), font))
                         x += text_width
+                        last_top_right = (x,y)
+                        right = max(right, x)
                         text = None
                     else:
                         # Need to split the line
                         p, text_width, is_bad = self.split_text(text, font, width - x, text_width, x > 0)
                         if p > 0:
-                            segments.append(TextSegment(text[:p].rstrip(), Point(x, y), font, text_width))
+                            segments.append(TextSegment(text[:p], Point(x, y), font))
                             x += text_width
+                            last_top_right = (x, y)
+                            right = max(right, x)
                             text = text[p:]
                             if is_bad:
                                 error.bad_breaks += 1
@@ -76,17 +86,15 @@ class RunBuilder:
                 if text:
                     if x == 0:
                         # We were unable to place it and had the whole space to place into
-                        raise ExtentTooSmallError(f"Could not fit '{text}' into {width}")
+                        raise ExtentTooSmallError()
                     else:
                         # Start a new line
                         x = 0
                         y += line_spacing
                         error.breaks += 1
 
-        last = segments[-1]
-        right = max(s.offset.x + s.width for s in segments)
-        bottom = max(s.offset.y + s.font.line_spacing for s in segments)
-        extra_space = width - (last.offset.x + last.width)
+        bottom = last_top_right[1] + line_spacing
+        extra_space = width - last_top_right[0]
         outer = Extent(right, bottom)
 
         error.breaks -= error.bad_breaks  # They have been double-counted
@@ -149,7 +157,7 @@ class RunBuilder:
             # Search forward while we have a good fit
             loc = guess
             wid = w
-            for p in range(guess, n-1):
+            for p in range(guess, n - 1):
                 w = font.width(text[:p])
                 if w <= width:
                     loc = guess

@@ -2,10 +2,8 @@ from functools import lru_cache
 from typing import Optional, NamedTuple, Tuple
 
 from common import Extent, Point, Spacing, Rect, configured_logger
-from generate.fonts import Font
-from generate.pdf import PDF, TextSegment, CheckboxSegment
-from layout.content import PlacedGroupContent, PlacedRunContent, PlacementError, PlacedContent, PlacedRectContent, \
-    ExtentTooSmallError, ItemDoesNotExistError
+from generate.pdf import PDF
+from layout.content import PlacedGroupContent, PlacedRunContent, PlacedContent, PlacedRectContent, ItemDoesNotExistError
 from layout.packing import ColumnPacker
 from layout.run_builder import RunBuilder
 from structure import Run, Block
@@ -25,10 +23,8 @@ class SplitResult(NamedTuple):
     bad_break: bool
 
 
-
 @lru_cache(maxsize=10000)
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
-
     bldr = RunBuilder(run, style, extent, pdf)
     placed = bldr.build()
 
@@ -146,7 +142,7 @@ class BlockColumnPacker(ColumnPacker):
         self.items = block.children
         self.pdf = pdf
         self.content_style = pdf.styles[block.options.style]
-        super().__init__(bounds, len(block.children), column_count, granularity=5)
+        super().__init__(bounds, len(block.children), column_count, granularity=10)
 
     def margins_of_item(self, idx) -> Spacing:
         # All block items share common margins

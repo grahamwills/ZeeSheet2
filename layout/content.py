@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import reprlib
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional, Iterable, Any, Tuple
+from typing import List, Optional, Iterable
 
 from common import Extent, Point, Rect
 from common import configured_logger, to_str

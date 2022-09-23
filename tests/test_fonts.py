@@ -20,25 +20,25 @@ class TestFonts(unittest.TestCase):
         self.assertAlmostEqual(9.56, info.ascent, places=2)
         self.assertAlmostEqual(3.04, info.descent, places=2)
         self.assertAlmostEqual(64.16, info.width('hello world'), places=2)
-        self.assertAlmostEqual(67.28, info.change_face(bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(67.28, info.modify('strong').width('hello world'), places=2)
 
     def test_font_with_only_one_variant(self):
         info = self.LIBRARY.get_font('Rochester', 14)
         self.assertAlmostEqual(14.42, info.ascent, places=2)
         self.assertAlmostEqual(3.61, info.descent, places=2)
         self.assertAlmostEqual(50.11, info.width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.change_face(bold=True).width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.change_face(italic=True).width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.change_face(italic=True, bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(50.11, info.modify(bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(50.11, info.modify(italic=True).width('hello world'), places=2)
+        self.assertAlmostEqual(50.11, info.modify(italic=True, bold=True).width('hello world'), places=2)
 
     def test_font_with_multiple_single_files(self):
         info = self.LIBRARY.get_font('Arvo', 14)
         self.assertAlmostEqual(10.64, info.ascent, places=2)
         self.assertAlmostEqual(3.22, info.descent, places=2)
         self.assertAlmostEqual(77.20, info.width('hello world'), places=2)
-        self.assertAlmostEqual(83.54, info.change_face(bold=True).width('hello world'), places=2)
-        self.assertAlmostEqual(77.69, info.change_face(italic=True).width('hello world'), places=2)
-        self.assertAlmostEqual(81.49, info.change_face(italic=True, bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(83.54, info.modify(bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(77.69, info.modify(italic=True).width('hello world'), places=2)
+        self.assertAlmostEqual(81.49, info.modify(italic=True, bold=True).width('hello world'), places=2)
 
     def test_library_has_regular_font_for_all(self):
         for family in self.LIBRARY.content.values():
@@ -82,8 +82,8 @@ class TestFonts(unittest.TestCase):
 
     def test_font_found_by_name_has_other_faces(self):
         f1 = self.LIBRARY.get_font('Georama-Bold', 12)
-        self.assertEqual('Georama-Regular', f1.change_face(bold=False).name)
-        self.assertEqual('Georama-BoldItalic', f1.change_face(italic=True).name)
+        self.assertEqual('Georama-Regular', f1.modify(bold=False).name)
+        self.assertEqual('Georama-BoldItalic', f1.modify(italic=True).name)
 
     def test_all_fonts_exist(self):
         all_names = []

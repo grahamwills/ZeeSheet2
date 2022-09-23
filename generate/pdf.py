@@ -24,7 +24,6 @@ class TextSegment:
     text: str
     offset: Point
     font: Font
-    width: float
 
     def __str__(self):
         return reprlib.repr(self.text) + '@' + str(self.offset)
@@ -38,7 +37,6 @@ class CheckboxSegment:
     state: bool
     offset: Point
     font: Font
-    width: float
 
     def __str__(self):
         return checkbox_character(self.state) + '@' + str(self.offset)
