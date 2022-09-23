@@ -1,5 +1,6 @@
+from copy import copy
 from functools import lru_cache
-from typing import Optional, NamedTuple, Tuple
+from typing import Optional, NamedTuple, Tuple, List
 
 from common import Extent, Point, Spacing, Rect, configured_logger
 from generate.pdf import PDF
@@ -50,7 +51,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     title_style = pdf.styles[block.options.title_style]
 
     title_bounds = title_style.box.inset_within_padding(inner)
-    placed = place_run(block.title, title_bounds.extent, title_style, pdf)
+    placed = copy(place_run(block.title, title_bounds.extent, title_style, pdf))
     placed.location = title_bounds.top_left
 
     r1 = title_style.box.inset_within_margin(inner)
@@ -143,6 +144,10 @@ class BlockColumnPacker(ColumnPacker):
         self.pdf = pdf
         self.content_style = pdf.styles[block.options.style]
         super().__init__(bounds, len(block.children), column_count, granularity=10)
+
+    def place_table(self, width_allocations: List[float] = None):
+        table = super().place_table(width_allocations)
+        return copy(table)
 
     def margins_of_item(self, idx) -> Spacing:
         # All block items share common margins

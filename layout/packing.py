@@ -182,7 +182,7 @@ class ColumnPacker:
             at += count
         return results
 
-    def place_table(self, width_allocations: List[float] = None):
+    def place_table(self, width_allocations: List[float] = None) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
 
         # For tables, the margins must be the same; we use the averages, but all margins should be the same

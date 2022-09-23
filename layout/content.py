@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import reprlib
+from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Iterable
 
@@ -121,12 +122,16 @@ class PlacedGroupContent(PlacedContent):
         base = super().__str__()
         return base[0] + '#items=' + _f(len(self.group)) + ', ss=' + _f(self.sum_squares_unused_space) + ', ' + base[1:]
 
+    def __copy__(self):
+        group = [copy(g) for g in self.group]
+        return PlacedGroupContent(self.extent, self.location, self.error, group, self.sum_squares_unused_space)
+
 
 @dataclass
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
-    unused_space: float  # Pixels of emply space we didn't need
+    unused_space: float  # Pixels of empty space we didn't need
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
@@ -141,6 +146,9 @@ class PlacedRunContent(PlacedContent):
         txt = ''.join(s.to_text() for s in self.segments)
         return base[0] + reprlib.repr(txt) + ', unused=' + _f(self.unused_space) + ', ' + base[1:]
 
+    def __copy__(self):
+        return PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style, self.unused_space)
+
 
 @dataclass
 class PlacedRectContent(PlacedContent):
@@ -149,6 +157,9 @@ class PlacedRectContent(PlacedContent):
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
+
+    def __copy__(self):
+        return PlacedRectContent(self.extent, self.location, self.error, self.style)
 
 
 def _debug_draw_rect(pdf, rect):
