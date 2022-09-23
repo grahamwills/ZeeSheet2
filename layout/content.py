@@ -31,7 +31,7 @@ class PlacementError:
         return PlacementError(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
 
     def __bool__(self):
-        return self.clipped != 0 or self.bad_breaks != 0 or self.breaks != 0
+        return self.clipped != 0 or self.bad_breaks != 0
 
     def __iadd__(self, other:PlacementError):
         self.clipped += other.clipped

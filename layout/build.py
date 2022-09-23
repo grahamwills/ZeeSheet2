@@ -1,5 +1,6 @@
 from copy import copy
 from typing import Dict, Union, Tuple, Optional, List, Iterable
+
 import layout.placement as placement
 import structure.style
 from common import Extent, Rect, Spacing

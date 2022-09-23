@@ -45,7 +45,7 @@ def time_build(sheet) -> float:
 
 if __name__ == '__main__':
     SECTION_COLUMNS = 2
-    BLOCK_COUNT = 5
+    BLOCK_COUNT = 10
     TABLE_COLUMN = 2
     TABLE_ROWS = list(range(1, 9))
 

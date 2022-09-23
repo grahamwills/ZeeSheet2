@@ -1,5 +1,6 @@
 import reprlib
 import warnings
+from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Tuple, Union, Dict, Any
@@ -58,6 +59,9 @@ class PDF(canvas.Canvas):
         self.setLineCap(1)
         self.styles = styles
         self.debug = debug
+
+        # Caching of built objects.
+        self.caches = defaultdict(lambda: None)
 
         # Keep an index to give unique names to form items
         self._name_index = 0

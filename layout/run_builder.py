@@ -1,3 +1,4 @@
+from copy import copy
 from typing import Tuple
 
 from common import Extent, Point
@@ -11,6 +12,7 @@ from structure.style import Style
 class RunBuilder:
 
     def __init__(self, run: Run, style: Style, extent: Extent, pdf: PDF):
+        self.run = run
         self.extent = extent
         self.elements = run.children
         self.style = style
@@ -18,12 +20,19 @@ class RunBuilder:
 
     def build(self) -> PlacedRunContent:
 
+        if hasattr(self.run, '_cached'):
+            e, p = self.run._cached
+            if e.width <= self.extent.width and e.height <= self.extent.height:
+                # Need to adjust to give the unused space
+                p.unused_space = self.extent.width - e.width
+                return p
+
         segments = []
         width = self.extent.width
         height = self.extent.height
         error = PlacementError(0, 0, 0)
 
-        # Keep same line spacing regarkdess of font changes
+        # Keep same line spacing regardless of font changes
         line_spacing = self.font.line_spacing
 
         x = 0
@@ -98,7 +107,12 @@ class RunBuilder:
         outer = Extent(right, bottom)
 
         error.breaks -= error.bad_breaks  # They have been double-counted
-        return PlacedRunContent(outer, Point(0, 0), error, segments, self.style, extra_space)
+        content = PlacedRunContent(outer, Point(0, 0), error, segments, self.style, extra_space)
+
+        if not error and error.breaks == 0:
+            self.run._cached = (outer, content)
+
+        return content
 
     def split_text(self,
                    text: str,
