@@ -21,7 +21,7 @@
     <form method="post" action="{% url 'action_dispatcher' sheet_id=sheet.id %}">{% csrf_token %}
         {% csrf_token %}
         <div class="main-scrollable2">
-        <textarea id="sheet-edit" name="sheet">{{ edit_content }}</textarea>
+            <textarea id="sheet-edit" name="sheet">{{ edit_content }}</textarea>
         </div>
         <input name="validate" class="btn btn-primary" type="submit" value="Prettify"/>
         <input name="generate" class="btn btn-primary" type="submit" value="Generate PDF"
@@ -35,7 +35,8 @@
         {% else %}
             <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
                  title="You must be logged in and be the owner of a sheet to save it.">
-            <input name="save.disabled" class="btn btn-primary" type="submit" value="Save" style="pointer-events: none" disabled/>
+                <input name="save.disabled" class="btn btn-primary" type="submit" value="Save"
+                       style="pointer-events: none" disabled/>
             </div>
         {% endif %}
 
@@ -46,8 +47,8 @@
         {% else %}
             <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
                  title="You must be logged in to create a copy of a sheet.">
-            <input name="clone.disabled" class="btn btn-primary" type="submit" value="Clone"
-                   data-toggle="tooltip" data-placement="top" disabled/>
+                <input name="clone.disabled" class="btn btn-primary" type="submit" value="Clone"
+                       data-toggle="tooltip" data-placement="top" disabled/>
             </div>
         {% endif %}
 
@@ -60,7 +61,7 @@
 
     {% if pdf_file %}
         <script>
-            w = window.open( "/display/{{ pdf_file }}", "zeesheet-pdf-output" );
+            w = window.open("/display/{{ pdf_file }}", "zeesheet-pdf-output");
         </script>
     {% endif %}
 

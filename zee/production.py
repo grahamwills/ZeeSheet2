@@ -1,5 +1,3 @@
-import os
-
 from .settings import *
 
 # Configure the domain name using the environment variable

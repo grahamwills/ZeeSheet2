@@ -370,9 +370,9 @@ class Defaults:
     title = Style('default-title').set('font-size', '14').set('font-face', 'bold').set('padding', '0')
     block = Style('default-block').set('margin', '12')
     section = Style('default-section').set('margin', '0').set('padding', '0') \
-        .set('border','none').set('background', 'none')
+        .set('border', 'none').set('background', 'none')
     sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0') \
-        .set('border','none').set('background', 'none')
+        .set('border', 'none').set('background', 'none')
 
     @classmethod
     def all(cls):

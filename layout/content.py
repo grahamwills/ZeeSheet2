@@ -33,7 +33,7 @@ class PlacementError:
     def __bool__(self):
         return self.clipped != 0 or self.bad_breaks != 0
 
-    def __iadd__(self, other:PlacementError):
+    def __iadd__(self, other: PlacementError):
         self.clipped += other.clipped
         self.bad_breaks += other.bad_breaks
         self.breaks += other.breaks
@@ -137,7 +137,7 @@ class PlacedGroupContent(PlacedContent):
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
-    unused_space: float  # Pixels of empty space we didn't need
+    effective_width: float  # Pixels of empty space we didn't need
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
@@ -150,10 +150,10 @@ class PlacedRunContent(PlacedContent):
     def __str__(self):
         base = super().__str__()
         txt = ''.join(s.to_text() for s in self.segments)
-        return base[0] + reprlib.repr(txt) + ', unused=' + _f(self.unused_space) + ', ' + base[1:]
+        return base[0] + reprlib.repr(txt) + ', effective_width=' + _f(self.effective_width) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style, self.unused_space)
+        return PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style, self.effective_width)
 
 
 @dataclass

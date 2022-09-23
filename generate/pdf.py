@@ -3,7 +3,7 @@ import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Dict
 
 from reportlab.lib import colors
 from reportlab.lib.colors import Color
@@ -44,6 +44,7 @@ class CheckboxSegment:
 
     def to_text(self):
         return checkbox_character(self.state)
+
 
 class PDF(canvas.Canvas):
 

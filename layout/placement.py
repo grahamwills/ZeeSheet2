@@ -1,4 +1,3 @@
-from collections import defaultdict
 from copy import copy
 from functools import lru_cache
 from typing import Optional, NamedTuple, Tuple, List
@@ -15,6 +14,7 @@ from structure.style import Style
 NO_SPACING = Spacing.balanced(0)
 
 LOGGER = configured_logger(__name__)
+
 
 class SplitResult(NamedTuple):
     """Contains the results of splitting  text for wrapping purposes"""

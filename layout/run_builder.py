@@ -1,4 +1,3 @@
-from copy import copy
 from typing import Tuple
 
 from common import Extent, Point
@@ -23,8 +22,6 @@ class RunBuilder:
         if hasattr(self.run, '_cached'):
             e, p = self.run._cached
             if e.width <= self.extent.width and e.height <= self.extent.height:
-                # Need to adjust to give the unused space
-                p.unused_space = self.extent.width - e.width
                 return p
 
         segments = []
@@ -38,7 +35,7 @@ class RunBuilder:
         x = 0
         y = 0
         right = 0
-        last_top_right = (0,0)
+        last_top_right = (0, 0)
         for element in self.elements:
             text = element.value
             modifier = element.modifier
@@ -48,7 +45,7 @@ class RunBuilder:
 
             while text:
 
-                if y > 0 and x ==0:
+                if y > 0 and x == 0:
                     # No leading white space on new lines
                     text = text.lstrip()
 
@@ -66,7 +63,7 @@ class RunBuilder:
                     if x + checkbox_width <= width:
                         segments.append(CheckboxSegment(text == 'X', Point(x, y), font))
                         x += checkbox_width
-                        last_top_right = (x,y)
+                        last_top_right = (x, y)
                         right = max(right, x)
                         text = None
 
@@ -77,7 +74,7 @@ class RunBuilder:
                         # Happy path; it all fits
                         segments.append(TextSegment(text, Point(x, y), font))
                         x += text_width
-                        last_top_right = (x,y)
+                        last_top_right = (x, y)
                         right = max(right, x)
                         text = None
                     else:
@@ -103,11 +100,10 @@ class RunBuilder:
                         error.breaks += 1
 
         bottom = last_top_right[1] + line_spacing
-        extra_space = width - last_top_right[0]
         outer = Extent(right, bottom)
 
         error.breaks -= error.bad_breaks  # They have been double-counted
-        content = PlacedRunContent(outer, Point(0, 0), error, segments, self.style, extra_space)
+        content = PlacedRunContent(outer, Point(0, 0), error, segments, self.style, last_top_right[0])
 
         if not error and error.breaks == 0:
             self.run._cached = (outer, content)

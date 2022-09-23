@@ -234,7 +234,8 @@ class ColumnPacker:
             left = self.average_spacing.left
             max_row_height = bounds.bottom - top
             for col in range(0, self.k):
-                cell_extent = Extent(column_sizes[col], max_row_height)
+                column_width = column_sizes[col]
+                cell_extent = Extent(column_width, max_row_height)
                 try:
                     placed_cell = self.place_item((row, col), cell_extent)
                     accumulated_error += placed_cell.error
@@ -243,7 +244,7 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
-                    unused[col] = min(unused[col], placed_cell.unused_space)
+                    unused[col] = min(unused[col], column_width - placed_cell.effective_width)
                 except ItemDoesNotExistError:
                     # Just ignore this
                     # TODO: should have cells merge nicely

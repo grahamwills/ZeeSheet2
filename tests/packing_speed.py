@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     N = 3
     times = [time_build(sheet) for _ in range(N)]
-    median = times[ N // 2]
+    median = times[N // 2]
     print(f"TIME = {median:>8.4f}s | section_cols={SECTION_COLUMNS}, blocks={BLOCK_COUNT}, "
           f"table_cols={TABLE_COLUMN}, table_rows={TABLE_ROWS}")
 
