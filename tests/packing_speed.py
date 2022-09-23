@@ -58,5 +58,5 @@ if __name__ == '__main__':
     print(f"TIME = {median:>8.4f}s | section_cols={SECTION_COLUMNS}, blocks={BLOCK_COUNT}, "
           f"table_cols={TABLE_COLUMN}, table_rows={TABLE_ROWS}")
 
-    print()
-    print(text)
+    # print()
+    # print(text)
