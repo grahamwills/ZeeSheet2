@@ -11,6 +11,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 
 from layout.build import make_pdf
+from layout.content import ExtentTooSmallError
 from structure import prettify, text_to_sheet
 from .forms import NewUserForm
 from .models import Sheet
@@ -140,12 +141,19 @@ def action_dispatcher(request, sheet_id):
         # Generate PDF and store on disk
         with warnings.catch_warnings(record=True) as warning_messages:
             sheet = text_to_sheet(edit_content)
-            pdf_bytes = make_pdf(sheet)
-            file_name = f"sheets/{request.user.username}-sheet.pdf"
-            path = default_storage.save(file_name, ContentFile(pdf_bytes))
-            pdf_file = path[7:]  # remove the 'sheets/' prefix
-            for w in warning_messages:
-                messages.warning(request, str(w.message))
+            try:
+                pdf_bytes = make_pdf(sheet)
+                file_name = f"sheets/{request.user.username}-sheet.pdf"
+                path = default_storage.save(file_name, ContentFile(pdf_bytes))
+                pdf_file = path[7:]  # remove the 'sheets/' prefix
+                for w in warning_messages:
+                    messages.warning(request, str(w.message))
+            except ExtentTooSmallError:
+                messages.error(request,
+                    'Could not find any suitable placement. Try reducing number of columns or margin sizes')
+            except Exception as ex:
+                messages.error(request,
+                               f'An internal error prevented the PDF from being generated: {ex}')
 
     return show_sheet(request, sheet_id, edit_content, pdf_file)
 

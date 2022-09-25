@@ -15,17 +15,21 @@ FONT_LIB = FontLibrary()
 
 
 def make_pdf(sheet: Sheet) -> bytes:
+    content, pdf = build_content(sheet)
+    content.draw(pdf)
+    return pdf.output()
+
+
+def build_content(sheet) -> Tuple[PlacedGroupContent, PDF]:
     # Use inheritance to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
-
     # Change 'auto' to be actual values
     for s in complete_styles.values():
         style.Defaults.set_auto_values(s)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
               styles=complete_styles, debug=sheet.options.debug)
     content = build_sheet(sheet, pdf)
-    content.draw(pdf)
-    return pdf.output()
+    return content, pdf
 
 
 class SectionPacker(ColumnPacker):
@@ -64,7 +68,7 @@ class SheetPacker(SectionPacker):
         return content
 
 
-def build_sheet(sheet: Sheet, pdf: PDF):
+def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
     extent = Extent(sheet.options.width, sheet.options.height)
     sheet_style = pdf.styles[sheet.options.style]
     page = Rect(0, extent.width, 0, extent.height)
@@ -117,5 +121,3 @@ def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
     if parent_style_name:
         yield from ancestors_descending(base, base[parent_style_name])
     yield s
-
-

@@ -165,9 +165,11 @@ class ColumnPacker:
 
         all_fits = AllColumnsFit([ColumnFit() for _ in widths])
 
+        previous_margin_right = 0
+        next_margin_right = 0
         for width, count, fit in zip(widths, counts, all_fits.columns):
             y = self.bounds.top
-            previous_margin = 0
+            previous_margin_bottom = 0
             for i in range(at, at + count):
                 if y >= height:
                     all_fits.unplaced_count += 1
@@ -176,7 +178,9 @@ class ColumnPacker:
                     r = Rect(column_left, column_left + width, y, height)
                     # Collapse this margin with the previous: use the larger only, don't add
                     margins = self.margins_of_item(i)
-                    margins = Spacing(margins.left, margins.right, max(margins.top - previous_margin, 0),
+                    margins = Spacing(max(margins.left - previous_margin_right, 0),
+                                      margins.right,
+                                      max(margins.top - previous_margin_bottom, 0),
                                       margins.bottom)
                     r = r - margins
 
@@ -190,10 +194,12 @@ class ColumnPacker:
 
                     placed.location = r.top_left
                     y = placed.bounds.bottom + margins.bottom
-                    previous_margin = margins.bottom
+                    previous_margin_bottom = margins.bottom
+                    next_margin_right = max(next_margin_right, margins.right)
                     fit.items.append(placed)
             fit.height = y
             column_left += width
+            previous_margin_right = next_margin_right
             at += count
         return all_fits
 
@@ -292,6 +298,8 @@ class ColumnPacker:
                 except (ExtentTooSmallError, ErrorLimitExceededError):
                     # Just ignore failures
                     pass
+        if not best.columns:
+            raise ExtentTooSmallError()
 
         height = max(fit.height for fit in best.columns)
         ext = Extent(self.bounds.width, height)
