@@ -69,7 +69,7 @@ class PlacedContent:
     error: Optional[PlacementError]  # How bad the placement was
 
     @property
-    def bounds(self):
+    def bounds(self) -> Rect:
         return Rect(self.location.x,
                     self.location.x + self.extent.width,
                     self.location.y,
@@ -111,6 +111,12 @@ class PlacedGroupContent(PlacedContent):
         """Is our placement better?"""
         if other is None:
             return True
+
+        # If we placed more children we are DEFINITELY better
+        diff = len(self.group) - len(other.group)
+        if diff != 0:
+            return len(self.group) > len(other.group)
+
         diff = self.error.compare(other.error)
         if diff == 0:
             if self.sum_squares_unused_space is not None and other.sum_squares_unused_space is not None:
@@ -131,6 +137,9 @@ class PlacedGroupContent(PlacedContent):
     def __copy__(self):
         group = [copy(g) for g in self.group]
         return PlacedGroupContent(self.extent, self.location, self.error, group, self.sum_squares_unused_space)
+
+    def __getitem__(self, item) -> type(PlacedContent):
+        return self.group[item]
 
 
 @dataclass
@@ -180,7 +189,9 @@ def _debug_draw_rect(pdf, rect):
 
 class ExtentTooSmallError(RuntimeError):
     """ The space is too small to fit anything """
-    pass
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 
 class ItemDoesNotExistError(RuntimeError):

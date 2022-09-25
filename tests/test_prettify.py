@@ -14,4 +14,4 @@ class PrettifyTests(unittest.TestCase):
         for idx, (name, (source, expected)) in enumerate(self.items.items()):
             with self.subTest(f'Prettify example #{idx}', name=name):
                 sheet = structure.text_to_sheet(source)
-                self.assertEqual(structure.prettify(sheet, 80), expected)
+                self.assertEqual(expected, structure.prettify(sheet, 80))

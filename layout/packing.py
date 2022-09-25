@@ -72,6 +72,8 @@ class ColumnFit:
     height: int = 0
     items: List[PlacedContent] = field(default_factory=lambda: [])
 
+    def __str__(self):
+        return f"(n={len(self.items)}, height={round(self.height)})"
 
 @dataclass
 class AllColumnsFit:
@@ -100,8 +102,13 @@ class AllColumnsFit:
         if self.tot_bad_breaks != other.tot_bad_breaks:
             return self.tot_bad_breaks < other.tot_bad_breaks
         if consider_heights:
-            return self.var_heights < self.var_heights
+            return self.var_heights < other.var_heights
         return False
+
+
+    def __str__(self):
+        ss = " • ".join(str(s) for s in self.columns)
+        return f"AllColumnsFit[unplaced={self.unplaced_count}, clipped={self.tot_clipped}, bad_breaks={self.tot_bad_breaks}: {ss}]"
 
 
 class ColumnPacker:
@@ -187,16 +194,23 @@ class ColumnPacker:
                     if r.width < MIN_BLOCK_DIMENSION:
                         raise ExtentTooSmallError('Block cannot be placed in small area')
 
-                    placed = self.place_item(i, r.extent)
-                    all_fits.accumulate_error(placed.error)
-                    if best_so_far.better(all_fits, consider_heights=False):
-                        raise ErrorLimitExceededError()
+                    try:
+                        placed = self.place_item(i, r.extent)
+                        all_fits.accumulate_error(placed.error)
 
-                    placed.location = r.top_left
-                    y = placed.bounds.bottom + margins.bottom
-                    previous_margin_bottom = margins.bottom
-                    next_margin_right = max(next_margin_right, margins.right)
-                    fit.items.append(placed)
+                        placed.location = r.top_left
+                        y = placed.bounds.bottom + margins.bottom
+                        previous_margin_bottom = margins.bottom
+                        next_margin_right = max(next_margin_right, margins.right)
+                        fit.items.append(placed)
+                    except ExtentTooSmallError:
+                        # No room for this block
+                        all_fits.unplaced_count += 1
+                        continue
+
+            if best_so_far.better(all_fits, consider_heights=False):
+                raise ErrorLimitExceededError()
+
             fit.height = y
             column_left += width
             previous_margin_right = next_margin_right
@@ -234,8 +248,9 @@ class ColumnPacker:
 
         if self.k > 1:
             adj = TableAdjuster(self.bounds, best_widths, best, self)
-            better = adj.run()
-            return better or best
+            adjusted = adj.run()
+            if adjusted and adjusted.better(best):
+                best = adjusted
 
         return best
 

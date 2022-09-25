@@ -118,7 +118,7 @@ class Prettify:
                 else:
                     if k in {'width', 'height'}:
                         v = style.len2str(v)
-                    parts.append(k + '=' + v)
+                    parts.append(k + '=' + str(v))
 
         # Only add if there actually were any changed values
         if len(parts) > 1:
@@ -132,7 +132,7 @@ class Prettify:
         self._append_options('page', options, SheetOptions(), "width height style debug")
 
     def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
-        self._append_options(owner, options, default, "title style title_style")
+        self._append_options(owner, options, default, "columns title style title_style")
 
     def append_item_rst(self, item: model.Item):
         if not item.children:
