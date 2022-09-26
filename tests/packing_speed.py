@@ -44,9 +44,9 @@ def time_build(sheet) -> float:
 
 
 if __name__ == '__main__':
-    SECTION_COLUMNS = 2
-    BLOCK_COUNT = 10
-    TABLE_COLUMN = 2
+    SECTION_COLUMNS = 3
+    BLOCK_COUNT = 30
+    TABLE_COLUMN = 1
     TABLE_ROWS = list(range(1, 9))
 
     text = make_sheet(SECTION_COLUMNS, BLOCK_COUNT, TABLE_COLUMN, TABLE_ROWS)

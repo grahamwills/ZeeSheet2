@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from functools import cached_property, lru_cache
 from typing import Optional, Tuple, Union, List
 
-from common import Extent, Spacing, Rect, configured_logger, Point
+from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
 from layout.content import ExtentTooSmallError, ErrorLimitExceededError, PlacedGroupContent, PlacedContent, \
     PlacementError, \
     ItemDoesNotExistError
@@ -77,10 +77,10 @@ class ColumnPacker:
         """ Margin of an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
 
-    def column_count_possibilities(self, defined: List[int] = None) -> List[List[int]]:
+    def column_count_possibilities(self, defined: tuple[int, ...] = None, limit: int = 100) -> List[tuple[int, ...]]:
         if defined is not None:
             return [defined]
-        return items_into_buckets_combinations(self.n, self.k)
+        return items_in_bins_combinations(self.n, self.k, limit=limit)
 
     def _average_spacing(self) -> Spacing:
         n = self.n
@@ -90,10 +90,15 @@ class ColumnPacker:
         bottom = sum(self.margins_of_item(i).bottom for i in range(0, n))
         return Spacing(left / n, right / n, top / n, bottom / n)
 
-    def column_width_possibilities(self, defined: List[float] = None, need_gaps: bool = False) -> List[List[float]]:
+    def column_width_possibilities(self,
+                                   defined: List[float] = None,
+                                   need_gaps: bool = False,
+                                   granularity: float = None) -> List[List[float]]:
         # If need_gaps is true, we need to reduce available space by gaps around and between cells
         if defined is not None:
             return [defined]
+
+        granularity = granularity or self.granularity
 
         col_width = self.average_spacing.horizontal / 2
         available_space = self.bounds.width
@@ -101,21 +106,22 @@ class ColumnPacker:
             available_space -= col_width * self.k
 
         # The total number of granularity steps we can fit in
-        segment_count = int(available_space / self.granularity)
+        segment_count = int(available_space / granularity)
         if segment_count < self.k:
             raise ExtentTooSmallError('Too few segments to place into columns')
 
-        segment_allocations = items_into_buckets_combinations(segment_count, self.k)
+        segment_allocations = items_in_bins_combinations(segment_count, self.k)
         results = []
         for i, seg_alloc in enumerate(segment_allocations):
-            column_widths = [s * self.granularity for s in seg_alloc]
+            column_widths = [s * granularity for s in seg_alloc]
             # Add in the additional part for the extra granularity
             additional = available_space - sum(column_widths)
             column_widths[i % self.k] += additional
             results.append(column_widths)
         return results
 
-    def make_fits(self, widths: List[float], counts: List[int], best_so_far: AllColumnsFit) -> AllColumnsFit:
+    def place_in_defined_columns(self, widths: List[float], counts: List[int],
+                                 best_so_far: AllColumnsFit) -> AllColumnsFit:
         at = 0
         height = self.bounds.height
         column_left = self.bounds.left
@@ -264,7 +270,7 @@ class ColumnPacker:
         for counts in count_choices:
             for widths in width_choices:
                 try:
-                    trial = self.make_fits(widths, counts, best_so_far=best)
+                    trial = self.place_in_defined_columns(widths, counts, best_so_far=best)
                     if trial.better(best, consider_heights=True):
                         best = trial
                 except (ExtentTooSmallError, ErrorLimitExceededError):
@@ -278,51 +284,3 @@ class ColumnPacker:
         all_items = [placed for fit in best.columns for placed in fit.items]
 
         return PlacedGroupContent.from_items(all_items, extent=ext)
-
-
-def _items_into_buckets_combinations(item_count: int, bin_count: int) -> List[List[int]]:
-    """ Generates all possible combinations of items into buckets"""
-    if bin_count == 1:
-        return [[item_count]]
-
-    results = []
-    for i in range(1, item_count - bin_count + 2):
-        # i items in the first, recurse to find the possibilities for the other bins
-        for remainder in items_into_buckets_combinations(item_count - i, bin_count - 1):
-            results.append([i] + remainder)
-    return results
-
-
-def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 200) -> List[List[int]]:
-    counts = bin_counts(item_count, bin_count)
-    if counts <= limit or item_count < 2 * bin_count:
-        results = _items_into_buckets_combinations(item_count, bin_count)
-        µ = item_count / bin_count
-        return sorted(results, key=lambda array: sum((v - µ) ** 2 for v in array))
-    else:
-        # Try with half the number of items
-        smaller = items_into_buckets_combinations(item_count // 2, bin_count, limit)
-        # Scale up the values
-        results = []
-        if item_count % 2:
-            # Add the extra number to a different bin
-            for i, vals in enumerate(smaller):
-                new_vals = [2 * v for v in vals]
-                results.append(new_vals)
-                new_vals[i % bin_count] += 1
-        else:
-            # Just scale up
-            for vals in smaller:
-                results.append([2 * v for v in vals])
-        return results
-
-
-@lru_cache(maxsize=10000)
-def bin_counts(n: int, m: int) -> int:
-    # Recursion formula for the counts
-    if n < m:
-        return 0
-    elif n == m or m == 1:
-        return 1
-    else:
-        return bin_counts(n - 1, m - 1) + bin_counts(n - 1, m)
