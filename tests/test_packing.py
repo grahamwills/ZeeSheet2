@@ -32,14 +32,14 @@ class PackingUtilitiesTest(unittest.TestCase):
 
     def test_items_in_bins_combinations_with_limits(self):
         a = ' '.join(str(c) for c in items_in_bins_combinations(5, 2, limit=2))
-        self.assertEqual('[3, 2]', a)
+        self.assertEqual('[2, 3] [3, 2]', a)
         d = ' '.join(str(c) for c in items_in_bins_combinations(8, 3, limit=5))
         self.assertEqual('[2, 2, 4] [2, 4, 2] [4, 2, 2]', d)
         e = ' '.join(str(c) for c in items_in_bins_combinations(9, 3, limit=5))
-        self.assertEqual('[3, 2, 4] [2, 5, 2] [4, 2, 3]', e)
+        self.assertEqual('[4, 3, 2] [2, 2, 5] [2, 5, 2]', e)
 
         big = items_in_bins_combinations(103, 10, limit=1000)
-        self.assertEqual(55, len(big))
+        self.assertEqual(145, len(big))
         self.assertTrue(all(sum(x) == 103 for x in big))
 
 

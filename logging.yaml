@@ -33,6 +33,11 @@ handlers:
 
 loggers:
 
+  common:
+    level: DEBUG
+    handlers: [ important, file ]
+    propagate: no
+
   layout:
     level: DEBUG
     handlers: [ important, file ]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import copy
 from dataclasses import dataclass, field
-from functools import cached_property, lru_cache
+from functools import cached_property
 from typing import Optional, Tuple, Union, List
 
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
@@ -77,7 +77,7 @@ class ColumnPacker:
         """ Margin of an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
 
-    def column_count_possibilities(self, defined: tuple[int, ...] = None, limit: int = 100) -> List[tuple[int, ...]]:
+    def column_count_possibilities(self, defined: list[int, ...] = None, limit: int = 100) -> list[list[int, ...]]:
         if defined is not None:
             return [defined]
         return items_in_bins_combinations(self.n, self.k, limit=limit)
@@ -180,11 +180,11 @@ class ColumnPacker:
         width_choices = self.column_width_possibilities(width_allocations, need_gaps=True)
 
         if len(width_choices) == 0:
-            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
+            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
         if len(width_choices) > 1:
-            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
+            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
         else:
-            LOGGER.debug(f"Fitting {self.n}\u2a2f{self.k} table using widths={width_choices[0]}")
+            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using widths={width_choices[0]}")
 
         best = None
         best_error = PlacementError(9e99, 0, 0)
@@ -257,9 +257,25 @@ class ColumnPacker:
         placed_children.sum_squares_unused_space = sum(v * v for v in unused)
         return placed_children
 
-    def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None):
-        count_choices = self.column_count_possibilities(count_allocations)
-        width_choices = self.column_width_possibilities(width_allocations)
+    def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None,
+                         limit: int = 2000):
+        count_limit = limit
+        granularity = self.granularity
+
+        while True:
+            count_choices = self.column_count_possibilities(count_allocations, limit=count_limit)
+            width_choices = self.column_width_possibilities(width_allocations, granularity=granularity)
+            n_count = len(count_choices)
+            n_width = len(width_choices)
+            if n_count * n_width <= limit:
+                break
+            if n_count > n_width:
+                count_limit = min(count_limit, n_count) * 2 // 3
+                LOGGER.debug(f"Too many combinations ({n_count} x {n_width}), reducing count limit to {count_limit}")
+            else:
+                granularity *= 1.5
+                LOGGER.debug(
+                    f"Too many combinations ({n_count} x {n_width}), increasing widths granularity to {granularity}")
 
         LOGGER.debug(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
                      f"and {len(count_choices)} count options")
