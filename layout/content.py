@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Iterable
 
-from common import Extent, Point, Rect
+from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
 from structure.style import Style
@@ -185,6 +185,19 @@ def _debug_draw_rect(pdf, rect):
         pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
         pdf._draw_rect(rect, 1, 1)
         pdf.restoreState()
+
+
+def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
+    style = base_style.box
+    has_background = style.color != 'none' and style.opacity > 0
+    has_border = style.border_color != 'none' and style.border_opacity > 0 and style.width > 0
+    if has_border or has_background:
+        if style.has_border():
+            # Inset because the stroke is drawn centered around the box and we want it drawn just within
+            bounds = bounds - Spacing.balanced(style.width / 2)
+        return PlacedRectContent(bounds.extent, bounds.top_left, None, base_style)
+    else:
+        return None
 
 
 class ExtentTooSmallError(RuntimeError):

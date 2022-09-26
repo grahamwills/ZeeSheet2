@@ -4,7 +4,7 @@
 import unittest
 from collections import defaultdict
 
-from layout import build_content
+from layout import sheet_to_content
 from layout.content import PlacedGroupContent
 from structure import operations
 
@@ -32,11 +32,11 @@ class TestFullLayout(unittest.TestCase):
     def test_one_column(self):
         txt = read_sample('one column')
         sheet = operations.text_to_sheet(txt)
-        content, _ = build_content(sheet)
+        content, _ = sheet_to_content(sheet)
         self.assertEqual('(n=8, h=651)', column_structure(content[0]))
 
     def test_columns_should_balance(self):
         txt = read_sample('columns should balance')
         sheet = operations.text_to_sheet(txt)
-        content, _ = build_content(sheet)
+        content, _ = sheet_to_content(sheet)
         self.assertEqual('(n=2, h=461) (n=5, h=449) (n=1, h=518)', column_structure(content[0]))

@@ -12,7 +12,7 @@ from django.urls import reverse_lazy
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
 
-from layout.build import make_pdf
+from layout import sheet_to_pdf_document
 from layout.content import ExtentTooSmallError
 from structure import prettify, text_to_sheet
 from .forms import NewUserForm
@@ -162,7 +162,7 @@ def action_dispatcher(request, sheet_id):
         with warnings.catch_warnings(record=True) as warning_messages:
             sheet = text_to_sheet(edit_content)
             try:
-                pdf_bytes = make_pdf(sheet)
+                pdf_bytes = sheet_to_pdf_document(sheet)
                 file_name = f"sheets/{request.user.username}-sheet.pdf"
                 path = default_storage.save(file_name, ContentFile(pdf_bytes))
                 pdf_file = path[7:]  # remove the 'sheets/' prefix

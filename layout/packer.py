@@ -1,70 +1,19 @@
 from __future__ import annotations
 
-import time
-from copy import copy, Error
+from copy import copy
 from dataclasses import dataclass, field
-from functools import lru_cache, cached_property
-from typing import List, Tuple, Union, Optional
+from functools import cached_property, lru_cache
+from typing import Optional, Tuple, Union, List
 
-import numpy as np
-import scipy as scipy
-
-from common import Extent, Point, Spacing, Rect
-from common import configured_logger
-from .content import PlacedContent, PlacedGroupContent, PlacementError, ItemDoesNotExistError, ExtentTooSmallError, \
-    ErrorLimitExceededError
+from common import Extent, Spacing, Rect, configured_logger, Point
+from layout.content import ExtentTooSmallError, ErrorLimitExceededError, PlacedGroupContent, PlacedContent, \
+    PlacementError, \
+    ItemDoesNotExistError
+from layout.optimizer import TableWidthOptimizer
 
 LOGGER = configured_logger(__name__)
 
 MIN_BLOCK_DIMENSION = 8
-
-
-@lru_cache(maxsize=10000)
-def bin_counts(n: int, m: int) -> int:
-    # Recursion formula for the counts
-    if n < m:
-        return 0
-    elif n == m or m == 1:
-        return 1
-    else:
-        return bin_counts(n - 1, m - 1) + bin_counts(n - 1, m)
-
-
-def _items_into_buckets_combinations(item_count: int, bin_count: int) -> List[List[int]]:
-    """ Generates all possible combinations of items into buckets"""
-    if bin_count == 1:
-        return [[item_count]]
-
-    results = []
-    for i in range(1, item_count - bin_count + 2):
-        # i items in the first, recurse to find the possibilities for the other bins
-        for remainder in items_into_buckets_combinations(item_count - i, bin_count - 1):
-            results.append([i] + remainder)
-    return results
-
-
-def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 200) -> List[List[int]]:
-    counts = bin_counts(item_count, bin_count)
-    if counts <= limit or item_count < 2 * bin_count:
-        results = _items_into_buckets_combinations(item_count, bin_count)
-        µ = item_count / bin_count
-        return sorted(results, key=lambda array: sum((v - µ) ** 2 for v in array))
-    else:
-        # Try with half the number of items
-        smaller = items_into_buckets_combinations(item_count // 2, bin_count, limit)
-        # Scale up the values
-        results = []
-        if item_count % 2:
-            # Add the extra number to a different bin
-            for i, vals in enumerate(smaller):
-                new_vals = [2 * v for v in vals]
-                results.append(new_vals)
-                new_vals[i % bin_count] += 1
-        else:
-            # Just scale up
-            for vals in smaller:
-                results.append([2 * v for v in vals])
-        return results
 
 
 @dataclass
@@ -74,6 +23,7 @@ class ColumnFit:
 
     def __str__(self):
         return f"(n={len(self.items)}, height={round(self.height)})"
+
 
 @dataclass
 class AllColumnsFit:
@@ -105,10 +55,10 @@ class AllColumnsFit:
             return self.var_heights < other.var_heights
         return False
 
-
     def __str__(self):
         ss = " • ".join(str(s) for s in self.columns)
-        return f"AllColumnsFit[unplaced={self.unplaced_count}, clipped={self.tot_clipped}, bad_breaks={self.tot_bad_breaks}: {ss}]"
+        return f"AllColumnsFit[unplaced={self.unplaced_count}, clipped={self.tot_clipped}, bad_breaks=" \
+               f"{self.tot_bad_breaks}: {ss}]"
 
 
 class ColumnPacker:
@@ -247,7 +197,14 @@ class ColumnPacker:
             raise ExtentTooSmallError('All width choices failed to produce a good fit')
 
         if self.k > 1:
-            adj = TableAdjuster(self.bounds, best_widths, best, self)
+            optimizer_bounds = self.bounds
+            packer = self
+
+            class TableOptimizer(TableWidthOptimizer):
+                def make_table(self, widths):
+                    return packer.place_table_given_widths(list(widths), optimizer_bounds, PlacementError(9e99, 0, 0))
+
+            adj = TableOptimizer(best_widths)
             adjusted = adj.run()
             if adjusted and adjusted.better(best):
                 best = adjusted
@@ -323,76 +280,49 @@ class ColumnPacker:
         return PlacedGroupContent.from_items(all_items, extent=ext)
 
 
-def _score(x: List[float], adjuster: TableAdjuster):
-    return adjuster.score(x)
+def _items_into_buckets_combinations(item_count: int, bin_count: int) -> List[List[int]]:
+    """ Generates all possible combinations of items into buckets"""
+    if bin_count == 1:
+        return [[item_count]]
+
+    results = []
+    for i in range(1, item_count - bin_count + 2):
+        # i items in the first, recurse to find the possibilities for the other bins
+        for remainder in items_into_buckets_combinations(item_count - i, bin_count - 1):
+            results.append([i] + remainder)
+    return results
 
 
-class TableAdjuster:
-
-    def __init__(self, bounds: Rect, initial_widths: List[float], start: PlacedGroupContent, packer: ColumnPacker):
-        self.bounds = bounds
-        self.initial_widths = initial_widths
-        self.total_width = sum(initial_widths)
-        self.packer = packer
-        self.k = len(initial_widths)
-
-        self.base_score = self.placed_to_score(start)
-        LOGGER.debug("Optimizing Table. Initial Status: %s ->  %1.3f", initial_widths, self.base_score)
-
-    @lru_cache(maxsize=1000)
-    def make_table(self, widths):
-        return self.packer.place_table_given_widths(list(widths), self.bounds, PlacementError(9e99, 0, 0))
-
-    def score(self, x: List[float]) -> float:
-        widths = self.params_to_widths(x)
-        low = min(widths)
-        if low < 20:
-            return 1e10
-        try:
-            placed = self.make_table(widths)
-        except Error as ex:
-            LOGGER.fine(f"{widths}: Error is '{ex}'")
-            return 2e10
-        score = self.placed_to_score(placed)
-        LOGGER.fine(f"{widths}: Score is '{score}'")
-        return score
-
-    def placed_to_score(self, placed: PlacedGroupContent):
-        return 1e9 * placed.error.clipped + 1e6 * placed.error.breaks + placed.sum_squares_unused_space**0.5
-
-    def run(self) -> Optional[PlacedGroupContent]:
-        x0 = np.asarray([0.5] * (self.k - 1))
-
-        start = time.perf_counter()
-
-        initial_simplex = self._unit_simplex()
-        solution = scipy.optimize.minimize(lambda x: _score(x, self), method='Nelder-Mead', x0=x0,
-                                           bounds=[(0, 1)] * (self.k - 1),
-                                           options={'initial_simplex': initial_simplex, 'fatol': 25, 'xatol': 0.01})
-        duration = time.perf_counter() - start
-
-        if hasattr(solution, 'success') and not solution.success:
-            LOGGER.info("Failed using nelder-mead in %1.2fs after %d evaluations: %s", duration,
-                        solution.nfev, solution.message)
-            return None
+def items_into_buckets_combinations(item_count: int, bin_count: int, limit: int = 200) -> List[List[int]]:
+    counts = bin_counts(item_count, bin_count)
+    if counts <= limit or item_count < 2 * bin_count:
+        results = _items_into_buckets_combinations(item_count, bin_count)
+        µ = item_count / bin_count
+        return sorted(results, key=lambda array: sum((v - µ) ** 2 for v in array))
+    else:
+        # Try with half the number of items
+        smaller = items_into_buckets_combinations(item_count // 2, bin_count, limit)
+        # Scale up the values
+        results = []
+        if item_count % 2:
+            # Add the extra number to a different bin
+            for i, vals in enumerate(smaller):
+                new_vals = [2 * v for v in vals]
+                results.append(new_vals)
+                new_vals[i % bin_count] += 1
         else:
-            if hasattr(self.make_table, 'cache_info'):
-                LOGGER.debug("Optimizer cache info = %s", str(self.make_table.cache_info()).replace('CacheInfo', ''))
-                self.make_table.cache_clear()
+            # Just scale up
+            for vals in smaller:
+                results.append([2 * v for v in vals])
+        return results
 
-            widths = self.params_to_widths(solution.x)
-            placed = self.make_table(widths)
-            f = self.placed_to_score(placed)
 
-            LOGGER.debug("Solved using nelder-mead in %1.2fs with %d evaluations: %s -> %s ->  %1.3f",
-                         duration, solution.nfev, solution.x, widths, f)
-            return placed
-
-    def _unit_simplex(self):
-        lo = 1 / 1.2 / self.k
-        return [[2 / 3 if j == i else lo for j in range(self.k - 1)] for i in range(self.k)]
-
-    def params_to_widths(self, a) -> Tuple[float]:
-        pixel_diffs = (2 * a - 1) * self.total_width / self.k
-        last_diff = -sum(pixel_diffs)
-        return tuple(float(w + d) for w, d in zip(self.initial_widths, list(pixel_diffs) + [last_diff]))
+@lru_cache(maxsize=10000)
+def bin_counts(n: int, m: int) -> int:
+    # Recursion formula for the counts
+    if n < m:
+        return 0
+    elif n == m or m == 1:
+        return 1
+    else:
+        return bin_counts(n - 1, m - 1) + bin_counts(n - 1, m)

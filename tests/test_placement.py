@@ -3,9 +3,10 @@ import unittest
 from common import Extent, Point, Rect
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
-from layout.build import make_complete_styles
+from layout.build_block import place_block
+from layout.build_run import place_run
+from layout.build_sheet import make_complete_styles
 from layout.content import PlacementError
-from layout.placement import place_run, place_block
 from structure import Element, Run, Block, Item, Sheet
 from structure.style import Style, FontStyle
 

@@ -1,7 +1,7 @@
 import unittest
 
 from common import Spacing, Rect
-from layout.packing import items_into_buckets_combinations, bin_counts, ColumnPacker
+from layout.packer import bin_counts, items_into_buckets_combinations, ColumnPacker
 
 
 class PackingUtilitiesTest(unittest.TestCase):

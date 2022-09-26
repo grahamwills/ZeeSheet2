@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Tuple
 
 from common import Extent, Point
@@ -6,6 +7,89 @@ from generate.pdf import TextSegment, CheckboxSegment, PDF
 from layout.content import PlacementError, PlacedRunContent, ExtentTooSmallError
 from structure import Run
 from structure.style import Style
+
+
+@lru_cache(maxsize=10000)
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
+    bldr = RunBuilder(run, style, extent, pdf)
+    placed = bldr.build()
+
+    # Apply alignment
+    if style.text.align == 'right':
+        placed.offset_content(extent.width - placed.extent.width)
+    elif style.text.align == 'center':
+        placed.offset_content((extent.width - placed.extent.width) / 2)
+
+    # After alignment, it fills the width. Any unused space is captured in the extent
+    placed.extent = Extent(extent.width, placed.extent.height)
+    return placed
+
+
+def split_text(text: str,
+               font: Font,
+               width: float,
+               text_width: float,
+               only_at_whitespace
+               ) -> Tuple[int, float, bool]:
+    """ Find a good splitting position for the text """
+
+    n = len(text)
+
+    # A guess at where we might find a good split
+    guess = max(1, min(round(width * n / text_width), n - 2))
+
+    # Step backwards through white spaces
+    loc = 0
+    wid = 0
+
+    first = True
+    for p in range(guess, 1, -1):
+        if text[p].isspace() and not text[p + 1].isspace():
+            w = font.width(text[:p])
+            if w <= width:
+                loc = p
+                wid = w
+                break
+            else:
+                first = False
+
+    if loc:
+        # We found a good breaking point
+        if first:
+            # There maybe one further ahead, so we need to keep looking and noting better break points
+            for p in range(guess, n - 1):
+                if text[p].isspace() and not text[p + 1].isspace():
+                    w = font.width(text[:p])
+                    if w <= width:
+                        loc = p
+                        wid = w
+                    else:
+                        break
+
+    if loc or only_at_whitespace:
+        return loc, wid, False
+
+    # Now try a break anywhere
+    w = font.width(text[:guess])
+    if w > width:
+        # Search backwards until something fits
+        for p in range(guess - 1, 0, -1):
+            w = font.width(text[:p])
+            if w <= width:
+                return p, w, True
+    else:
+        # Search forward while we have a good fit
+        loc = guess
+        wid = w
+        for p in range(guess, n - 1):
+            w = font.width(text[:p])
+            if w <= width:
+                loc = guess
+                wid = w
+            else:
+                break
+
+    return loc, wid, True
 
 
 class RunBuilder:
@@ -79,7 +163,7 @@ class RunBuilder:
                         text = None
                     else:
                         # Need to split the line
-                        p, text_width, is_bad = self.split_text(text, font, width - x, text_width, x > 0)
+                        p, text_width, is_bad = split_text(text, font, width - x, text_width, x > 0)
                         if p > 0:
                             segments.append(TextSegment(text[:p], Point(x, y), font))
                             x += text_width
@@ -109,70 +193,3 @@ class RunBuilder:
             self.run._cached = (outer, content)
 
         return content
-
-    def split_text(self,
-                   text: str,
-                   font: Font,
-                   width: float,
-                   text_width: float,
-                   only_at_whitespace
-                   ) -> Tuple[int, float, bool]:
-        """ Find a good splitting position for the text """
-
-        n = len(text)
-
-        # A guess at where we might find a good split
-        guess = max(1, min(round(width * n / text_width), n - 2))
-
-        # Step backwards through white spaces
-        loc = 0
-        wid = 0
-
-        first = True
-        for p in range(guess, 1, -1):
-            if text[p].isspace() and not text[p + 1].isspace():
-                w = font.width(text[:p])
-                if w <= width:
-                    loc = p
-                    wid = w
-                    break
-                else:
-                    first = False
-
-        if loc:
-            # We found a good breaking point
-            if first:
-                # There maybe one further ahead, so we need to keep looking and noting better break points
-                for p in range(guess, n - 1):
-                    if text[p].isspace() and not text[p + 1].isspace():
-                        w = font.width(text[:p])
-                        if w <= width:
-                            loc = p
-                            wid = w
-                        else:
-                            break
-
-        if loc or only_at_whitespace:
-            return loc, wid, False
-
-        # Now try a break anywhere
-        w = font.width(text[:guess])
-        if w > width:
-            # Search backwards until something fits
-            for p in range(guess - 1, 0, -1):
-                w = font.width(text[:p])
-                if w <= width:
-                    return p, w, True
-        else:
-            # Search forward while we have a good fit
-            loc = guess
-            wid = w
-            for p in range(guess, n - 1):
-                w = font.width(text[:p])
-                if w <= width:
-                    loc = guess
-                    wid = w
-                else:
-                    break
-
-        return loc, wid, True

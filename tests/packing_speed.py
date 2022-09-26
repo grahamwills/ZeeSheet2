@@ -2,7 +2,7 @@ import time
 from random import Random
 from typing import List
 
-from layout.build import make_pdf
+from layout import sheet_to_pdf_document
 from structure import operations
 
 
@@ -37,7 +37,7 @@ def make_sheet(section_columns: int, block_count, table_columns: int, table_rows
 def time_build(sheet) -> float:
     print('Running ...', end='', flush=True)
     t0 = time.time_ns()
-    make_pdf(sheet)
+    sheet_to_pdf_document(sheet)
     t = (time.time_ns() - t0) / 1e9
     print(' done')
     return t
