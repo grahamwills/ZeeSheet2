@@ -8,7 +8,9 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpRequest, FileResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse_lazy
 from django.utils.safestring import mark_safe
+from django.views.generic import UpdateView
 
 from layout.build import make_pdf
 from layout.content import ExtentTooSmallError
@@ -82,6 +84,17 @@ def about(request):
     )
 
 
+class SheetUpdate(UpdateView):
+    model = Sheet
+    fields = ['name', 'system', 'is_shared']
+    success_url = reverse_lazy('home')
+
+
+class SheetDelete(UpdateView):
+    model = Sheet
+    success_url = reverse_lazy('home')
+
+
 def show_sheet(request, sheet_id, edit_content=None, pdf_file=None):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
@@ -126,6 +139,13 @@ def action_dispatcher(request, sheet_id):
             csd.save()
         else:
             return HttpResponseForbidden('you are not the owner of this sheet')
+    if 'details' in request.POST:
+        # Save the content to saved
+        csd.content = edit_content
+        if request.user == csd.owner:
+            return redirect('sheet-update', pk=sheet_id)
+        else:
+            return HttpResponseForbidden('you are not the owner of this sheet')
     if 'revert' in request.POST:
         # Copy the content from the saved data
         edit_content = csd.content
@@ -150,7 +170,7 @@ def action_dispatcher(request, sheet_id):
                     messages.warning(request, str(w.message))
             except ExtentTooSmallError:
                 messages.error(request,
-                    'Could not find any suitable placement. Try reducing number of columns or margin sizes')
+                               'Could not find any suitable placement. Try reducing number of columns or margin sizes')
             except Exception as ex:
                 messages.error(request,
                                f'An internal error prevented the PDF from being generated: {ex}')

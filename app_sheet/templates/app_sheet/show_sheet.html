@@ -32,10 +32,16 @@
 
         {% if permissions.save %}
             <input name="save" class="btn btn-primary" type="submit" value="Save"/>
+            <input name="details" class="btn btn-primary" type="submit" value="Details"/>
         {% else %}
             <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
                  title="You must be logged in and be the owner of a sheet to save it.">
                 <input name="save.disabled" class="btn btn-primary" type="submit" value="Save"
+                       style="pointer-events: none" disabled/>
+            </div>
+            <div style="display: inline-block" data-toggle="tooltip" data-placement="top"
+                 title="You must be logged in and be the owner of a sheet to modify details.">
+                <input name="details.disabled" class="btn btn-primary" type="submit" value="Details"
                        style="pointer-events: none" disabled/>
             </div>
         {% endif %}

@@ -1,11 +1,11 @@
 """
-    Tests that start witha  sheet and do a full layout
+    Tests that start with a sheet and do a full layout
 """
 import unittest
 from collections import defaultdict
 
 from layout import build_content
-from layout.content import PlacedContent, PlacedGroupContent
+from layout.content import PlacedGroupContent
 from structure import operations
 
 
@@ -14,19 +14,17 @@ def read_sample(name: str) -> str:
         return f.read()
 
 
-_PARENS = ( (' <', '> '), (' [', '] '), '()', '{}')
+_PARENS = ((' <', '> '), (' [', '] '), '()', '{}')
 _SYMBOL = {'PlacedRectContent': '▢', 'PlacedRunContent': '¶'}
 
 
-def column_structure(section:PlacedGroupContent) -> str:
-    info = defaultdict(lambda:(0,0))
+def column_structure(section: PlacedGroupContent) -> str:
+    info = defaultdict(lambda: (0, 0))
     for s in section.group:
         r = round(s.bounds)
         t = info[r.left]
-        info[r.left] = (t[0]+1, max(t[1], r.bottom))
-    return ' '.join(f'(n={c}, h={l})' for (_,(c,l)) in sorted(info.items()))
-
-
+        info[r.left] = (t[0] + 1, max(t[1], r.bottom))
+    return ' '.join(f'(n={c}, h={l})' for (_, (c, l)) in sorted(info.items()))
 
 
 class TestFullLayout(unittest.TestCase):
@@ -36,7 +34,6 @@ class TestFullLayout(unittest.TestCase):
         sheet = operations.text_to_sheet(txt)
         content, _ = build_content(sheet)
         self.assertEqual('(n=8, h=651)', column_structure(content[0]))
-
 
     def test_columns_should_balance(self):
         txt = read_sample('columns should balance')
