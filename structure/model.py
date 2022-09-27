@@ -40,11 +40,11 @@ class ContainerOptions:
     title: str
     style: str
     columns: int = 1
-    title_style = 'default-title'
+    title_style: str ='default-title'
     image: int = 0
     image_mode: str = 'normal'
-    image_width: str = None
-    image_height: str = None
+    image_width: float = None
+    image_height: float = None
     image_anchor: str = None
 
 
@@ -284,6 +284,10 @@ class Block(StructureUnit):
 
     def __hash__(self):
         return id(self)
+
+    def __bool__(self) -> bool:
+        return bool(self.children) or bool(self.title) or self.options.image > 0
+
 
 
 @dataclass

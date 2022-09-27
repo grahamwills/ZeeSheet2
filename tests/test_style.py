@@ -210,7 +210,7 @@ class TestMakeCompleteStyles(TestCase):
         output = make_complete_styles(input)
 
         # All the default styles are added in
-        self.assertEqual(len(output), 7)
+        self.assertEqual(len(output), 8)
 
         # Default points to '#default' as parent
         self.assertEqual('#default', output['default'].parent)

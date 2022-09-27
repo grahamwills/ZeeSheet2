@@ -87,7 +87,7 @@ class Prettify:
 
         # Add lines for each section
         for s in self.sheet.children:
-            self.append_section_rst(s)
+            self.append_section_rst(s, s == self.sheet.children[0])
 
         # Remove trailing section definition and blank lines
         while self.lines and self.lines[-1] == '':
@@ -106,7 +106,11 @@ class Prettify:
     def append(self, txt: str) -> None:
         self.lines.append(txt)
 
-    def _append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions], default, attributes: str):
+    def _append_options(self,
+                        owner: str,
+                        options: Union[SheetOptions, ContainerOptions],
+                        default,
+                        attributes: str, forced: bool):
         owner_plus = owner + '::'
         parts = [f".. {owner_plus:9}"]
         for k in attributes.split():
@@ -120,19 +124,23 @@ class Prettify:
                         v = style.len2str(v)
                     parts.append(k + '=' + str(v))
 
-        # Only add if there actually were any changed values
-        if len(parts) > 1:
-            # If we had a previous '.. XXX::' command we do not need a blank line before
-            if len(self.lines) > 1 and self.lines[-1] == '' and self.lines[-2].startswith('..'):
+        # Only add if there actually were any changed values -- or we MUST do so
+        if forced or len(parts) > 1:
+            # If we had a previous '.. XXX::' or a previous blank line we do not need a blank line before
+            while len(self.lines) > 1 and self.lines[-1] == '' and \
+                    (self.lines[-2].startswith('..') or self.lines[-2] == ''):
                 self.lines = self.lines[:-1]
             self.append(' '.join(parts))
             self.append('')
 
     def append_sheet_options(self, options: SheetOptions):
-        self._append_options('page', options, SheetOptions(), "width height style image image_mode image_width image_height image_anchor debug")
+        self._append_options('page', options, SheetOptions(),
+                             "width height style image image_mode image_width image_height image_anchor debug", False)
 
-    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
-        self._append_options(owner, options, default, "columns title style title_style image image_mode image_width image_height image_anchor")
+    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions, forced: bool):
+        self._append_options(owner, options, default,
+                             "columns title style title_style image image_mode image_width image_height image_anchor",
+                             forced)
 
     def append_item_rst(self, item: model.Item):
         if not item.children:
@@ -147,10 +155,18 @@ class Prettify:
                 self.append(txt.rstrip())
             self.append('')
 
-    def append_block_rst(self, block: model.Block):
-        if True or block.options != self.current_block_options:
-            # Write out differences between this and the last options shown
-            self.append_container_options('block', block.options, self.current_block_options)
+    def append_block_rst(self, block: model.Block, is_first: bool):
+
+        if not block.title and not block.children  and block.options.image > 0:
+            # This is just an image and we can represent it more easily
+            self.append_image_block(block)
+            return
+
+        # If no title to define a start, then this defines the start
+        if not block.title or block.options != self.current_block_options:
+            # If we are the first block in our section, we do not need to force it
+            forced = not block.title and not is_first
+            self.append_container_options('block', block.options, self.current_block_options, forced)
             self.current_block_options = block.options
 
         if block.title:
@@ -198,11 +214,21 @@ class Prettify:
             self.append_item_rst(item)
         self.append('')
 
-    def append_section_rst(self, section: model.Section):
+    def append_image_block(self, block):
+        # We just use the block options, but reformat for the image directive
+        self._append_options('image', block.options, self.current_block_options,
+                             "image image_mode image_width image_height image_anchor", True)
+        txt = self.lines[-2].replace('image=', 'index=').replace('image-','')
+        self.lines[-2] = txt
+
+    def append_section_rst(self, section: model.Section, is_first):
         """Adds restructured text lines for the given section"""
-        if section.options != self.current_section_options:
-            # Write out differences between this and the last options shown
-            self.append_container_options('section', section.options, self.current_section_options)
+
+        # If we have no title, the options define the start of a section, so we need this
+        if section.options != self.current_section_options or not section.title:
+            # We do not require this if we have a title or we are the first section
+            forced = not section.title and not is_first
+            self.append_container_options('section', section.options, self.current_section_options, forced)
             self.current_section_options = section.options
 
         if section.title:
@@ -214,8 +240,9 @@ class Prettify:
 
         if section.children:
             for b in section.children:
-                self.append_block_rst(b)
+                self.append_block_rst(b, b == section.children[0])
             self.append('')
+
 
 
 def prettify(sheet: Sheet, width: int = 100) -> str:

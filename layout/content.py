@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import reprlib
 from copy import copy
 from dataclasses import dataclass
@@ -72,6 +71,10 @@ class PlacedContent:
     location: Point  # Where it was placed within the parent
     error: Optional[PlacementError]  # How bad the placement was
 
+    def __post_init__(self):
+        self.hidden = False
+        self.required_width = None
+
     @property
     def bounds(self) -> Rect:
         return Rect(self.location.x,
@@ -87,9 +90,15 @@ class PlacedContent:
         raise NotImplementedError('Must be defined in subclass')
 
     def __str__(self):
-        return '<bds=' + str(round(self.bounds)) + ", err=" + str(self.error) + '>'
+        txt = '<HIDDEN, ' if self.hidden else '<'
+        txt += 'bds=' + str(round(self.bounds)) + ", err=" + str(self.error)
+        if self.required_width is not None:
+            txt += ', req_wid=' + _f(self.required_width)
+        return txt + '>'
 
     def draw(self, pdf: PDF):
+        if self.hidden:
+            return
         pdf.saveState()
         _debug_draw_rect(pdf, self.bounds)
         if self.location:
@@ -150,7 +159,6 @@ class PlacedGroupContent(PlacedContent):
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
-    effective_width: float  # Pixels of empty space we didn't need
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
@@ -163,10 +171,12 @@ class PlacedRunContent(PlacedContent):
     def __str__(self):
         base = super().__str__()
         txt = ''.join(s.to_text() for s in self.segments)
-        return base[0] + reprlib.repr(txt) + ', effective_width=' + _f(self.effective_width) + ', ' + base[1:]
+        return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style, self.effective_width)
+        content = PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style)
+        content.required_width = self.required_width
+        return content
 
 
 @dataclass

@@ -68,4 +68,4 @@ class TestFullLayout(unittest.TestCase):
         sheet = operations.text_to_sheet(txt)
         content, _ = sheet_to_content(sheet, images={})
         structure = column_structure(content[0])
-        print(structure)
+        self.assertEqual(5, len(structure))

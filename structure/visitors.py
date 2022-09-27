@@ -68,7 +68,7 @@ def _set_option(options, owner, k, v):
             message = f"columns attribute must be an integer in the range 1 .. 8, but was '{v}'."
             raise RuntimeError(message)
 
-    elif k == 'image':
+    elif k == 'image' or k == 'image-index'or k == 'image-image':
         options.image = int(v)
     elif k == 'image-mode':
         choices = ('normal', 'fill', 'stretch')
@@ -250,6 +250,37 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elements = Element.text_to_elements('|', None)
         self.add_elements(elements, node, p)
 
+    def visit_image(self, node: docutils.nodes.image):
+        """
+                Define a block containing exactly a single image
+
+                This defines a block and sets the block options to show an image,
+                basically syntactical sugar
+        """
+
+        p = self.start(node)
+        # Finish any existing block; this statement defines an entire block
+        self._make_new_block()
+
+        parts = node.rawsource.replace('.. image::', '').strip().split()
+        definitions = {}
+        for o in parts:
+            oo = o.split('=')
+            # Make sure all the keys start with 'image-' as that is the way the block options define it
+            key = oo[0]
+            if not key.startswith('image-'):
+                key = 'image-' + key
+            if len(oo) == 1:
+                # No equals, so it's a boolean we set to true
+                definitions[key] = True
+            else:
+                # Two parts
+                definitions[key] = oo[1]
+        _apply_option_definitions('.. image::', definitions, self.current_block.options)
+
+        # And now start a new block
+        self._make_new_block()
+
     def visit_settings(self, node):
         definitions = {}
         for o in node.options:
@@ -266,8 +297,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             _apply_option_definitions(node.name, definitions, self.sheet.options)
         elif node.name == 'section':
             _apply_option_definitions(node.name, definitions, self.section_options)
+            self._make_new_section()
         elif node.name == 'block':
             _apply_option_definitions(node.name, definitions, self.block_options)
+            self._make_new_block()
         else:
             raise KeyError(f'Currently unsupported settings for {node.name}')
 

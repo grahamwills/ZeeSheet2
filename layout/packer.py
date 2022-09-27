@@ -243,7 +243,7 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
-                    unused[col] = min(unused[col], column_width - placed_cell.effective_width)
+                    unused[col] = min(unused[col], column_width - placed_cell.required_width)
                 except ItemDoesNotExistError:
                     # Just ignore this
                     # TODO: should have cells merge nicely

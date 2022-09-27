@@ -110,7 +110,12 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
         return items[0]
 
     block_extent = Extent(size.width, total_height)
-    return PlacedGroupContent.from_items(items, extent=block_extent)
+    result = PlacedGroupContent.from_items(items, extent=block_extent)
+
+    # Mark as hidden if our style indicated it was to be hidden
+    if main_style.name == style.Defaults.hidden.name:
+        result.hidden = True
+    return result
 
 
 @lru_cache
