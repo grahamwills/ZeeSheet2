@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import math
 import reprlib
 from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Iterable
 
+from PIL.Image import Image
+
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
+from structure import ImageDetail
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -177,6 +181,18 @@ class PlacedRectContent(PlacedContent):
         return PlacedRectContent(self.extent, self.location, self.error, self.style)
 
 
+@dataclass
+class PlacedImageContent(PlacedContent):
+    image: Image
+
+    def _draw(self, pdf: PDF):
+        # We have already been offset by the top left
+        pdf.draw_image(self.image, self.extent)
+
+    def __copy__(self):
+        return PlacedImageContent(self.extent, self.location, self.error, self.image)
+
+
 def _debug_draw_rect(pdf, rect):
     if pdf.debug:
         r, g, b, a = 1, 0, 1, 0.2
@@ -198,6 +214,52 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         return PlacedRectContent(bounds.extent, bounds.top_left, None, base_style)
     else:
         return None
+
+
+def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height: float,
+               anchor: str) -> PlacedImageContent:
+    aspect = image.height / image.width
+    if not width and not height:
+        width = image.width
+        height = image.height
+    elif not height:
+        height = width * aspect
+    elif not width:
+        width = height / aspect
+
+    # Size the image (and keep track of scaling down 'error')
+    shrinkage_error = 0
+    if mode == 'stretch':
+        # Stretch to the bounds
+        e = bounds.extent
+    elif mode == 'fill' or mode == 'normal' and (width > bounds.width or height > bounds.height):
+        # Keep same aspect as we scale
+        scale = min(bounds.width / width, bounds.height / height)
+        if mode == 'normal':
+            shrinkage_error = 1 / scale - 1
+        e = Extent(scale * width, scale * height)
+    else:
+        e = Extent(width, height)
+
+    # Place it relative to the bounds
+    dx = bounds.width - e.width
+    dy = bounds.height - e.height
+    if mode in {'nw', 'w', 'sw'}:
+        x = 0
+    elif mode in {'ne', 'e', 'se'}:
+        x = dx
+    else:
+        x = dx / 2
+
+    if mode in {'nw', 'n', 'ne'}:
+        y = 0
+    elif mode in {'sw', 's', 'se'}:
+        y = dy
+    else:
+        y = dy / 2
+
+    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top),
+                              PlacementError(0, shrinkage_error, 0), image.data)
 
 
 class ExtentTooSmallError(RuntimeError):

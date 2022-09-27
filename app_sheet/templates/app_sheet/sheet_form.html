@@ -1,6 +1,6 @@
 {% extends "app_sheet/layout.html" %}
 {% block content %}
-    {% load crispy_forms_tags %}
+    {% load crispy_forms_filters %}
 
     <h2>&nbsp;</h2>
     <h2>{{ sheet.name }} • {{ sheet.system }}</h2>
@@ -10,7 +10,7 @@
     {% include 'app_sheet/messages.html' %}
 
     <div class="container">
-        <form action="" method="post">
+        <form action="" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form|crispy }}
             <input type="submit" value="Submit"/>

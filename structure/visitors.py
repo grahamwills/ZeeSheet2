@@ -67,6 +67,28 @@ def _set_option(options, owner, k, v):
         else:
             message = f"columns attribute must be an integer in the range 1 .. 8, but was '{v}'."
             raise RuntimeError(message)
+
+    elif k == 'image':
+        options.image = int(v)
+    elif k == 'image-mode':
+        choices = ('normal', 'fill', 'stretch')
+        if v.lower() in choices:
+            options.image_mode = v.lower()
+        else:
+            message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
+            raise RuntimeError(message)
+    elif k == 'image-width':
+        options.image_width = units.toLength(v)
+    elif k == 'image-height':
+        options.image_height = units.toLength(v)
+    elif k == 'image-anchor':
+        choices = tuple('nw n ne w c e sw s se'.split())
+        if v.lower() in choices:
+            options.image_anchor = v.lower()
+        else:
+            message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
+            raise RuntimeError(message)
+
     elif k == 'width':
         options.width = units.toLength(v)
     elif k == 'height':
@@ -75,7 +97,7 @@ def _set_option(options, owner, k, v):
         if v.lower() in ('none', 'simple'):
             options.title = v.lower()
         else:
-            message = f"'{v}' is not a legal value for the style attribute {k}. Should be one of none, simple"
+            message = f"'{v}' is not a legal value for {k}. Should be one of none, simple"
             raise RuntimeError(message)
     elif isinstance(v, bool):
         if hasattr(options, k):

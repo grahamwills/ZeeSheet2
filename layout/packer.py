@@ -33,6 +33,8 @@ class AllColumnsFit:
     tot_bad_breaks: int = 0  # Count of bad breaks (ones not at whitespace)
 
     def accumulate_error(self, error: PlacementError):
+        if error is None:
+            return
         self.tot_clipped += error.clipped
         self.tot_bad_breaks += error.bad_breaks
 
@@ -159,7 +161,7 @@ class ColumnPacker:
                         previous_margin_bottom = margins.bottom
                         next_margin_right = max(next_margin_right, margins.right)
                         fit.items.append(placed)
-                    except ExtentTooSmallError:
+                    except (ExtentTooSmallError, ItemDoesNotExistError):
                         # No room for this block
                         all_fits.unplaced_count += 1
                         continue

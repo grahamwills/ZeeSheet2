@@ -37,7 +37,7 @@ def make_sheet(section_columns: int, block_count, table_columns: int, table_rows
 def time_build(sheet) -> float:
     print('Running ...', end='', flush=True)
     t0 = time.time_ns()
-    sheet_to_pdf_document(sheet)
+    sheet_to_pdf_document(sheet, images={})
     t = (time.time_ns() - t0) / 1e9
     print(' done')
     return t

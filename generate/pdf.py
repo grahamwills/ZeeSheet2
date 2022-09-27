@@ -3,16 +3,18 @@ import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Optional
 
+from PIL.Image import Image
 from reportlab.lib import colors
 from reportlab.lib.colors import Color
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
-from common import Rect, Point
+from common import Rect, Point, Extent
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
-from structure.model import checkbox_character
+from structure.model import checkbox_character, ImageDetail
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -52,6 +54,7 @@ class PDF(canvas.Canvas):
                  pagesize: Tuple[int, int],
                  font_lib: FontLibrary,
                  styles: Dict[str, Style],
+                 images: Dict[str, ImageDetail] = {},
                  debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
@@ -59,6 +62,7 @@ class PDF(canvas.Canvas):
         self.setLineJoin(1)
         self.setLineCap(1)
         self.styles = styles
+        self.images = images
         self.debug = debug
 
         # Caching of built objects.
@@ -150,3 +154,17 @@ class PDF(canvas.Canvas):
 
     def __hash__(self):
         return id(self)
+
+    def get_image(self, image_name) -> Optional[ImageDetail]:
+        if not image_name:
+            return None
+        try:
+            return self.images[str(image_name)]
+        except KeyError:
+            warnings.warn(f"Image with index '{image_name}' was requested, but has not been defined for this sheet. "
+                          "Use the Sheet Details button to upload images")
+
+    def draw_image(self, image: Image, extent: Extent):
+        # Invert to fix the coordinate system which has already been inverted
+        self.transform(1, 0, 0, -1, 0, extent.height)
+        self.drawImage(ImageReader(image), 0, 0, extent.width, extent.height)

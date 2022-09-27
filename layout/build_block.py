@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional
@@ -7,9 +8,10 @@ from typing import Tuple, Optional
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
 from generate.pdf import PDF
-from structure import Block
+from structure import Block, style
+from structure.model import ContainerOptions, Run, Item
 from . import build_run, content
-from .content import PlacedContent, PlacedGroupContent, ItemDoesNotExistError, PlacedRectContent
+from .content import PlacedContent, PlacedGroupContent, ItemDoesNotExistError, PlacedRectContent, make_image
 from .packer import ColumnPacker
 
 LOGGER = configured_logger(__name__)
@@ -56,11 +58,13 @@ def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf:
         title.location = Point(0, 0)
 
 
-def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
+def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]:
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.styles[block.options.style]
     container = Rect(0, size.width, 0, size.height)
+
+    image = pdf.get_image(block.options.image)
 
     # Inset for just the border; everything lives inside the border
     if main_style.box.has_border():
@@ -71,17 +75,24 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> PlacedContent:
     # Create the title and insets to allow room for it
     title, title_spacing = make_title(block, outer, pdf)
 
-    if not block.children:
+    if not block.children and not image:
         if not title:
-            raise RuntimeError('Need either a title or content in a block')
+            warnings.warn('Block defined without title, image or content. It will be ignored.')
+            raise ItemDoesNotExistError()
         else:
             return title
 
     # Reduce space for the items to account for the title.
     # Inset for padding and border
     item_bounds = outer - title_spacing
+    if block.children:
+        placed_children = place_block_children(block, item_bounds, pdf)
+    else:
+        # The image is the only content in the block
+        opt = block.options
+        placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
+                                     opt.image_anchor)
 
-    placed_children = place_block_children(block, item_bounds, pdf)
     locate_title(title, outer, placed_children.bounds, pdf)
 
     # Frame everything
@@ -129,3 +140,10 @@ class BlockColumnPacker(ColumnPacker):
             return copy(build_run.place_run(items[idx[1]], extent, self.content_style, self.pdf))
         else:
             raise ItemDoesNotExistError()
+
+
+def tiny_block() -> Block:
+    """ Makes a small block to be added to a section when there are too few of them """
+    options = ContainerOptions('none', style.Defaults.hidden.name)
+    item = Item([build_run.tiny_run()])
+    return Block(Run(), [item], options)

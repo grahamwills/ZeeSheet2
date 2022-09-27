@@ -1,4 +1,5 @@
 import warnings
+from PIL import Image
 from datetime import datetime
 from typing import List, Dict
 
@@ -14,7 +15,7 @@ from django.views.generic import UpdateView
 
 from layout import sheet_to_pdf_document
 from layout.content import ExtentTooSmallError
-from structure import prettify, text_to_sheet
+from structure import prettify, text_to_sheet, ImageDetail
 from .forms import NewUserForm
 from .models import Sheet
 
@@ -86,7 +87,7 @@ def about(request):
 
 class SheetUpdate(UpdateView):
     model = Sheet
-    fields = ['name', 'system', 'is_shared']
+    fields = ['name', 'system', 'image1', 'image2', 'image3', 'is_shared']
     success_url = reverse_lazy('home')
 
 
@@ -111,6 +112,24 @@ def show_sheet(request, sheet_id, edit_content=None, pdf_file=None):
     )
 
 
+def make_image_detail(idx, image) -> ImageDetail:
+    image.open()
+    image_data = Image.open(image)
+    return ImageDetail(idx, image_data, image.width, image.height)
+
+
+def images_info(csd: Sheet) -> Dict[str, ImageDetail]:
+    # Returns the image information read from the record
+    result = {}
+    if csd.image1:
+        result['1'] = make_image_detail(1, csd.image1)
+    if csd.image2:
+        result['2'] = make_image_detail(2, csd.image2)
+    if csd.image3:
+        result['3'] = make_image_detail(3, csd.image3)
+    return result
+
+
 def action_dispatcher(request, sheet_id):
     # No matter what we do after, we need to store the text from the form as the current content
     csd = get_object_or_404(Sheet, pk=sheet_id)
@@ -124,6 +143,9 @@ def action_dispatcher(request, sheet_id):
             cloned.content = edit_content
             cloned.system = csd.system
             cloned.owner = request.user
+            cloned.image1 = csd.image1
+            cloned.image2 = csd.image2
+            cloned.image3 = csd.image3
             cloned.name = 'Copy of ' + csd.name
             cloned.is_shared = False
             cloned.is_template = False
@@ -162,7 +184,7 @@ def action_dispatcher(request, sheet_id):
         with warnings.catch_warnings(record=True) as warning_messages:
             sheet = text_to_sheet(edit_content)
             try:
-                pdf_bytes = sheet_to_pdf_document(sheet)
+                pdf_bytes = sheet_to_pdf_document(sheet, images=images_info(csd))
                 file_name = f"sheets/{request.user.username}-sheet.pdf"
                 path = default_storage.save(file_name, ContentFile(pdf_bytes))
                 pdf_file = path[7:]  # remove the 'sheets/' prefix
@@ -171,9 +193,9 @@ def action_dispatcher(request, sheet_id):
             except ExtentTooSmallError:
                 messages.error(request,
                                'Could not find any suitable placement. Try reducing number of columns or margin sizes')
-            except Exception as ex:
-                messages.error(request,
-                               f'An internal error prevented the PDF from being generated: {ex}')
+            # except Exception as ex:
+            #     messages.error(request,
+            #                    f'An internal error prevented the PDF from being generated: {ex}')
 
     return show_sheet(request, sheet_id, edit_content, pdf_file)
 

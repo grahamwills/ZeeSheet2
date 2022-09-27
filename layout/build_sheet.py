@@ -9,25 +9,26 @@ from layout import build_section
 from layout.build_section import SectionPacker
 from layout.content import PlacedContent, PlacedGroupContent, make_frame
 from structure import Sheet, style
+from structure.model import ImageDetail
 from structure.style import Style
 
 FONT_LIB = FontLibrary()
 
 
-def sheet_to_pdf_document(sheet: Sheet) -> bytes:
-    content, pdf = sheet_to_content(sheet)
+def sheet_to_pdf_document(sheet: Sheet, images:Dict[str, ImageDetail]) -> bytes:
+    content, pdf = sheet_to_content(sheet, images)
     content.draw(pdf)
     return pdf.output()
 
 
-def sheet_to_content(sheet: Sheet) -> Tuple[PlacedGroupContent, PDF]:
+def sheet_to_content(sheet: Sheet, images:Dict[str, ImageDetail]) -> Tuple[PlacedGroupContent, PDF]:
     # Use inheritance to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
     # Change 'auto' to be actual values
     for s in complete_styles.values():
         style.Defaults.set_auto_values(s)
     pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
-              styles=complete_styles, debug=sheet.options.debug)
+              styles=complete_styles, images=images, debug=sheet.options.debug)
     content = build_sheet(sheet, pdf)
     return content, pdf
 
@@ -61,7 +62,7 @@ def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
     base = source.copy()
     for s in [style.Defaults.default, style.Defaults.title,
-              style.Defaults.block, style.Defaults.section, style.Defaults.sheet]:
+              style.Defaults.block, style.Defaults.section, style.Defaults.sheet, style.Defaults.hidden]:
         if s.name in base:
             # This style has been redefined, so we need to juggle names
             # and make the redefined version inherit from the default with a modified name

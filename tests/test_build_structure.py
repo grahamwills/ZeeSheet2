@@ -114,3 +114,4 @@ class BasicBlocks(unittest.TestCase):
                     Element('X', 'checkbox'), Element(' '),
                     Element(' ', 'checkbox')]
         self.assertEqual(expected, elements)
+

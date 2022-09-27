@@ -5,6 +5,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import List, Optional, ClassVar, Dict
 
+from PIL.Image import Image
 from reportlab.lib.units import inch
 
 from structure.style import Style
@@ -25,8 +26,13 @@ class SheetOptions:
     style: str = 'default-sheet'
     width: float = 8.5 * inch
     height: float = 11 * inch
-    debug: bool = False
     columns: int = 1
+    image: int = 0
+    image_mode: str = 'normal'
+    image_width: str = None
+    image_height: str = None
+    image_anchor: str = None
+    debug: bool = False
 
 
 @dataclass
@@ -35,6 +41,19 @@ class ContainerOptions:
     style: str
     columns: int = 1
     title_style = 'default-title'
+    image: int = 0
+    image_mode: str = 'normal'
+    image_width: str = None
+    image_height: str = None
+    image_anchor: str = None
+
+
+@dataclass
+class ImageDetail:
+    index: int
+    data: Image
+    width: int
+    height: int
 
 
 @dataclass

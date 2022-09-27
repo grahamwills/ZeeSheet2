@@ -116,7 +116,7 @@ class Prettify:
                 if v is True:
                     parts.append(k)
                 else:
-                    if k in {'width', 'height'}:
+                    if k in {'width', 'height', 'image-width', 'image-height'}:
                         v = style.len2str(v)
                     parts.append(k + '=' + str(v))
 
@@ -129,10 +129,10 @@ class Prettify:
             self.append('')
 
     def append_sheet_options(self, options: SheetOptions):
-        self._append_options('page', options, SheetOptions(), "width height style debug")
+        self._append_options('page', options, SheetOptions(), "width height style image image_mode image_width image_height image_anchor debug")
 
     def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
-        self._append_options(owner, options, default, "columns title style title_style")
+        self._append_options(owner, options, default, "columns title style title_style image image_mode image_width image_height image_anchor")
 
     def append_item_rst(self, item: model.Item):
         if not item.children:

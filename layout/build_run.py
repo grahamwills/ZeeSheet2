@@ -5,7 +5,7 @@ from common import Extent, Point
 from generate.fonts import Font
 from generate.pdf import TextSegment, CheckboxSegment, PDF
 from layout.content import PlacementError, PlacedRunContent, ExtentTooSmallError
-from structure import Run
+from structure import Run, Element
 from structure.style import Style
 
 
@@ -193,3 +193,8 @@ class RunBuilder:
             self.run._cached = (outer, content)
 
         return content
+
+
+def tiny_run() -> Run:
+    """ Makes a small run to be added to a block as a filler item """
+    return Run([Element(' ')])

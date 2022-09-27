@@ -13,8 +13,12 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
 
-    # Make the content
-    sp = SectionPacker(content_bounds, section.children, section.options.columns, pdf, granularity=25)
+    # Ensure that we have enough children for the column requested
+    contents = section.children
+    while len(contents) < section.options.columns:
+        contents = contents + [build_block.tiny_block()]
+
+    sp = SectionPacker(content_bounds, contents, section.options.columns, pdf, granularity=25)
     content = sp.place_in_columns()
 
     # Make the frame
