@@ -103,11 +103,6 @@ class RunBuilder:
 
     def build(self) -> PlacedRunContent:
 
-        if hasattr(self.run, '_cached'):
-            e, p = self.run._cached
-            if e.width <= self.extent.width and e.height <= self.extent.height:
-                return p
-
         segments = []
         width = self.extent.width
         height = self.extent.height
@@ -188,9 +183,6 @@ class RunBuilder:
 
         error.breaks -= error.bad_breaks  # They have been double-counted
         content = PlacedRunContent(outer, Point(0, 0), error, last_top_right[0], segments, self.style)
-
-        if not error and error.breaks == 0:
-            self.run._cached = (outer, content)
 
         return content
 

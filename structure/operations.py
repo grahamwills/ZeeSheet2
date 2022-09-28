@@ -157,7 +157,7 @@ class Prettify:
 
     def append_block_rst(self, block: model.Block, is_first: bool):
 
-        if not block.title and not block.children  and block.options.image > 0:
+        if not block.title and not block.children and block.options.image > 0:
             # This is just an image and we can represent it more easily
             self.append_image_block(block)
             return
@@ -218,7 +218,7 @@ class Prettify:
         # We just use the block options, but reformat for the image directive
         self._append_options('image', block.options, self.current_block_options,
                              "image image_mode image_width image_height image_anchor", True)
-        txt = self.lines[-2].replace('image=', 'index=').replace('image-','')
+        txt = self.lines[-2].replace('image=', 'index=').replace('image-', '')
         self.lines[-2] = txt
 
     def append_section_rst(self, section: model.Section, is_first):
@@ -242,7 +242,6 @@ class Prettify:
             for b in section.children:
                 self.append_block_rst(b, b == section.children[0])
             self.append('')
-
 
 
 def prettify(sheet: Sheet, width: int = 100) -> str:

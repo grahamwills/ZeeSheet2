@@ -68,7 +68,7 @@ def _set_option(options, owner, k, v):
             message = f"columns attribute must be an integer in the range 1 .. 8, but was '{v}'."
             raise RuntimeError(message)
 
-    elif k == 'image' or k == 'image-index'or k == 'image-image':
+    elif k == 'image' or k == 'image-index' or k == 'image-image':
         options.image = int(v)
     elif k == 'image-mode':
         choices = ('normal', 'fill', 'stretch')

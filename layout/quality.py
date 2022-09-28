@@ -8,6 +8,7 @@ import common
 
 T = TypeVar("T")
 
+
 class IncompatibleLayoutQualities(RuntimeError):
     pass
 
@@ -33,15 +34,15 @@ class LayoutQuality(Generic[T]):
             :param target: What this measures the quality of. Usually a PlacedContent.
             :param method:  The method that was used in the layout
             :param count: Number of items placed
-            :param desired: The desired width of the placement
             :param actual: The actual width of the placement
+            :param desired: The desired width of the placement
             :param unplaced: A count of the number of items that could not be added at all
             :param clipped: Sum of the amount of clipped items, in characters or character-equivalents
             :param bad_breaks: Number of times we had to break within a word (a bad break)
             :param good_breaks: Number of times we had to break between words (a good break)
             :param image_shrinkage: Sum of factors by which images was shrunk from their desired size
             :param height_max: Maximum height of items in the layout
-            :param height_dev: Standard deviation of heights of items in the layout
+            :param height_dev: Average difference in heights of items in the layout from the largest
 
     """
 
@@ -72,16 +73,54 @@ class LayoutQuality(Generic[T]):
         self.check_compatible(other)
         return self.weak_score() < other.weak_score()
 
-    def weak_score(self):
-        """ Score ignoring unplaced and clipped items """
+    def _score_breaks(self) -> float:
+        assert self.bad_breaks >= 0
+        assert self.good_breaks >= 0
+        return 10 * self.bad_breaks + self.good_breaks
+
+    def _score_height(self) -> float:
+        return self.height_dev / 10
+
+    def _score_excess_space(self) -> float:
+        assert self.actual <= self.desired
+        v = (self.desired - self.actual) / 10
+        return v * v
+
+    def _score_image(self) -> float:
+        return self.image_shrinkage * 15
+
+    def weak_score(self) -> float:
+        """ Score ignoring unplaced and clipped items; lower is better """
+
+        '''
+            count: int = 0
+
+            unplaced: int = 0
+            clipped: float = 0
+            
+            desired: float = None
+            actual: float = None
+            bad_breaks: int = 0
+            good_breaks: int = 0
+            image_shrinkage: float = 0
+    '''
         if self.method == LayoutMethod.TABLE:
-            return 0
+            breaks = self._score_breaks()
+            excess = self._score_excess_space()
+            image = self._score_image()
+            return breaks + excess + image
         if self.method == LayoutMethod.COLUMNS:
-            return 0
+            breaks = self._score_breaks()
+            excess = self._score_excess_space()
+            image = self._score_image()
+            height = self._score_height()
+            return breaks + excess + image + height
         if self.method == LayoutMethod.WRAPPING:
-            return 0
+            breaks = self._score_breaks()
+            excess = self._score_excess_space()
+            return breaks + excess
         if self.method == LayoutMethod.IMAGE:
-            return 0
+            return self._score_image()
         if self.method == LayoutMethod.NONE:
             return 0
 
@@ -94,7 +133,8 @@ class LayoutQuality(Generic[T]):
         if self.method != other.method:
             raise IncompatibleLayoutQualities(f'Incompatible methods: {self.method} and {other.method}')
         if self.total_items() != other.total_items():
-            raise IncompatibleLayoutQualities(f'Comparing different numbers of items: {self.total_items()} and {other.total_items()}')
+            raise IncompatibleLayoutQualities(
+                f'Comparing different numbers of items: {self.total_items()} and {other.total_items()}')
 
     def __str__(self):
         name = common.name_of(self.target)
@@ -123,22 +163,20 @@ class LayoutQuality(Generic[T]):
         raise RuntimeError('Conversion to boolean is confusing; do not call this')
 
 
-def for_wrapping(target: T,
-                 desired: float, actual: float,
-                 bad_breaks: int, good_breaks: int,
+def for_wrapping(target: T, actual: float, desired: float, clipped: int, bad_breaks: int, good_breaks: int,
                  height: float) -> LayoutQuality[T]:
-    """ Define a quality for a text wrapping"""
-    return LayoutQuality(target, LayoutMethod.WRAPPING, count=1, desired=desired, actual=actual,
-                         bad_breaks=bad_breaks, good_breaks=good_breaks, height_max=height, height_dev=0)
+    """ Define a quality for a text wrapping """
+    assert actual <= desired
+    return LayoutQuality(target, LayoutMethod.WRAPPING, count=1, actual=actual, desired=desired,
+                         clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks,
+                         height_max=height, height_dev=0)
 
 
-def for_image(target: T,
-              desired: float, actual: float,
-              desired_height: float,
-              height: float) -> LayoutQuality[T]:
+def for_image(target: T, width: float, desired: float,
+              height: float, desired_height: float) -> LayoutQuality[T]:
     """ Define a quality for an image with a desired height"""
-    shrinkage = max(1.0, desired / actual, desired_height / height) - 1.0
-    return LayoutQuality(target, LayoutMethod.IMAGE, count=1, desired=desired, actual=actual,
+    shrinkage = max((desired * desired_height) / (width * height), 1) - 1
+    return LayoutQuality(target, LayoutMethod.IMAGE, count=1, actual=width, desired=desired,
                          height_max=height, height_dev=0, image_shrinkage=shrinkage)
 
 
@@ -184,5 +222,5 @@ def for_columns(target: T,
     q = for_table(target, column_widths, cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
     q.height_max = max(actual_heights)
-    q.height_dev = common.variance(actual_heights) ** 0.5
+    q.height_dev = q.height_max * len(column_widths) - sum(actual_heights)
     return q

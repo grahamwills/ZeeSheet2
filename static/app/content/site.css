@@ -85,7 +85,7 @@ li {
 .main-scrollable2 {
     background: white;
     height: calc(100vh - 240px);
-    margin:10px;
+    margin: 10px;
 }
 
 footer, .smallgray {
@@ -96,7 +96,7 @@ footer, .smallgray {
 }
 
 div.CodeMirror {
-    height:100%;
+    height: 100%;
 }
 
 .btn {

@@ -15,13 +15,13 @@ from structure.style import Style
 FONT_LIB = FontLibrary()
 
 
-def sheet_to_pdf_document(sheet: Sheet, images:Dict[str, ImageDetail]) -> bytes:
+def sheet_to_pdf_document(sheet: Sheet, images: Dict[str, ImageDetail]) -> bytes:
     content, pdf = sheet_to_content(sheet, images)
     content.draw(pdf)
     return pdf.output()
 
 
-def sheet_to_content(sheet: Sheet, images:Dict[str, ImageDetail]) -> Tuple[PlacedGroupContent, PDF]:
+def sheet_to_content(sheet: Sheet, images: Dict[str, ImageDetail]) -> Tuple[PlacedGroupContent, PDF]:
     # Use inheritance to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
     # Change 'auto' to be actual values

@@ -1,8 +1,8 @@
 import warnings
-from PIL import Image
 from datetime import datetime
 from typing import List, Dict
 
+from PIL import Image
 from django.contrib import messages
 from django.contrib.auth import login
 from django.core.files.base import ContentFile

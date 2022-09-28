@@ -7,7 +7,7 @@ from collections import defaultdict, namedtuple
 
 import common
 from layout import sheet_to_content
-from layout.content import PlacedGroupContent, PlacementError
+from layout.content import PlacedGroupContent
 from structure import operations
 
 
