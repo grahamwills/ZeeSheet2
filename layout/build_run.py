@@ -187,8 +187,7 @@ class RunBuilder:
         outer = Extent(right, bottom)
 
         error.breaks -= error.bad_breaks  # They have been double-counted
-        content = PlacedRunContent(outer, Point(0, 0), error, segments, self.style)
-        content.required_width = last_top_right[0]
+        content = PlacedRunContent(outer, Point(0, 0), error, last_top_right[0], segments, self.style)
 
         if not error and error.breaks == 0:
             self.run._cached = (outer, content)

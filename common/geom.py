@@ -4,12 +4,7 @@ import math
 from collections import namedtuple
 from typing import NamedTuple, Union, Tuple
 
-
-def _f(v: float):
-    if v == int(v):
-        return str(int(v))
-    else:
-        return f"{v:0.1f}"
+import common
 
 
 class Spacing(NamedTuple):
@@ -44,6 +39,9 @@ class Spacing(NamedTuple):
         return Spacing(self.left - other.left, self.right - other.right,
                        self.top - other.top, self.bottom - other.bottom)
 
+    def name(self):
+        return str(self)
+
     @classmethod
     def balanced(cls, size: float) -> Spacing:
         return Spacing(size, size, size, size)
@@ -76,7 +74,10 @@ class Extent(NamedTuple):
             return Extent(self.width - other[0], self.height - other[1])
 
     def __str__(self):
-        return '(' + _f(self.width) + ' \u2a2f ' + _f(self.height) + ')'
+        return '(' + common.to_str(self.width, 1) + ' \u2a2f ' + common.to_str(self.height, 1) + ')'
+
+    def name(self):
+        return str(self)
 
 
 class Point(NamedTuple):
@@ -84,9 +85,7 @@ class Point(NamedTuple):
     y: float
 
     def __str__(self) -> str:
-        x = f"{self.x:.2f}".rstrip('0').rstrip('.')
-        y = f"{self.y:.2f}".rstrip('0').rstrip('.')
-        return f"({x}, {y})"
+        return f"({common.to_str(self.x, 2)}, {common.to_str(self.y, 2)})"
 
     def __add__(self, other) -> Point:
         return Point(self.x + other.x, self.y + other.y)
@@ -127,6 +126,9 @@ class Point(NamedTuple):
     def to_polar(self) -> (float, float):
         """ returns θ, d """
         return math.atan2(self.y, self.x), abs(self)
+
+    def name(self):
+        return str(self)
 
     @classmethod
     def from_polar(cls, θ, d) -> Point:

@@ -371,10 +371,11 @@ class Defaults:
     block = Style('default-block').set('margin', '12')
     section = Style('default-section').set('margin', '0').set('padding', '0') \
         .set('border', 'none').set('background', 'none')
+    image = Style('default-image').set('inherit', 'default-block').set('border', 'none').set('background', 'none')
     sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0') \
         .set('border', 'none').set('background', 'none')
     hidden = Style('hidden-4-internals').set('margin', '0').set('padding', '0') \
-        .set('font-size','1').set('border','none')
+        .set('font-size', '1').set('border', 'none')
 
     @classmethod
     def all(cls):

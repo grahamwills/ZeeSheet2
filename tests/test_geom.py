@@ -27,7 +27,7 @@ class GeomTests(unittest.TestCase):
         self.assertEqual(hash(b), hash(Point(3, 4.5)))
 
     def test_extent_reps(self):
-        self.assertEqual('(1.1 ⨯ 10.0)', str(Extent(1.1234546, 9.98765)))
+        self.assertEqual('(1.1 ⨯ 10)', str(Extent(1.1234546, 9.98765)))
         self.assertEqual('(1 ⨯ -9)', str(Extent(1, -9)))
 
     def test_extent_addition(self):

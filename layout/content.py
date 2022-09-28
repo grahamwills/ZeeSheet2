@@ -5,8 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Iterable
 
-from PIL.Image import Image
-
+import common
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
@@ -70,10 +69,10 @@ class PlacedContent:
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
     error: Optional[PlacementError]  # How bad the placement was
+    required_width: Optional[float]  # The width we want to be
 
     def __post_init__(self):
         self.hidden = False
-        self.required_width = None
 
     @property
     def bounds(self) -> Rect:
@@ -115,10 +114,11 @@ class PlacedGroupContent(PlacedContent):
     @classmethod
     def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
         error = PlacementError.aggregate(i.error for i in items)
+        req_wid = max((p.required_width for p in items if p.required_width), default=None)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
-        return PlacedGroupContent(extent, Point(0, 0), error, items)
+        return PlacedGroupContent(extent, Point(0, 0), error, req_wid, items)
 
     def better(self, other: PlacedGroupContent):
         """Is our placement better?"""
@@ -149,10 +149,19 @@ class PlacedGroupContent(PlacedContent):
 
     def __copy__(self):
         group = [copy(g) for g in self.group]
-        return PlacedGroupContent(self.extent, self.location, self.error, group, self.sum_squares_unused_space)
+        return PlacedGroupContent(self.extent, self.location, self.error, self.required_width,
+                                  group, self.sum_squares_unused_space)
 
     def __getitem__(self, item) -> type(PlacedContent):
         return self.group[item]
+
+    def name(self):
+        contents = set(c.__class__.__name__.replace('Placed', '').replace('Content', '') for c in self.group)
+        if contents:
+            what = '-' + '•'.join(sorted(contents))
+        else:
+            what = ''
+        return f"Group({len(self.group)}){what}"
 
 
 @dataclass
@@ -174,9 +183,10 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        content = PlacedRunContent(self.extent, self.location, self.error, self.segments, self.style)
-        content.required_width = self.required_width
-        return content
+        return PlacedRunContent(self.extent, self.location, self.error, self.required_width, self.segments, self.style)
+
+    def name(self):
+        return ''.join(s.to_text() for s in self.segments)
 
 
 @dataclass
@@ -188,19 +198,25 @@ class PlacedRectContent(PlacedContent):
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def __copy__(self):
-        return PlacedRectContent(self.extent, self.location, self.error, self.style)
+        return PlacedRectContent(self.extent, self.location, self.error, self.required_width, self.style)
+
+    def name(self):
+        return 'Rect' + common.name_of(tuple(self.bounds))
 
 
 @dataclass
 class PlacedImageContent(PlacedContent):
-    image: Image
+    image: ImageDetail
 
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
-        pdf.draw_image(self.image, self.extent)
+        pdf.draw_image(self.image.data, self.extent)
 
     def __copy__(self):
-        return PlacedImageContent(self.extent, self.location, self.error, self.image)
+        return PlacedImageContent(self.extent, self.location, self.error, self.required_width, self.image)
+
+    def name(self):
+        return 'Image#' + str(self.image.index)
 
 
 def _debug_draw_rect(pdf, rect):
@@ -221,7 +237,7 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(bounds.extent, bounds.top_left, None, base_style)
+        return PlacedRectContent(bounds.extent, bounds.top_left, None, None, base_style)
     else:
         return None
 
@@ -254,22 +270,23 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     # Place it relative to the bounds
     dx = bounds.width - e.width
     dy = bounds.height - e.height
-    if mode in {'nw', 'w', 'sw'}:
+    if anchor in {'nw', 'w', 'sw'}:
         x = 0
-    elif mode in {'ne', 'e', 'se'}:
+    elif anchor in {'ne', 'e', 'se'}:
         x = dx
     else:
         x = dx / 2
 
-    if mode in {'nw', 'n', 'ne'}:
+    if anchor in {'nw', 'n', 'ne'}:
         y = 0
-    elif mode in {'sw', 's', 'se'}:
+    elif anchor in {'sw', 's', 'se'}:
         y = dy
     else:
         y = dy / 2
 
-    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top),
-                              PlacementError(0, shrinkage_error, 0), image.data)
+    required_width = width if mode == 'normal' else None
+    err = PlacementError(0, 5 * shrinkage_error, 0)
+    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top), err, required_width, image)
 
 
 class ExtentTooSmallError(RuntimeError):

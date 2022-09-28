@@ -21,6 +21,10 @@ class ColumnFit:
     height: int = 0
     items: List[PlacedContent] = field(default_factory=lambda: [])
 
+    @property
+    def excess_width(self) -> float:
+        return min((max(0.0, i.extent.width - i.required_width) for i in self.items if i.required_width), default=0)
+
     def __str__(self):
         return f"(n={len(self.items)}, height={round(self.height)})"
 
@@ -31,12 +35,27 @@ class AllColumnsFit:
     unplaced_count: int = 0  # Blocks that could not be placed
     tot_clipped: float = 0  # Size of partially clipped blocks
     tot_bad_breaks: int = 0  # Count of bad breaks (ones not at whitespace)
+    tot_breaks: int = 0  # Count of breaks
 
     def accumulate_error(self, error: PlacementError):
         if error is None:
             return
         self.tot_clipped += error.clipped
         self.tot_bad_breaks += error.bad_breaks
+        self.tot_breaks += error.breaks
+
+    @cached_property
+    def non_critical_score(self):
+        # A bad break is as bad as many regular breaks
+        breaks = self.tot_bad_breaks * 10 + self.tot_breaks
+
+        # Translate pixels of excess widths to breaks
+        widths = self.excess_width / 10
+
+        # Translate height issues to breaks
+        heights = self.var_heights ** 0.5
+
+        return breaks + widths + heights
 
     @cached_property
     def var_heights(self) -> float:
@@ -44,18 +63,22 @@ class AllColumnsFit:
         µ = sum(c.height for c in self.columns) / n
         return sum((c.height - µ) ** 2 for c in self.columns) / n
 
-    def better(self, other: AllColumnsFit, consider_heights: bool):
+    @cached_property
+    def excess_width(self) -> float:
+        return sum(cf.excess_width for cf in self.columns)
+
+    def better(self, other: AllColumnsFit, full_comparison: bool):
         if other is None:
             return True
         if self.unplaced_count != other.unplaced_count:
             return self.unplaced_count < other.unplaced_count
         if self.tot_clipped != other.tot_clipped:
             return self.tot_clipped < other.tot_clipped
-        if self.tot_bad_breaks != other.tot_bad_breaks:
-            return self.tot_bad_breaks < other.tot_bad_breaks
-        if consider_heights:
-            return self.var_heights < other.var_heights
-        return False
+
+        if full_comparison:
+            return self.non_critical_score < other.non_critical_score
+        else:
+            return False
 
     def __str__(self):
         ss = " • ".join(str(s) for s in self.columns)
@@ -166,7 +189,7 @@ class ColumnPacker:
                         all_fits.unplaced_count += 1
                         continue
 
-            if best_so_far.better(all_fits, consider_heights=False):
+            if best_so_far.better(all_fits, full_comparison=False):
                 raise ErrorLimitExceededError()
 
             fit.height = y
@@ -289,7 +312,7 @@ class ColumnPacker:
             for widths in width_choices:
                 try:
                     trial = self.place_in_defined_columns(widths, counts, best_so_far=best)
-                    if trial.better(best, consider_heights=True):
+                    if trial.better(best, full_comparison=True):
                         best = trial
                 except (ExtentTooSmallError, ErrorLimitExceededError):
                     # Just ignore failures

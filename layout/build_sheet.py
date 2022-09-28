@@ -61,8 +61,8 @@ def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
     base = source.copy()
-    for s in [style.Defaults.default, style.Defaults.title,
-              style.Defaults.block, style.Defaults.section, style.Defaults.sheet, style.Defaults.hidden]:
+    for s in [style.Defaults.default, style.Defaults.title, style.Defaults.block, style.Defaults.section,
+              style.Defaults.sheet, style.Defaults.hidden, style.Defaults.image]:
         if s.name in base:
             # This style has been redefined, so we need to juggle names
             # and make the redefined version inherit from the default with a modified name

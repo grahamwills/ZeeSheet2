@@ -1,21 +1,80 @@
 from __future__ import annotations
 
+import math
+import numbers
+import reprlib
 from collections import defaultdict
 from typing import List, Tuple, Any
 
 
+class MyRepr(reprlib.Repr):
+
+    def __init__(self):
+        super().__init__()
+        self.maxlevel = 2
+        self.maxtuple = 4
+        self.maxlist = 4
+        self.maxarray = 4
+        self.maxdict = 4
+        self.maxset = 4
+        self.maxfrozenset = 4
+        self.maxdeque = 4
+
+    def repr_str(self, x: str, level: int) -> str:
+        t = super().repr_str(x, level)
+        return t[1:-1]
+
+
+_REPR = MyRepr()
+
+
+def name_of(v: Any):
+    if v is None:
+        return 'None'
+
+    try:
+        return name_of(v.name())
+    except TypeError:
+        return name_of(v.name)
+    except AttributeError:
+        pass
+
+    if isinstance(v, numbers.Number):
+        return to_str(v)
+
+    if type(v) == str:
+        return _REPR.repr(v).replace('...', '\u2026')
+
+    if type(v) in {tuple, list}:
+        parts = tuple(name_of(w) for w in v)
+        return _REPR.repr(parts).replace('...', '\u2026')
+
+    cl_name = v.__class__.__name__
+    cl_id = id(v) % 10000
+    return f"{cl_name}({cl_id:04d})"
+
+
 def to_str(v: Any, places: int = 3):
     try:
+        if math.isnan(v):
+            return 'nan'
+        if abs(v) > 1e6:
+            millions = round(v / 1e6, places)
+            int_m = int(millions)
+            if int_m == millions:
+                return str(int_m) + 'M'
+            else:
+                return str(millions) + 'M'
+        v = round(v, places)
         i = int(v)
         if i == v:
             return str(i)
         else:
-            if abs(v) > 1e6:
-                return str(round(v / 1e6, places)) + 'M'
-            else:
-                return str(round(v, places))
-    except:
+            return str(v)
+    except TypeError:
         pass
+    except OverflowError:
+        return '\u221e' if v > 0 else '-\u221e'
     try:
         return format(v, f'0.{places}f')
     except:

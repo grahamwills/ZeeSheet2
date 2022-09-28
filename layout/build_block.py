@@ -43,7 +43,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
         # Need to reduce the plaque to draw INSIDE the border
         plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
 
-    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, None, title_style)
+    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, None, None, title_style)
     title_extent = plaque_rect.extent + title_style.box.margin
     spacing = Spacing(0, 0, title_extent.height, 0)
 
@@ -88,10 +88,9 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     if block.children:
         placed_children = place_block_children(block, item_bounds, pdf)
     else:
-        # The image is the only content in the block
+        # The image is the only content in the block -- always put it at the top
         opt = block.options
-        placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
-                                     opt.image_anchor)
+        placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height, 'n')
 
     locate_title(title, outer, placed_children.bounds, pdf)
 

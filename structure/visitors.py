@@ -268,7 +268,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             oo = o.split('=')
             # Make sure all the keys start with 'image-' as that is the way the block options define it
             key = oo[0]
-            if not key.startswith('image-'):
+            if not key.startswith('image-') and not key == 'style':
                 key = 'image-' + key
             if len(oo) == 1:
                 # No equals, so it's a boolean we set to true
@@ -277,6 +277,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 # Two parts
                 definitions[key] = oo[1]
         _apply_option_definitions('.. image::', definitions, self.current_block.options)
+
+        # Apply default image style
+        if 'style' not in definitions:
+            self.current_block.options.style = style.Defaults.image.name
 
         # And now start a new block
         self._make_new_block()

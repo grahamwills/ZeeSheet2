@@ -53,7 +53,7 @@ class TestFullLayout(unittest.TestCase):
 
         self.assertEqual(0, content.error.clipped)
         self.assertEqual(0, content.error.bad_breaks)
-        self.assertTrue(stdev < 20)
+        self.assertTrue(stdev < 20, f"Std dev was {stdev}")
 
     def test_more_columns_than_content(self):
         txt = textwrap.dedent(
