@@ -8,6 +8,9 @@ import common
 
 T = TypeVar("T")
 
+class IncompatibleLayoutQualities(RuntimeError):
+    pass
+
 
 def _f(v) -> str:
     return common.to_str(v, places=1)
@@ -55,6 +58,44 @@ class LayoutQuality(Generic[T]):
     height_max: float = None
     height_dev: float = None
 
+    def strongly_better(self, other: LayoutQuality):
+        """ Better is based only on unplaced and clipped items """
+        if other is None:
+            return True
+        self.check_compatible(other)
+        if self.unplaced != other.unplaced:
+            return self.unplaced < other.unplaced
+        return self.clipped < other.clipped
+
+    def weakly_better(self, other: LayoutQuality):
+        """ Better assuming the items have the same unplaced and clipped items """
+        self.check_compatible(other)
+        return self.weak_score() < other.weak_score()
+
+    def weak_score(self):
+        """ Score ignoring unplaced and clipped items """
+        if self.method == LayoutMethod.TABLE:
+            return 0
+        if self.method == LayoutMethod.COLUMNS:
+            return 0
+        if self.method == LayoutMethod.WRAPPING:
+            return 0
+        if self.method == LayoutMethod.IMAGE:
+            return 0
+        if self.method == LayoutMethod.NONE:
+            return 0
+
+    def total_items(self):
+        return self.count + self.unplaced
+
+    def check_compatible(self, other: LayoutQuality):
+        if other is None:
+            return
+        if self.method != other.method:
+            raise IncompatibleLayoutQualities(f'Incompatible methods: {self.method} and {other.method}')
+        if self.total_items() != other.total_items():
+            raise IncompatibleLayoutQualities(f'Comparing different numbers of items: {self.total_items()} and {other.total_items()}')
+
     def __str__(self):
         name = common.name_of(self.target)
         if self.count:
@@ -77,6 +118,9 @@ class LayoutQuality(Generic[T]):
             else:
                 parts.append(f"height={_f(self.height_max)}")
         return '\u27e8' + ', '.join(parts) + '\u27e9'
+
+    def __bool__(self):
+        raise RuntimeError('Conversion to boolean is confusing; do not call this')
 
 
 def for_wrapping(target: T,
@@ -114,7 +158,7 @@ def for_table(target: T,
     for row, col_width in zip(cells_columnwise, column_widths):
         col_actual_max = 0
         for cell in row:
-            if cell:
+            if cell is not None:
                 if cell.method != LayoutMethod.NONE:
                     q.count += 1
                 q.clipped += cell.clipped

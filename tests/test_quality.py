@@ -72,3 +72,26 @@ class TestQuality(unittest.TestCase):
 
         # Max height is 90, standard deviation = 35
         self.assertEqual('⟨name: COLUMNS(3), width=278•700, unplaced=7, breaks=8•7, height=90~35⟩', str(q))
+
+
+    def test_compatibility(self):
+        a = quality.for_wrapping('name', 123, 124, 4, 1, 100)
+        b = quality.for_wrapping('foo', 1,2,3,4,5)
+        c = quality.for_decoration('box')
+        d = quality.for_table('name', [300, 400], [[a, b, c], [a, None, b]], 7)
+        e = quality.for_table('name', [300, 400], [[a, b, c], [b, None, None]], 8)
+        f = quality.for_table('name', [300, 400], [[a, b, c], [a, None, b]], 8)
+
+        # Does not raise
+        a.strongly_better(None)
+        a.strongly_better(b)
+        a.weakly_better(b)
+        d.weakly_better(e)
+
+        # Bad types
+        self.assertRaises(quality.IncompatibleLayoutQualities, lambda:a.strongly_better(c))
+        self.assertRaises(quality.IncompatibleLayoutQualities, lambda:a.weakly_better(d))
+
+        # Bad item counts
+        self.assertRaises(quality.IncompatibleLayoutQualities, lambda:d.strongly_better(f))
+        self.assertRaises(quality.IncompatibleLayoutQualities, lambda:e.weakly_better(f))
