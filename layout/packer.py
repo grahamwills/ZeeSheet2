@@ -16,8 +16,9 @@ LOGGER = configured_logger(__name__)
 
 MIN_BLOCK_DIMENSION = 8
 
+
 class ColumnOverfullError(RuntimeError):
-    def __init__(self, column: int, max_items:int):
+    def __init__(self, column: int, max_items: int):
         self.column = column
         self.max_items = max_items
 
@@ -36,11 +37,15 @@ class ColumnFit:
 
 
 class ColumnPacker:
-    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = 40):
+    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = None):
         self.n = item_count
         self.k = column_count
         self.bounds = bounds
-        self.granularity = granularity
+
+        if granularity:
+            self.granularity = granularity
+        else:
+            self.granularity = 10 + round(2.5 * bounds.width ** 0.5, -1)
         self.average_spacing = self._average_spacing()
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
@@ -271,13 +276,13 @@ class ColumnPacker:
                     f"Too many combinations ({n_count} x {n_width}), increasing widths granularity to {granularity}")
 
         LOGGER.info(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
-                     f"and {len(count_choices)} count options")
+                    f"and {len(count_choices)} count options")
 
         best = None
 
         # Naively try all combinations
         for widths in width_choices:
-            known_limits = [defaultdict(lambda :99999) for i in range(self.k)]
+            known_limits = [defaultdict(lambda: 99999) for i in range(self.k)]
             for counts in count_choices:
                 # Do we know this is a bad combo?
                 ok = True
@@ -301,7 +306,7 @@ class ColumnPacker:
                 except ErrorLimitExceededError:
                     # Just ignore failures
                     pass
-        if not best.group:
+        if not best:
             raise ExtentTooSmallError()
         LOGGER.info(f"Best placement is: {best.quality}")
         return best

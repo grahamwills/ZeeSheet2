@@ -7,7 +7,7 @@ from collections import defaultdict, namedtuple
 
 import common
 from common import Rect
-from layout import sheet_to_content
+from layout import sheet_to_content, sheet_to_pdf_document
 from layout.content import PlacedGroupContent
 from structure import operations
 

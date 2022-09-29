@@ -10,7 +10,7 @@ from structure import Run, Element
 from structure.style import Style
 
 
-@lru_cache(maxsize=10000)
+@lru_cache(maxsize=1000)
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
     bldr = RunBuilder(run, style, extent, pdf)
     placed = bldr.build()
@@ -26,6 +26,7 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunCont
     return placed
 
 
+@lru_cache(maxsize=1000)
 def split_text(text: str,
                font: Font,
                width: float,

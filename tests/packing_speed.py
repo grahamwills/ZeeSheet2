@@ -28,26 +28,24 @@ def random_block(table_columns, table_rows, rand):
 
 def make_sheet(section_columns: int, block_count, table_columns: int, table_rows: List[int]):
     rand = Random(13)
-    pass
-
-    header = f'.. section:: columns={section_columns}\n\n'
+    header = f'.. page:: width=800 height=10000\n.. section:: columns={section_columns}\n\n'
     return header + '\n\n'.join(random_block(table_columns, table_rows, rand) for _ in range(block_count))
 
 
 def time_build(sheet) -> float:
     print('Running ...', end='', flush=True)
     t0 = time.time_ns()
-    sheet_to_pdf_document(sheet, images={})
+    bytes = sheet_to_pdf_document(sheet, images={})
     t = (time.time_ns() - t0) / 1e9
-    print(' done')
+    print(f' done ({len(bytes)} bytes)')
     return t
 
 
 if __name__ == '__main__':
     SECTION_COLUMNS = 3
-    BLOCK_COUNT = 30
-    TABLE_COLUMN = 1
-    TABLE_ROWS = list(range(1, 9))
+    BLOCK_COUNT = 10
+    TABLE_COLUMN = 2
+    TABLE_ROWS = list(range(3, 9))
 
     text = make_sheet(SECTION_COLUMNS, BLOCK_COUNT, TABLE_COLUMN, TABLE_ROWS)
     sheet = operations.text_to_sheet(text)
@@ -57,6 +55,3 @@ if __name__ == '__main__':
     median = times[N // 2]
     print(f"TIME = {median:>8.4f}s | section_cols={SECTION_COLUMNS}, blocks={BLOCK_COUNT}, "
           f"table_cols={TABLE_COLUMN}, table_rows={TABLE_ROWS}")
-
-    # print()
-    # print(text)
