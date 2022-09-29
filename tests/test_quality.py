@@ -23,9 +23,9 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨box: NONE⟩', str(q))
 
     def test_names_for_placed_items(self):
-        image = PlacedImageContent(IMAGE, EXTENT, location=POINT, quality=None)
-        rect = PlacedRectContent(STYLE, EXTENT, location=POINT, quality=None)
-        run = PlacedRunContent(SEGMENTS, STYLE, EXTENT, location=POINT, quality=None)
+        image = PlacedImageContent(IMAGE, EXTENT, quality=None, location=POINT)
+        rect = PlacedRectContent(STYLE, EXTENT, quality=None, location=POINT)
+        run = PlacedRunContent(SEGMENTS, STYLE, EXTENT, quality=None, location=POINT)
 
         q = quality.for_decoration(image)
         self.assertEqual('⟨Image#2: NONE⟩', str(q))
@@ -58,11 +58,11 @@ class TestQuality(unittest.TestCase):
         # Total desired width is 700 of which 124+154 is used
         # Bad Breaks are 2x4 (from a)
         # Good Breaks are 2x1 (from a) plus 5 (from c)
-        self.assertEqual('⟨name: TABLE(3), excess=500, unplaced=7, breaks=8•7⟩', str(q))
+        self.assertEqual('⟨name: TABLE(3), excess=1, unplaced=7, breaks=8•7⟩', str(q))
 
         # With no unplaced
         q = quality.for_table('name', [300, 400], [[a, b, c], [a, None, c]], 0)
-        self.assertEqual('⟨name: TABLE(3), excess=500, breaks=8•7⟩', str(q))
+        self.assertEqual('⟨name: TABLE(3), excess=1, breaks=8•7⟩', str(q))
 
     def test_str_for_columns(self):
         a = quality.for_wrapping('name', 1, 0, 4, 1, 100)
@@ -71,7 +71,7 @@ class TestQuality(unittest.TestCase):
         q = quality.for_columns('name', [300, 400], [20, 90], [[a, b, c, c], [a, None, c]], 7)
 
         # Max height is 90, standard deviation = 35
-        self.assertEqual('⟨name: COLUMNS(3), excess=500, unplaced=7, breaks=8•7, ∆height=70⟩', str(q))
+        self.assertEqual('⟨name: COLUMNS(3), excess=1, unplaced=7, breaks=8•7, ∆height=70⟩', str(q))
 
     def test_compatibility(self):
         a = quality.for_wrapping('name', 1, 0, 4, 1, 100)
@@ -157,7 +157,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         e = quality.for_image('name', 100, 200, 300, 1000)
 
         q = quality.for_table('g', [100, 200], [[a, b, a, c], [a, d, c, e]], 3)
-        self.assertEqual(100 ** 2 + 200 ** 2, q.excess_ss)
+        self.assertEqual(1, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
@@ -166,7 +166,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(None, q.height_dev)
 
         q = quality.for_columns('g', [100, 200], [50, 70], [[a, b, a, c], [a, d, c, e]], 3)
-        self.assertEqual(100 ** 2 + 200 ** 2, q.excess_ss)
+        self.assertEqual(1, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
@@ -185,7 +185,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         t2 = quality.for_table('g', [100, 200], [[d, e], [b, b]], 7)
 
         q = quality.for_columns('g', [400, 500], [50, 70], [[t1, t1], [t1, t2]], 3)
-        self.assertEqual(400 ** 2 + 500 ** 2, q.excess_ss)
+        self.assertEqual(4, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(6 * 7, q.bad_breaks)
         self.assertEqual(6 * 1 + 5 * 5, q.good_breaks)

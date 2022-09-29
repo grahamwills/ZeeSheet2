@@ -28,11 +28,9 @@ class PlacedContent(abc.ABC):
     extent: Extent  # The size we made it
     quality: PlacementQuality  # How good the placement is
     location: Point  # Where it was placed within the parent
-    required: float  # The width we want to be
     hidden: bool
 
-    def __init__(self, extent: Extent, quality: PlacementQuality, location, required_width):
-        self.required = required_width
+    def __init__(self, extent: Extent, quality: PlacementQuality, location):
         self.quality = quality
         self.location = location
         self.extent = extent
@@ -60,8 +58,6 @@ class PlacedContent(abc.ABC):
     def __str__(self):
         txt = '<HIDDEN, ' if self.hidden else '<'
         txt += 'bds=' + str(round(self.bounds)) + ", quality=" + str(self.quality)
-        if self.required is not None:
-            txt += ', req_wid=' + _f(self.required)
         return txt + '>'
 
     def draw(self, pdf: PDF):
@@ -79,8 +75,8 @@ class PlacedGroupContent(PlacedContent):
     items: List[PlacedContent] = None
 
     def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO, required_width: float = None):
-        super().__init__(extent, quality, location, required_width)
+                 location: Point = ZERO):
+        super().__init__(extent, quality, location)
         self.items = items
 
     def children(self) -> List[PlacedContent]:
@@ -89,11 +85,10 @@ class PlacedGroupContent(PlacedContent):
     @classmethod
     def from_items(cls, items: List[PlacedContent], quality: PlacementQuality,
                    extent: Extent = None) -> PlacedGroupContent:
-        req_wid = max((p.required for p in items if p.required), default=None)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
-        return PlacedGroupContent(items, extent, quality, ZERO, req_wid)
+        return PlacedGroupContent(items, extent, quality, ZERO)
 
     def _draw(self, pdf: PDF):
         for p in self.items:
@@ -105,7 +100,7 @@ class PlacedGroupContent(PlacedContent):
 
     def __copy__(self):
         items = [copy(g) for g in self.items]
-        return PlacedGroupContent(items, self.extent, self.quality, self.location, self.required)
+        return PlacedGroupContent(items, self.extent, self.quality, self.location)
 
     def __getitem__(self, item) -> type(PlacedContent):
         return self.items[item]
@@ -124,10 +119,9 @@ class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
 
-    def __init__(self, segments: List[TextSegment], style: Style,
-                 extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO, required_width: float = None):
-        super().__init__(extent, quality, location, required_width)
+    def __init__(self, segments: List[TextSegment], style: Style, extent: Extent, quality: PlacementQuality,
+                 location: Point = ZERO):
+        super().__init__(extent, quality, location)
         self.segments = segments
         self.style = style
 
@@ -145,7 +139,7 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.segments, self.style, self.extent, self.quality, self.location, self.required)
+        return PlacedRunContent(self.segments, self.style, self.extent, self.quality, self.location)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)
@@ -155,9 +149,8 @@ class PlacedRunContent(PlacedContent):
 class PlacedRectContent(PlacedContent):
     style: Style  # Style for this item
 
-    def __init__(self, style: Style, extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO, required_width: float = None):
-        super().__init__(extent, quality, location, required_width)
+    def __init__(self, style: Style, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
+        super().__init__(extent, quality, location)
         self.style = style
 
     def _draw(self, pdf: PDF):
@@ -165,7 +158,7 @@ class PlacedRectContent(PlacedContent):
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def __copy__(self):
-        return PlacedRectContent(self.style, self.extent, self.quality, self.location, self.required)
+        return PlacedRectContent(self.style, self.extent, self.quality, self.location)
 
     def name(self):
         return 'Rect' + common.name_of(tuple(self.bounds))
@@ -175,9 +168,8 @@ class PlacedRectContent(PlacedContent):
 class PlacedImageContent(PlacedContent):
     image: ImageDetail
 
-    def __init__(self, image: ImageDetail, extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO, required_width: float = None):
-        super().__init__(extent, quality, location, required_width)
+    def __init__(self, image: ImageDetail, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
+        super().__init__(extent, quality, location)
         self.image = image
 
     def _draw(self, pdf: PDF):
@@ -185,7 +177,7 @@ class PlacedImageContent(PlacedContent):
         pdf.draw_image(self.image.data, self.extent)
 
     def __copy__(self):
-        return PlacedImageContent(self.image, self.extent, self.quality, self.location, self.required)
+        return PlacedImageContent(self.image, self.extent, self.quality, self.location)
 
     def name(self):
         return 'Image#' + str(self.image.index)
@@ -254,10 +246,8 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     else:
         y = dy / 2
 
-    required_width = width if mode == 'normal' else None
     quality = layout.quality.for_image(image, e.width, bounds.width, e.height, bounds.height)
-    return PlacedImageContent(image, e, quality, location=Point(x + bounds.left, y + bounds.top),
-                              required_width=required_width)
+    return PlacedImageContent(image, e, quality, location=Point(x + bounds.left, y + bounds.top))
 
 
 class ExtentTooSmallError(RuntimeError):

@@ -28,10 +28,6 @@ class ColumnFit:
     height: int = 0
     items: List[PlacedContent] = field(default_factory=lambda: [])
 
-    @property
-    def excess_width(self) -> float:
-        return min((max(0.0, i.extent.width - i.required) for i in self.items if i.required), default=0)
-
     def __str__(self):
         return f"(n={len(self.items)}, height={round(self.height)})"
 
@@ -220,7 +216,6 @@ class ColumnPacker:
         bottom = top
         placed_items = []
         quality_table = [[] for _ in column_sizes]
-        unused = copy(column_sizes)
         accumulated_error = layout.quality.PartialQuality()
         for row in range(0, self.n):
             left = self.average_spacing.left
@@ -238,7 +233,6 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
-                    unused[col] = min(unused[col], column_width - placed_cell.required)
                     quality_table[col].append(cell_quality)
                 except ItemDoesNotExistError:
                     # Just ignore this
@@ -250,7 +244,7 @@ class ColumnPacker:
         # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
         table_bottom = bottom + self.average_spacing.bottom
         extent = Extent(bounds.extent.width, table_bottom)
-        table_quality = layout.quality.for_table('Group', unused, quality_table, 0)
+        table_quality = layout.quality.for_table('Group', column_sizes, quality_table, 0)
         placed_children = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         placed_children.location = bounds.top_left
         return placed_children

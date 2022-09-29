@@ -79,6 +79,10 @@ class PlacementQuality(Generic[T]):
             return self.clipped < other.clipped
         return self.minor_score() < other.minor_score()
 
+    @property
+    def excess(self):
+        return self.excess_ss ** 0.5
+
     def _score_breaks(self) -> float:
         assert self.bad_breaks >= 0
         assert self.good_breaks >= 0
@@ -140,7 +144,7 @@ class PlacementQuality(Generic[T]):
     def str_parts(self):
         parts = []
         if self.excess_ss is not None:
-            parts.append(f"excess={_f(self.excess_ss**0.5)}")
+            parts.append(f"excess={_f(self.excess)}")
         if self.unplaced:
             parts.append(f"unplaced={self.unplaced}")
         if self.clipped:
@@ -173,7 +177,7 @@ class PlacementQuality(Generic[T]):
 def for_wrapping(target: T, excess_width: float, clipped: int, bad_breaks: int, good_breaks: int,
                  height: float) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
-    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width**2,
+    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width ** 2,
                             clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 
@@ -181,7 +185,7 @@ def for_image(target: T, width: float, desired: float,
               height: float, desired_height: float) -> PlacementQuality[T]:
     """ Define a quality for an image with a desired height"""
     shrinkage = max((desired * desired_height) / (width * height), 1) - 1
-    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=(desired-width)**2,
+    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=(desired - width) ** 2,
                             image_shrinkage=shrinkage)
 
 
@@ -191,15 +195,15 @@ def for_decoration(target: T) -> PlacementQuality[T]:
 
 
 def for_table(target: T,
-              column_excess_widths: list[float],
+              column_widths: list[float],
               cells_columnwise: list[list[PlacementQuality]],
               unplaced: int
               ) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
-    ss = sum(v*v for v in column_excess_widths)
-    q = PlacementQuality(target, LayoutMethod.TABLE, excess_ss=ss, unplaced=unplaced)
-    for row in cells_columnwise:
+    q = PlacementQuality(target, LayoutMethod.TABLE, excess_ss=0, unplaced=unplaced)
+    for wid, row in zip(column_widths, cells_columnwise):
+        min_excess2 = wid * wid
         for cell in row:
             if cell is not None:
                 if cell.method != LayoutMethod.NONE:
@@ -209,6 +213,10 @@ def for_table(target: T,
                 q.bad_breaks += cell.bad_breaks
                 q.good_breaks += cell.good_breaks
                 q.image_shrinkage += cell.image_shrinkage
+                if cell.excess_ss is not None:
+                    min_excess2 = min(min_excess2, cell.excess_ss)
+        q.excess_ss += min_excess2
+
     return q
 
 

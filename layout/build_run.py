@@ -188,7 +188,7 @@ class RunBuilder:
         excess = self.extent.width - last_top_right[0]
 
         quality = layout.quality.for_wrapping(self.run, excess, clipped, bad_breaks, good_breaks, bottom)
-        content = PlacedRunContent(segments, self.style, outer, quality, required_width=last_top_right[0])
+        content = PlacedRunContent(segments, self.style, outer, quality)
 
         return content
 
