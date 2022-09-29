@@ -2,9 +2,9 @@ import warnings
 from textwrap import dedent
 from unittest import TestCase
 
+import main
 from common import Spacing, Rect, Extent
 from layout.build_sheet import make_complete_styles
-from main.main import text_to_sheet
 from structure.style import Style, Defaults, set_using_definition, BoxStyle
 
 
@@ -234,7 +234,7 @@ class TestMakeCompleteStyles(TestCase):
                          font-family:Courier
             '''
         )
-        sheet = text_to_sheet(input)
+        sheet = main.Document(input).sheet()
         styles = make_complete_styles(sheet.styles)
         block = sheet.children[0]
         self.assertEqual('Courier', styles[block.options.title_style].font.family)

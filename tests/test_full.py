@@ -6,9 +6,8 @@ import unittest
 from collections import defaultdict, namedtuple
 
 import common
-import main.main
+import main
 from layout.content import PlacedGroupContent
-from main.main import sheet_to_content
 
 
 def read_sample(name: str) -> str:
@@ -39,15 +38,13 @@ class TestFullLayout(unittest.TestCase):
 
     def test_one_column(self):
         txt = read_sample('one column')
-        sheet = main.main.text_to_sheet(txt)
-        document = sheet_to_content(sheet, images={})
-        self.assertEqual('(n=8, h=737)', as_str(column_structure(document.pages[0][0])))
+        document = main.Document(txt)
+        self.assertEqual('(n=8, h=737)', as_str(column_structure(document.page(0)[0])))
 
     def test_columns_should_balance(self):
         txt = read_sample('columns should balance')
-        sheet = main.main.text_to_sheet(txt)
-        document = sheet_to_content(sheet, images={})
-        content = document.pages[0][0]
+        document = main.Document(txt)
+        content = document.page(0)[0]
 
         structure = column_structure(content[0])
         stdev = common.variance([v.bottom for v in structure]) ** 0.5
@@ -66,9 +63,8 @@ class TestFullLayout(unittest.TestCase):
             DEF
             """
         )
-        sheet = main.main.text_to_sheet(txt)
-        document = sheet_to_content(sheet, images={})
-        structure = column_structure(document.pages[0][0])
+        document = main.Document(txt)
+        structure = column_structure(document.page(0)[0])
         self.assertEqual(5, len(structure))
 
     def test_table_sizes(self):
@@ -82,9 +78,8 @@ class TestFullLayout(unittest.TestCase):
                 - *General*   | In love with Laurent's sister
             """)
 
-        sheet = main.main.text_to_sheet(txt)
-        document = sheet_to_content(sheet, images={})
-        inner = document.pages[0][0][0][1]
+        document = main.Document(txt)
+        inner = document.page(0)[0][0][1]
         structure = column_structure(inner)
         self.assertEqual(6, structure[0].count)
         self.assertEqual(6, structure[1].count)

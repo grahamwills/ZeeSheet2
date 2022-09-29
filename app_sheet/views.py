@@ -13,9 +13,9 @@ from django.urls import reverse_lazy
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
 
+import main
 from layout.content import ExtentTooSmallError
 from structure import ImageDetail
-from main.main import text_to_sheet, prettify, sheet_to_pdf_document
 from .forms import NewUserForm
 from .models import Sheet
 
@@ -174,17 +174,16 @@ def action_dispatcher(request, sheet_id):
     if 'validate' in request.POST:
         # Check that the definition is good and prettify it
         with warnings.catch_warnings(record=True) as warning_messages:
-            sheet = text_to_sheet(edit_content)
-            edit_content = prettify(sheet)
+            edit_content = main.Document(edit_content, images_info(csd)).prettified()
             for w in warning_messages:
                 messages.warning(request, str(w.message))
 
     if 'generate' in request.POST:
         # Generate PDF and store on disk
         with warnings.catch_warnings(record=True) as warning_messages:
-            sheet = text_to_sheet(edit_content)
+            doc = main.Document(edit_content, images_info(csd))
             try:
-                pdf_bytes = sheet_to_pdf_document(sheet, images=images_info(csd))
+                pdf_bytes = doc.data()
                 file_name = f"sheets/{request.user.username}-sheet.pdf"
                 path = default_storage.save(file_name, ContentFile(pdf_bytes))
                 pdf_file = path[7:]  # remove the 'sheets/' prefix

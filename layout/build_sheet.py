@@ -7,7 +7,7 @@ from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
-from layout.content import PlacedContent, PlacedGroupContent, make_frame, Document
+from layout.content import PlacedContent, PlacedGroupContent, make_frame
 from structure import Sheet, style
 from structure.style import Style
 
@@ -21,7 +21,7 @@ class SheetPacker(SectionPacker):
         return build_section.place_section(section, extent, self.pdf)
 
 
-def build_sheet(sheet: Sheet, pdf: PDF) -> Document:
+def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     extent = Extent(sheet.options.width, sheet.options.height)
     sheet_style = pdf.styles[sheet.options.style]
     page = Rect(0, extent.width, 0, extent.height)
@@ -38,7 +38,7 @@ def build_sheet(sheet: Sheet, pdf: PDF) -> Document:
         # Just copy the quality of the content
         content = PlacedGroupContent.from_items([frame, content], content.quality)
 
-    return Document(pdf, [content])
+    return [content]
 
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:

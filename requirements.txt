@@ -6,3 +6,7 @@ sphinx
 django-crispy-forms
 reportlab
 pyyaml
+numpy
+scipy
+Pillow
+fonttools
