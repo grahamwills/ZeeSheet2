@@ -146,7 +146,7 @@ class ColumnPacker:
                     previous_margin_bottom = margins.bottom
                     next_margin_right = max(next_margin_right, margins.right)
                     fit.items.append(placed)
-                except (ExtentTooSmallError, ItemDoesNotExistError):
+                except (ExtentTooSmallError, ItemDoesNotExistError) as ex:
                     # No room for this block
                     # If we are the last column, it is unplaced. Otherwise, the placement is bad
                     if len(columns) == self.k:
@@ -303,7 +303,7 @@ class ColumnPacker:
                     start = sum(counts[:ex.column])
                     end = ex.max_items
                     known_limits[ex.column][start] = end
-                except ErrorLimitExceededError:
+                except (ErrorLimitExceededError, ExtentTooSmallError):
                     # Just ignore failures
                     pass
         if not best:

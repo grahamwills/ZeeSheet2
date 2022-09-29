@@ -3,7 +3,7 @@ from typing import Dict
 from docutils import parsers, core, utils
 
 from generate.pdf import PDF
-from layout.content import Pages
+from layout.content import Document
 from layout.build_sheet import make_complete_styles, FONT_LIB, build_sheet
 
 from structure import model, visitors, Sheet, ImageDetail, style
@@ -28,12 +28,12 @@ def prettify(sheet: Sheet, width: int = 100) -> str:
 
 
 def sheet_to_pdf_document(sheet: Sheet, images: Dict[str, ImageDetail]) -> bytes:
-    pages = sheet_to_content(sheet, images)
-    pages[0].draw(pages.pdf)
-    return pages.pdf.output()
+    document = sheet_to_content(sheet, images)
+    document.pages[0].draw(document.pdf)
+    return document.pdf.output()
 
 
-def sheet_to_content(sheet: Sheet, images: Dict[str, ImageDetail]) -> Pages:
+def sheet_to_content(sheet: Sheet, images: Dict[str, ImageDetail]) -> Document:
     # Use inheritance to make the values all defined
     complete_styles = make_complete_styles(sheet.styles)
     # Change 'auto' to be actual values

@@ -99,15 +99,16 @@ class PlacedGroupContent(PlacedContent):
         return f"Group({len(self.group)}){what}"
 
 
-class Pages(list[PlacedGroupContent]):
+class Document():
     """ Document final form"""
     pdf: PDF
+    pages: list[PlacedGroupContent]
 
-    def __init__(self, pdf: PDF, content:list[PlacedGroupContent]=None):
+    def __init__(self, pdf: PDF, content: list[PlacedGroupContent] = None):
         super().__init__()
         self.pdf = pdf
-        if content:
-            self += content
+        self.pages = content or []
+
 
 @dataclass
 class PlacedRunContent(PlacedContent):

@@ -25,7 +25,8 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
     frame_bounds = section_style.box.outset_to_border(content.bounds)
     frame = make_frame(frame_bounds, section_style)
     if frame:
-        content = PlacedGroupContent.from_items([frame, content], foobar)
+        # Frame adds nothing, so just use content's quality
+        content = PlacedGroupContent.from_items([frame, content], content.quality)
 
     return content
 
