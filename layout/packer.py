@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union, List
@@ -14,6 +15,11 @@ from layout.quality import PlacementQuality
 LOGGER = configured_logger(__name__)
 
 MIN_BLOCK_DIMENSION = 8
+
+class ColumnOverfullError(RuntimeError):
+    def __init__(self, column: int, max_items:int):
+        self.column = column
+        self.max_items = max_items
 
 
 @dataclass
@@ -106,40 +112,43 @@ class ColumnPacker:
             previous_margin_bottom = 0
             for i in range(at, at + count):
                 if y >= height:
-                    unplaced_count += 1
-                else:
-                    # Create the rectangle to be fitted into
-                    r = Rect(column_left, column_left + width, y, height)
-                    # Collapse this margin with the previous: use the larger only, don't add
-                    margins = self.margins_of_item(i)
-                    margins = Spacing(max(margins.left - previous_margin_right, 0),
-                                      margins.right,
-                                      max(margins.top - previous_margin_bottom, 0),
-                                      margins.bottom)
-                    r = r - margins
-
-                    if r.width < MIN_BLOCK_DIMENSION:
-                        raise ExtentTooSmallError('Block cannot be placed in small area')
-
-                    try:
-                        placed = self.place_item(i, r.extent)
-                        accumulated_quality.unplaced += placed.quality.unplaced
-                        accumulated_quality.clipped += placed.quality.clipped
-                        if accumulated_quality.worse(limit):
-                            raise ErrorLimitExceededError()
-                        placed.location = r.top_left
-                        y = placed.bounds.bottom + margins.bottom
-                        previous_margin_bottom = margins.bottom
-                        next_margin_right = max(next_margin_right, margins.right)
-                        fit.items.append(placed)
-                    except (ExtentTooSmallError, ItemDoesNotExistError):
-                        # No room for this block
-                        # If we are the last column, it is unplaced. Otherwise, the placement is bad
-                        if len(columns) == self.k:
-                            unplaced_count += 1
-                        else:
-                            raise
+                    if len(columns) == self.k:
+                        unplaced_count += 1
                         continue
+                    else:
+                        raise ColumnOverfullError(len(columns) - 1, len(fit.items))
+                # Create the rectangle to be fitted into
+                r = Rect(column_left, column_left + width, y, height)
+                # Collapse this margin with the previous: use the larger only, don't add
+                margins = self.margins_of_item(i)
+                margins = Spacing(max(margins.left - previous_margin_right, 0),
+                                  margins.right,
+                                  max(margins.top - previous_margin_bottom, 0),
+                                  margins.bottom)
+                r = r - margins
+
+                if r.width < MIN_BLOCK_DIMENSION:
+                    raise ExtentTooSmallError('Block cannot be placed in small area')
+
+                try:
+                    placed = self.place_item(i, r.extent)
+                    accumulated_quality.unplaced += placed.quality.unplaced
+                    accumulated_quality.clipped += placed.quality.clipped
+                    if accumulated_quality.worse(limit):
+                        raise ErrorLimitExceededError()
+                    placed.location = r.top_left
+                    y = placed.bounds.bottom + margins.bottom
+                    previous_margin_bottom = margins.bottom
+                    next_margin_right = max(next_margin_right, margins.right)
+                    fit.items.append(placed)
+                except (ExtentTooSmallError, ItemDoesNotExistError):
+                    # No room for this block
+                    # If we are the last column, it is unplaced. Otherwise, the placement is bad
+                    if len(columns) == self.k:
+                        unplaced_count += 1
+                        continue
+                    else:
+                        raise ColumnOverfullError(len(columns) - 1, len(fit.items))
 
             fit.height = y
             column_left += width
@@ -267,15 +276,29 @@ class ColumnPacker:
         best = None
 
         # Naively try all combinations
-        for counts in count_choices:
-            for widths in width_choices:
+        for widths in width_choices:
+            known_limits = [defaultdict(lambda :99999) for i in range(self.k)]
+            for counts in count_choices:
+                # Do we know this is a bad combo?
+                ok = True
+                for i, c in enumerate(counts):
+                    start = sum(counts[:i])
+                    if c > known_limits[i][start]:
+                        ok = False
+                if not ok:
+                    continue
+
                 try:
                     limit = best.quality if best else None
                     trial = self.place_in_defined_columns(widths, counts, limit=limit)
                     LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
-                except (ExtentTooSmallError, ErrorLimitExceededError):
+                except ColumnOverfullError as ex:
+                    start = sum(counts[:ex.column])
+                    end = ex.max_items
+                    known_limits[ex.column][start] = end
+                except ErrorLimitExceededError:
                     # Just ignore failures
                     pass
         if not best.group:
