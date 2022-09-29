@@ -39,8 +39,8 @@ loggers:
     propagate: no
 
   layout:
-    level: DEBUG
-    handlers: [ important, file ]
+    level: INFO
+    handlers: [ all, file ]
     propagate: no
 
   generate:

@@ -134,7 +134,11 @@ class ColumnPacker:
                         fit.items.append(placed)
                     except (ExtentTooSmallError, ItemDoesNotExistError):
                         # No room for this block
-                        unplaced_count += 1
+                        # If we are the last column, it is unplaced. Otherwise, the placement is bad
+                        if len(columns) == self.k:
+                            unplaced_count += 1
+                        else:
+                            raise
                         continue
 
             fit.height = y
@@ -257,7 +261,7 @@ class ColumnPacker:
                 LOGGER.debug(
                     f"Too many combinations ({n_count} x {n_width}), increasing widths granularity to {granularity}")
 
-        LOGGER.debug(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
+        LOGGER.info(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
                      f"and {len(count_choices)} count options")
 
         best = None
@@ -268,7 +272,7 @@ class ColumnPacker:
                 try:
                     limit = best.quality if best else None
                     trial = self.place_in_defined_columns(widths, counts, limit=limit)
-                    LOGGER.info(f"{counts} {widths}: {trial.quality}")
+                    LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
                 except (ExtentTooSmallError, ErrorLimitExceededError):
@@ -276,4 +280,5 @@ class ColumnPacker:
                     pass
         if not best.group:
             raise ExtentTooSmallError()
+        LOGGER.info(f"Best placement is: {best.quality}")
         return best
