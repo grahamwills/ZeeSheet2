@@ -1,10 +1,11 @@
 from functools import lru_cache
 from typing import Tuple
 
+import layout.quality
 from common import Extent, Point
 from generate.fonts import Font
 from generate.pdf import TextSegment, CheckboxSegment, PDF
-from layout.content import PlacementError, PlacedRunContent, ExtentTooSmallError
+from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
 from structure.style import Style
 
@@ -106,10 +107,11 @@ class RunBuilder:
         segments = []
         width = self.extent.width
         height = self.extent.height
-        error = PlacementError(0, 0, 0)
 
         # Keep same line spacing regardless of font changes
         line_spacing = self.font.line_spacing
+
+        clipped = bad_breaks = good_breaks = 0
 
         x = 0
         y = 0
@@ -132,7 +134,7 @@ class RunBuilder:
                 if y + line_spacing > height:
                     if y == 0:
                         raise ExtentTooSmallError()
-                    error.clipped += font.width(text) * line_spacing
+                    clipped += font.width(text) * line_spacing
                     text = None
                     continue
 
@@ -166,7 +168,7 @@ class RunBuilder:
                             right = max(right, x)
                             text = text[p:]
                             if is_bad:
-                                error.bad_breaks += 1
+                                bad_breaks += 1
 
                 if text:
                     if x == 0:
@@ -176,13 +178,16 @@ class RunBuilder:
                         # Start a new line
                         x = 0
                         y += line_spacing
-                        error.breaks += 1
+                        good_breaks += 1
 
         bottom = last_top_right[1] + line_spacing
         outer = Extent(right, bottom)
 
-        error.breaks -= error.bad_breaks  # They have been double-counted
-        content = PlacedRunContent(outer, Point(0, 0), error, last_top_right[0], segments, self.style)
+        good_breaks -= bad_breaks  # They have been double-counted
+        excess = self.extent.width - last_top_right[0]
+
+        quality = layout.quality.for_wrapping(self.run, excess, clipped, bad_breaks, good_breaks, bottom)
+        content = PlacedRunContent(outer, Point(0, 0), quality, last_top_right[0], segments, self.style)
 
         return content
 

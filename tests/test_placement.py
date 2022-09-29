@@ -6,7 +6,6 @@ from generate.pdf import PDF
 from layout.build_block import place_block
 from layout.build_run import place_run
 from layout.build_sheet import make_complete_styles
-from layout.content import PlacementError
 from structure import Element, Run, Block, Item, Sheet
 from structure.style import Style, FontStyle
 
@@ -33,7 +32,7 @@ class TestRunPlacement(unittest.TestCase):
         run = Run([e] * 13)
         placed = place_run(run, Extent(30, 100), STYLE, self.pdf)
         self.assertEqual(12, len(placed.segments))
-        self.assertEqual(PlacementError(145, 0, 6), round(placed.error))
+        self.assertEqual("excess=2, clipped=145, breaks=0•6", placed.quality.str_parts())
         self.assertAlmostEqual(30 - 1.5, placed.required_width, places=0)
 
     def test_single_plenty_of_space(self):
@@ -43,7 +42,7 @@ class TestRunPlacement(unittest.TestCase):
         s1 = placed.segments[0]
         self.assertEqual('hello to this ', s1.text)
         self.assertEqual(Point(0, 0), s1.offset)
-        self.assertEqual(PlacementError(0, 0, 0), round(placed.error))
+        self.assertEqual("excess=25", placed.quality.str_parts())
         self.assertAlmostEqual(100 - 25, placed.required_width, places=0)
 
     def test_multiple_plenty_of_space(self):
@@ -54,7 +53,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(139, 0)', locs)
-        self.assertEqual(PlacementError(0, 0, 0), round(placed.error))
+        self.assertEqual("excess=23", placed.quality.str_parts())
         self.assertAlmostEqual(200 - 23, placed.required_width, places=0)
 
     def test_run_aligned_right(self):
@@ -74,7 +73,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(143, 0)', locs)
-        self.assertEqual(PlacementError(0, 0, 0), round(placed.error))
+        self.assertEqual("excess=19", placed.quality.str_parts())
         self.assertAlmostEqual(200 - 19, placed.required_width, places=0)
 
     def test_wrapping_1(self):
@@ -85,7 +84,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |brave|new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(0, 16)|(26, 16)', locs)
-        self.assertEqual(PlacementError(0, 0, 1), round(placed.error))
+        self.assertEqual("excess=57, breaks=0•1", placed.quality.str_parts())
         self.assertAlmostEqual(120 - 57, placed.required_width, places=0)
 
     def test_wrapping_2(self):
@@ -96,7 +95,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(PlacementError(0, 0, 4), round(placed.error))
+        self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
         self.assertAlmostEqual(50 - 17, placed.required_width, places=0)
 
     def test_need_bad_break(self):
@@ -107,7 +106,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('superc|alifragi|listicex|pialido|cious', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(PlacementError(0, 4, 0), round(placed.error))
+        self.assertEqual("excess=12, breaks=4•0", placed.quality.str_parts())
         self.assertAlmostEqual(45 - 12, placed.required_width, places=0)
 
     def test_breaks_again(self):
@@ -118,7 +117,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
-        self.assertEqual(PlacementError(0, 0, 4), round(placed.error))
+        self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
         self.assertAlmostEqual(50 - 17, placed.required_width, places=0)
 
     def test_not_enough_space_no_matter_what_we_try(self):
@@ -128,7 +127,7 @@ class TestRunPlacement(unittest.TestCase):
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('hello to this |supercalifra|gilisticexpial', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)', locs)
-        self.assertEqual(PlacementError(1318, 2, 1), round(placed.error))
+        self.assertEqual("excess=2, clipped=1318, breaks=2•1", placed.quality.str_parts())
         self.assertAlmostEqual(80 - 2, placed.required_width, places=0)
 
     def test_split_item_into_cells(self):

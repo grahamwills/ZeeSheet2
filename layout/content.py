@@ -3,12 +3,14 @@ from __future__ import annotations
 import reprlib
 from copy import copy
 from dataclasses import dataclass
-from typing import List, Optional, Iterable
+from typing import List, Optional
 
 import common
+import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
+from layout.quality import PlacementQuality
 from structure import ImageDetail
 from structure.style import Style
 
@@ -20,55 +22,10 @@ def _f(v) -> str:
 
 
 @dataclass
-class PlacementError:
-    """ Error from placing one or more items. """
-    clipped: float  # Approximate pixel size of items clipped out and lost
-    bad_breaks: int  # Measures the error we want to improve above all (counts of bad breaks)
-    breaks: int  # Measures error we'd prefer to reduce if possible (counts of line breaks)
-
-    def __str__(self):
-        return f"Error({_f(self.clipped)} • {_f(self.bad_breaks)} • {_f(self.breaks)} )"
-
-    def __round__(self, n=None):
-        return PlacementError(round(self.clipped, n), round(self.bad_breaks, n), round(self.breaks, n))
-
-    def __bool__(self):
-        return self.clipped != 0 or self.bad_breaks != 0
-
-    def __iadd__(self, other: PlacementError):
-        self.clipped += other.clipped
-        self.bad_breaks += other.bad_breaks
-        self.breaks += other.breaks
-        return self
-
-    @classmethod
-    def aggregate(cls, mix: Iterable[PlacementError]) -> Optional[PlacementError]:
-        items = [i for i in mix if i is not None]
-        if not items:
-            return None
-        c = sum(i.clipped for i in items)
-        b = sum(i.bad_breaks for i in items)
-        a = sum(i.breaks for i in items)
-        return PlacementError(c, b, a)
-
-    def compare(self, other):
-        if self.clipped != other.clipped:
-            return -1 if self.clipped < other.clipped else 1
-        if self.bad_breaks != other.bad_breaks:
-            return -1 if self.bad_breaks < other.bad_breaks else 1
-        # if self.breaks != other.breaks:
-        #     return -1 if self.breaks < other.breaks else 1
-        return 0
-
-    def better(self, other: PlacementError):
-        return self.compare(other) < 0
-
-
-@dataclass
 class PlacedContent:
     extent: Extent  # The size we made it
     location: Point  # Where it was placed within the parent
-    error: Optional[PlacementError]  # How bad the placement was
+    quality: PlacementQuality  # How good the placement is
     required_width: Optional[float]  # The width we want to be
 
     def __post_init__(self):
@@ -81,16 +38,15 @@ class PlacedContent:
                     self.location.y,
                     self.location.y + self.extent.height)
 
-    def better(self, other: PlacedContent):
-        """Is our placement better?"""
-        return other is None or self.error.better(other.error)
+    def better(self, other:type(PlacedContent)):
+        return other is None or self.quality.better(other.quality)
 
     def _draw(self, pdf: PDF):
         raise NotImplementedError('Must be defined in subclass')
 
     def __str__(self):
         txt = '<HIDDEN, ' if self.hidden else '<'
-        txt += 'bds=' + str(round(self.bounds)) + ", err=" + str(self.error)
+        txt += 'bds=' + str(round(self.bounds)) + ", quality=" + str(self.quality)
         if self.required_width is not None:
             txt += ', req_wid=' + _f(self.required_width)
         return txt + '>'
@@ -112,32 +68,14 @@ class PlacedGroupContent(PlacedContent):
     sum_squares_unused_space: float = None
 
     @classmethod
-    def from_items(cls, items: List[PlacedContent], extent: Extent = None) -> PlacedGroupContent:
-        error = PlacementError.aggregate(i.error for i in items)
+    def from_items(cls, items: List[PlacedContent], quality: PlacementQuality,
+                   extent: Extent = None) -> PlacedGroupContent:
         req_wid = max((p.required_width for p in items if p.required_width), default=None)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
-        return PlacedGroupContent(extent, Point(0, 0), error, req_wid, items)
+        return PlacedGroupContent(extent, Point(0, 0), quality, req_wid, items)
 
-    def better(self, other: PlacedGroupContent):
-        """Is our placement better?"""
-        if other is None:
-            return True
-
-        # If we placed more children we are DEFINITELY better
-        diff = len(self.group) - len(other.group)
-        if diff != 0:
-            return len(self.group) > len(other.group)
-
-        diff = self.error.compare(other.error)
-        if diff == 0:
-            if self.sum_squares_unused_space is not None and other.sum_squares_unused_space is not None:
-                return self.sum_squares_unused_space < other.sum_squares_unused_space
-            else:
-                return 0
-        else:
-            return diff < 0
 
     def _draw(self, pdf: PDF):
         for p in self.group:
@@ -149,7 +87,7 @@ class PlacedGroupContent(PlacedContent):
 
     def __copy__(self):
         group = [copy(g) for g in self.group]
-        return PlacedGroupContent(self.extent, self.location, self.error, self.required_width,
+        return PlacedGroupContent(self.extent, self.location, self.quality, self.required_width,
                                   group, self.sum_squares_unused_space)
 
     def __getitem__(self, item) -> type(PlacedContent):
@@ -183,7 +121,7 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.extent, self.location, self.error, self.required_width, self.segments, self.style)
+        return PlacedRunContent(self.extent, self.location, self.quality, self.required_width, self.segments, self.style)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)
@@ -198,7 +136,7 @@ class PlacedRectContent(PlacedContent):
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def __copy__(self):
-        return PlacedRectContent(self.extent, self.location, self.error, self.required_width, self.style)
+        return PlacedRectContent(self.extent, self.location, self.quality, self.required_width, self.style)
 
     def name(self):
         return 'Rect' + common.name_of(tuple(self.bounds))
@@ -213,7 +151,7 @@ class PlacedImageContent(PlacedContent):
         pdf.draw_image(self.image.data, self.extent)
 
     def __copy__(self):
-        return PlacedImageContent(self.extent, self.location, self.error, self.required_width, self.image)
+        return PlacedImageContent(self.extent, self.location, self.quality, self.required_width, self.image)
 
     def name(self):
         return 'Image#' + str(self.image.index)
@@ -237,7 +175,7 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(bounds.extent, bounds.top_left, None, None, base_style)
+        return PlacedRectContent(bounds.extent, bounds.top_left, layout.quality.for_decoration(bounds), None, base_style)
     else:
         return None
 
@@ -254,15 +192,12 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
         width = height / aspect
 
     # Size the image (and keep track of scaling down 'error')
-    shrinkage_error = 0
     if mode == 'stretch':
         # Stretch to the bounds
         e = bounds.extent
     elif mode == 'fill' or mode == 'normal' and (width > bounds.width or height > bounds.height):
         # Keep same aspect as we scale
         scale = min(bounds.width / width, bounds.height / height)
-        if mode == 'normal':
-            shrinkage_error = 1 / scale - 1
         e = Extent(scale * width, scale * height)
     else:
         e = Extent(width, height)
@@ -285,8 +220,8 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
         y = dy / 2
 
     required_width = width if mode == 'normal' else None
-    err = PlacementError(0, 5 * shrinkage_error, 0)
-    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top), err, required_width, image)
+    quality = layout.quality.for_image(image, e.width, bounds.width, e.height, bounds.height)
+    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top), quality, required_width, image)
 
 
 class ExtentTooSmallError(RuntimeError):

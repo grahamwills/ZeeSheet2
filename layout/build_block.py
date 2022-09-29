@@ -5,6 +5,7 @@ from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional
 
+import layout.quality
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
 from generate.pdf import PDF
@@ -43,11 +44,13 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
         # Need to reduce the plaque to draw INSIDE the border
         plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
 
-    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, None, None, title_style)
+    plaque_quality = layout.quality.for_decoration('title')
+    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, plaque_quality, None, title_style)
     title_extent = plaque_rect.extent + title_style.box.margin
     spacing = Spacing(0, 0, title_extent.height, 0)
 
-    return PlacedGroupContent.from_items([plaque, placed], title_extent), spacing
+    group_quality = placed.quality # The plaque makes no difference, so the group quality is the same as the title
+    return PlacedGroupContent.from_items([plaque, placed], group_quality, title_extent), spacing
 
 
 def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf: PDF) -> None:
@@ -109,7 +112,9 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
         return items[0]
 
     block_extent = Extent(size.width, total_height)
-    result = PlacedGroupContent.from_items(items, extent=block_extent)
+    cell_qualities = [i.quality for i in items]
+    block_quality = layout.quality.for_columns(block, [size.width], [total_height], [cell_qualities], 0)
+    result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.Defaults.hidden.name:

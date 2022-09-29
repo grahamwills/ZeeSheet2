@@ -14,7 +14,7 @@ class IncompatibleLayoutQualities(RuntimeError):
 
 
 def _f(v) -> str:
-    return common.to_str(v, places=1)
+    return common.to_str(v, places=0)
 
 
 @unique
@@ -27,21 +27,33 @@ class LayoutMethod(Enum):
 
 
 @dataclass
-class LayoutQuality(Generic[T]):
+class PartialQuality:
+    unplaced: int = 0
+    clipped: float = 0
+
+    def worse(self, other: PlacementQuality):
+        if other is None:
+            return False
+        if self.unplaced != other.unplaced:
+            return self.unplaced > other.unplaced
+        return self.clipped > other.clipped
+
+
+@dataclass
+class PlacementQuality(Generic[T]):
     """
             Contains information on the quality of a layout
 
             :param target: What this measures the quality of. Usually a PlacedContent.
             :param method:  The method that was used in the layout
             :param count: Number of items placed
-            :param actual: The actual width of the placement
+            :param excess_width: The total amount of excess width
             :param desired: The desired width of the placement
             :param unplaced: A count of the number of items that could not be added at all
             :param clipped: Sum of the amount of clipped items, in characters or character-equivalents
             :param bad_breaks: Number of times we had to break within a word (a bad break)
             :param good_breaks: Number of times we had to break between words (a good break)
             :param image_shrinkage: Sum of factors by which images was shrunk from their desired size
-            :param height_max: Maximum height of items in the layout
             :param height_dev: Average difference in heights of items in the layout from the largest
 
     """
@@ -49,29 +61,23 @@ class LayoutQuality(Generic[T]):
     target: T
     method: LayoutMethod
     count: int = 0
-    desired: float = None
-    actual: float = None
+    excess_ss: float = None
     unplaced: int = 0
     clipped: float = 0
     bad_breaks: int = 0
     good_breaks: int = 0
     image_shrinkage: float = 0
-    height_max: float = None
     height_dev: float = None
 
-    def strongly_better(self, other: LayoutQuality):
-        """ Better is based only on unplaced and clipped items """
+    def better(self, other: PlacementQuality):
         if other is None:
             return True
         self.check_compatible(other)
         if self.unplaced != other.unplaced:
             return self.unplaced < other.unplaced
-        return self.clipped < other.clipped
-
-    def weakly_better(self, other: LayoutQuality):
-        """ Better assuming the items have the same unplaced and clipped items """
-        self.check_compatible(other)
-        return self.weak_score() < other.weak_score()
+        if self.clipped != other.clipped:
+            return self.clipped < other.clipped
+        return self.minor_score() < other.minor_score()
 
     def _score_breaks(self) -> float:
         assert self.bad_breaks >= 0
@@ -82,14 +88,12 @@ class LayoutQuality(Generic[T]):
         return self.height_dev / 10
 
     def _score_excess_space(self) -> float:
-        assert self.actual <= self.desired
-        v = (self.desired - self.actual) / 10
-        return v * v
+        return self.excess_ss / 100
 
     def _score_image(self) -> float:
         return self.image_shrinkage * 15
 
-    def weak_score(self) -> float:
+    def minor_score(self) -> float:
         """ Score ignoring unplaced and clipped items; lower is better """
 
         '''
@@ -127,23 +131,16 @@ class LayoutQuality(Generic[T]):
     def total_items(self):
         return self.count + self.unplaced
 
-    def check_compatible(self, other: LayoutQuality):
+    def check_compatible(self, other: PlacementQuality):
         if other is None:
             return
         if self.method != other.method:
             raise IncompatibleLayoutQualities(f'Incompatible methods: {self.method} and {other.method}')
-        if self.total_items() != other.total_items():
-            raise IncompatibleLayoutQualities(
-                f'Comparing different numbers of items: {self.total_items()} and {other.total_items()}')
 
-    def __str__(self):
-        name = common.name_of(self.target)
-        if self.count:
-            parts = [f"{common.name_of(name)}: {self.method.name}({self.count})"]
-        else:
-            parts = [f"{common.name_of(name)}: {self.method.name}"]
-        if self.desired is not None or self.actual is not None:
-            parts.append(f"width={_f(self.actual)}•{_f(self.desired)}")
+    def str_parts(self):
+        parts = []
+        if self.excess_ss is not None:
+            parts.append(f"excess={_f(self.excess_ss**0.5)}")
         if self.unplaced:
             parts.append(f"unplaced={self.unplaced}")
         if self.clipped:
@@ -152,75 +149,77 @@ class LayoutQuality(Generic[T]):
             parts.append(f"breaks={self.bad_breaks}•{self.good_breaks}")
         if self.image_shrinkage:
             parts.append(f"image_shrink={_f(self.image_shrinkage)}")
-        if self.height_max is not None or self.height_dev is not None:
-            if self.count > 1:
-                parts.append(f"height={_f(self.height_max)}~{_f(self.height_dev)}")
-            else:
-                parts.append(f"height={_f(self.height_max)}")
-        return '\u27e8' + ', '.join(parts) + '\u27e9'
+        if self.height_dev is not None:
+            parts.append(f"∆height={_f(self.height_dev)}")
+        return ', '.join(parts)
+
+    def __str__(self):
+        name = common.name_of(self.target)
+        if self.count:
+            head = f"{common.name_of(name)}: {self.method.name}({self.count})"
+        else:
+            head = f"{common.name_of(name)}: {self.method.name}"
+
+        parts = self.str_parts()
+        if parts:
+            parts = ', ' + parts
+
+        return '\u27e8' + head + parts + '\u27e9'
 
     def __bool__(self):
         raise RuntimeError('Conversion to boolean is confusing; do not call this')
 
 
-def for_wrapping(target: T, actual: float, desired: float, clipped: int, bad_breaks: int, good_breaks: int,
-                 height: float) -> LayoutQuality[T]:
+def for_wrapping(target: T, excess_width: float, clipped: int, bad_breaks: int, good_breaks: int,
+                 height: float) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
-    assert actual <= desired
-    return LayoutQuality(target, LayoutMethod.WRAPPING, count=1, actual=actual, desired=desired,
-                         clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks,
-                         height_max=height, height_dev=0)
+    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width**2,
+                            clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 
 def for_image(target: T, width: float, desired: float,
-              height: float, desired_height: float) -> LayoutQuality[T]:
+              height: float, desired_height: float) -> PlacementQuality[T]:
     """ Define a quality for an image with a desired height"""
     shrinkage = max((desired * desired_height) / (width * height), 1) - 1
-    return LayoutQuality(target, LayoutMethod.IMAGE, count=1, actual=width, desired=desired,
-                         height_max=height, height_dev=0, image_shrinkage=shrinkage)
+    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=(desired-width)**2,
+                            image_shrinkage=shrinkage)
 
 
-def for_decoration(target: T) -> LayoutQuality[T]:
+def for_decoration(target: T) -> PlacementQuality[T]:
     """ Define a quality for anything that does not care about layout"""
-    return LayoutQuality(target, LayoutMethod.NONE)
+    return PlacementQuality(target, LayoutMethod.NONE)
 
 
 def for_table(target: T,
-              column_widths: list[int],
-              cells_columnwise: list[list[LayoutQuality]],
+              column_excess_widths: list[float],
+              cells_columnwise: list[list[PlacementQuality]],
               unplaced: int
-              ) -> LayoutQuality[T]:
+              ) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
-    q = LayoutQuality(target, LayoutMethod.TABLE, desired=sum(column_widths), unplaced=unplaced)
-    for row, col_width in zip(cells_columnwise, column_widths):
-        col_actual_max = 0
+    ss = sum(v*v for v in column_excess_widths)
+    q = PlacementQuality(target, LayoutMethod.TABLE, excess_ss=ss, unplaced=unplaced)
+    for row in cells_columnwise:
         for cell in row:
             if cell is not None:
                 if cell.method != LayoutMethod.NONE:
                     q.count += 1
+                q.unplaced += cell.unplaced
                 q.clipped += cell.clipped
                 q.bad_breaks += cell.bad_breaks
                 q.good_breaks += cell.good_breaks
                 q.image_shrinkage += cell.image_shrinkage
-                if cell.actual:
-                    col_actual_max = max(col_actual_max, cell.actual)
-        if q.actual:
-            q.actual += col_actual_max
-        else:
-            q.actual = col_actual_max
     return q
 
 
 def for_columns(target: T,
-                column_widths: list[int], actual_heights: list[int],
-                cells_columnwise: list[list[LayoutQuality]],
+                column_widths: list[float], actual_heights: list[int],
+                cells_columnwise: list[list[PlacementQuality]],
                 unplaced: int
-                ) -> LayoutQuality[T]:
+                ) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
     q = for_table(target, column_widths, cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
-    q.height_max = max(actual_heights)
-    q.height_dev = q.height_max * len(column_widths) - sum(actual_heights)
+    q.height_dev = max(actual_heights) * len(column_widths) - sum(actual_heights)
     return q

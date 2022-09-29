@@ -54,7 +54,7 @@ def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
     frame_bounds = sheet_style.box.outset_to_border(content.bounds)
     frame = make_frame(frame_bounds, sheet_style)
     if frame:
-        content = PlacedGroupContent.from_items([frame, content])
+        content = PlacedGroupContent.from_items([frame, content], foobar)
 
     return content
 

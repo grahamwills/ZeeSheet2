@@ -55,6 +55,9 @@ class ImageDetail:
     width: int
     height: int
 
+    def name(self):
+        return 'Image#' + str(self.index)
+
 
 @dataclass
 class Element:
