@@ -5,6 +5,7 @@ from enum import Enum, unique
 from typing import TypeVar, Generic
 
 import common
+from common import Extent, Rect
 
 T = TypeVar("T")
 
@@ -181,12 +182,10 @@ def for_wrapping(target: T, excess_width: float, clipped: int, bad_breaks: int, 
                             clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 
-def for_image(target: T, width: float, desired: float,
-              height: float, desired_height: float) -> PlacementQuality[T]:
-    """ Define a quality for an image with a desired height"""
-    shrinkage = max((desired * desired_height) / (width * height), 1) - 1
-    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=(desired - width) ** 2,
-                            image_shrinkage=shrinkage)
+def for_image(target: T, mode, desired: Extent, drawn: Rect, outer: Rect) -> PlacementQuality[T]:
+    shrinkage = max(desired.area / drawn.area - 1, 0) if mode == 'normal' else 0
+    excess = outer.width - drawn.width
+    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=excess ** 2, image_shrinkage=shrinkage)
 
 
 def for_decoration(target: T) -> PlacementQuality[T]:

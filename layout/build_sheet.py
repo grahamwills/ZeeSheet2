@@ -30,6 +30,7 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     # Make the content
     sp = SheetPacker(content_bounds, sheet.children, sheet.options.columns, pdf)
     content = sp.place_in_columns()
+    content.extent =extent
 
     # Make the frame
     frame_bounds = sheet_style.box.outset_to_border(content.bounds)

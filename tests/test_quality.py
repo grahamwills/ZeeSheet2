@@ -1,7 +1,7 @@
 import unittest
 
 import layout.quality as quality
-from common import Extent, Point
+from common import Extent, Point, Rect
 from generate.pdf import TextSegment, CheckboxSegment
 from layout import PlacedImageContent, PlacedRectContent, PlacedRunContent, PlacedGroupContent
 from structure import ImageDetail
@@ -10,6 +10,7 @@ from structure.style import Style
 POINT = Point(2, 3)
 EXTENT = Extent(1, 1)
 STYLE = Style('foo')
+BOUNDS = Rect(2,3,3,4)
 
 IMAGE = ImageDetail(2, None, 100, 200)
 SEGMENTS = [TextSegment('hello', POINT, None), CheckboxSegment(True, POINT, None)]
@@ -23,8 +24,8 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨box: NONE⟩', str(q))
 
     def test_names_for_placed_items(self):
-        image = PlacedImageContent(IMAGE, EXTENT, quality=None, location=POINT)
-        rect = PlacedRectContent(STYLE, EXTENT, quality=None, location=POINT)
+        image = PlacedImageContent(IMAGE, Rect(4,5,4,5), EXTENT, quality=None, location=POINT)
+        rect = PlacedRectContent(BOUNDS, STYLE, quality=None)
         run = PlacedRunContent(SEGMENTS, STYLE, EXTENT, quality=None, location=POINT)
 
         q = quality.for_decoration(image)
@@ -41,7 +42,7 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨Group(3)-Image•Rect•Run: NONE⟩', str(q))
 
     def test_str_for_general(self):
-        q = quality.for_image('name', 123, 124, 300, 1000)
+        q = quality.for_image('name', 'normal', 123, 124, 300)
         self.assertEqual('⟨name: IMAGE(1), excess=1, image_shrink=2⟩', str(q))
         q = quality.for_wrapping('name', 1, 0, 4, 5, 300)
         self.assertEqual('⟨name: WRAPPING(1), excess=1, breaks=4•5⟩', str(q))
@@ -121,11 +122,11 @@ class TestQualityComparisonForNonGroups(unittest.TestCase):
         self.assertTrue(one_break_0_pixels.better(no_break_20_pixels))
 
     def test_images(self):
-        a = quality.for_image('name', 120, 120, 100, 200)
-        b = quality.for_image('name', 120, 240, 100, 100)
-        c = quality.for_image('name', 120, 120, 1000, 2000)
-        d1 = quality.for_image('name', 120, 121, 1000, 2000)
-        d2 = quality.for_image('name', 120, 120, 1000, 2001)
+        a = quality.for_image('name', 'normal', 120, 120, 100)
+        b = quality.for_image('name', 'normal', 120, 240, 100)
+        c = quality.for_image('name', 'normal', 120, 120, 1000)
+        d1 = quality.for_image('name', 'normal', 120, 121, 1000)
+        d2 = quality.for_image('name', 'normal', 120, 120, 1000)
         self.assertEqual(a.minor_score(), b.minor_score())
         self.assertEqual(a.minor_score(), c.minor_score())
         self.assertTrue(d2.better(d1))
@@ -153,8 +154,8 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         a = quality.for_wrapping('a', 1, 2, 4, 1, 100)
         b = quality.for_wrapping('b', 31, 3, 0, 5, 130)
         c = quality.for_decoration('decor')
-        d = quality.for_image('name', 100, 100, 300, 600)
-        e = quality.for_image('name', 100, 200, 300, 1000)
+        d = quality.for_image('name', 'normal', 100, 100, 300)
+        e = quality.for_image('name', 'normal', 100, 200, 300)
 
         q = quality.for_table('g', [100, 200], [[a, b, a, c], [a, d, c, e]], 3)
         self.assertEqual(1, q.excess_ss)
@@ -178,8 +179,8 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         a = quality.for_wrapping('a', 1, 2, 7, 1, 100)
         b = quality.for_wrapping('b', 31, 3, 0, 5, 130)
         c = quality.for_decoration('decor')
-        d = quality.for_image('name', 100, 100, 300, 600)
-        e = quality.for_image('name', 100, 200, 300, 1000)
+        d = quality.for_image('name', 'normal', 100, 100, 300)
+        e = quality.for_image('name', 'normal', 100, 200, 300)
 
         t1 = quality.for_table('g', [100, 200], [[a, b], [a, c]], 3)
         t2 = quality.for_table('g', [100, 200], [[d, e], [b, b]], 7)
@@ -199,9 +200,9 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         no_break_20_excess = quality.for_wrapping('a', 20, 0, 0, 0, 100)
         bad_break_no_excess = quality.for_wrapping('a', 0, 0, 1, 0, 100)
 
-        perfect_image = quality.for_image('name', 100, 100, 200, 200)
-        slightly_shrunk_image = quality.for_image('name', 90, 100, 190, 200)
-        half_image = quality.for_image('name', 100, 100, 100, 200)
+        perfect_image = quality.for_image('name', 'normal', 100, 100, 200)
+        slightly_shrunk_image = quality.for_image('name', 'normal', 90, 100, 190)
+        half_image = quality.for_image('name', 'normal', 100, 100, 100)
 
         # Just checking that perfect really is
         self.assertEqual(0, quality.for_table('g', [0], [[perfect_image, perfect_text]], 3).minor_score())

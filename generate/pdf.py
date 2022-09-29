@@ -11,7 +11,7 @@ from reportlab.lib.colors import Color
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
-from common import Rect, Point, Extent
+from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
 from structure.model import checkbox_character, ImageDetail
@@ -161,7 +161,8 @@ class PDF(canvas.Canvas):
             warnings.warn(f"Image with index '{image_name}' was requested, but has not been defined for this sheet. "
                           "Use the Sheet Details button to upload images")
 
-    def draw_image(self, image: Image, extent: Extent):
+    def draw_image(self, image: Image, bounds: Rect):
         # Invert to fix the coordinate system which has already been inverted
-        self.transform(1, 0, 0, -1, 0, extent.height)
-        self.drawImage(ImageReader(image), 0, 0, extent.width, extent.height)
+        self.translate(bounds.left, bounds.top)
+        self.transform(1, 0, 0, -1, 0, bounds.height)
+        self.drawImage(ImageReader(image), 0, 0, bounds.width, bounds.height)

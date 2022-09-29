@@ -74,10 +74,12 @@ class PlacedContent(abc.ABC):
             pdf.setFillAlpha(fill_a)
             pdf.rect(0, 0, self.extent.width, self.extent.height, fill=1, stroke=0)
             pdf.restoreState()
+            pdf.saveState()
 
         self._draw(pdf)
 
         if pdf.debug and self.DEBUG_STYLE:
+            pdf.restoreState()
             color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
             pdf.setStrokeColor(toColor(color))
             pdf.setStrokeAlpha(stroke_a)
@@ -105,7 +107,7 @@ class PlacedContent(abc.ABC):
 
 
 class PlacedGroupContent(PlacedContent):
-    DEBUG_STYLE = ('#C70A80', 0.75, 0.1, 3, None)
+    DEBUG_STYLE = ('#C70A80', 0.25, 0.1, 3, None)
 
     items: List[PlacedContent] = None
 
@@ -188,8 +190,8 @@ class PlacedRectContent(PlacedContent):
 
     style: Style  # Style for this item
 
-    def __init__(self, style: Style, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
-        super().__init__(extent, quality, location)
+    def __init__(self, bounds: Rect, style: Style, quality: PlacementQuality):
+        super().__init__(bounds.extent, quality, bounds.top_left)
         self.style = style
 
     def _draw(self, pdf: PDF):
@@ -197,7 +199,7 @@ class PlacedRectContent(PlacedContent):
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def __copy__(self):
-        return PlacedRectContent(self.style, self.extent, self.quality, self.location)
+        return PlacedRectContent(self.bounds, self.style, self.quality)
 
     def name(self):
         return 'Rect' + common.name_of(tuple(self.bounds))
@@ -205,20 +207,66 @@ class PlacedRectContent(PlacedContent):
 
 @dataclass
 class PlacedImageContent(PlacedContent):
-    DEBUG_STYLE = ('#590696', 0.75, 0, 3, (1, 5))
-
+    DEBUG_STYLE = ('#FBCB0A', 0.75, 0, 3, (1, 10))
     image: ImageDetail
+    desired: Extent
+    mode: str
+    anchor: str
 
-    def __init__(self, image: ImageDetail, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
-        super().__init__(extent, quality, location)
+    def __init__(self, image: ImageDetail, desired: Extent, mode: str, anchor: str, bounds: Rect,
+                 quality: PlacementQuality = None):
+        super().__init__(bounds.extent, quality, bounds.top_left)
+        self.desired = desired
         self.image = image
+        self.mode = mode
+        self.anchor = anchor
+
+    def image_bounds(self):
+        mode = self.mode
+        anchor = self.anchor
+        bounds = self.bounds
+        width = self.desired.width
+        height = self.desired.height
+
+        if mode == 'stretch':
+            width = bounds.width
+            height = bounds.height
+        elif mode == 'fill':
+            # Scale to fill either width or height
+            scale = min(bounds.width / width, bounds.height / height)
+            width *= scale
+            height *= scale
+        else:
+            # Only shrink if we have to
+            if width > bounds.width or height > bounds.height:
+                scale = min(bounds.width / width, bounds.height / height)
+                width *= scale
+                height *= scale
+
+        # Place it relative to the bounds
+        dx = bounds.width - width
+        dy = bounds.height - height
+        if anchor in {'nw', 'w', 'sw'}:
+            x = 0
+        elif anchor in {'ne', 'e', 'se'}:
+            x = dx
+        else:
+            x = dx / 2
+
+        if anchor in {'nw', 'n', 'ne'}:
+            y = 0
+        elif anchor in {'sw', 's', 'se'}:
+            y = dy
+        else:
+            y = dy / 2
+
+        return Rect(x, x + width, y, y + height)
 
     def _draw(self, pdf: PDF):
-        # We have already been offset by the top left
-        pdf.draw_image(self.image.data, self.extent)
+        pdf.draw_image(self.image.data, self.image_bounds())
 
     def __copy__(self):
-        return PlacedImageContent(self.image, self.extent, self.quality, self.location)
+        return PlacedImageContent(self.image, self.desired, self.mode, self.anchor, self.bounds, self.quality)
 
     def name(self):
         return 'Image#' + str(self.image.index)
@@ -232,14 +280,14 @@ def make_frame(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
         if s.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(s.width / 2)
-        return PlacedRectContent(style, bounds.extent, layout.quality.for_decoration(bounds),
-                                 location=bounds.top_left)
+        return PlacedRectContent(bounds, style, layout.quality.for_decoration(bounds))
     else:
         return None
 
 
 def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height: float,
                anchor: str) -> PlacedImageContent:
+    # Ensure width and height are defined
     aspect = image.height / image.width
     if not width and not height:
         width = image.width
@@ -249,36 +297,13 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     elif not width:
         width = height / aspect
 
-    # Size the image (and keep track of scaling down 'error')
-    if mode == 'stretch':
-        # Stretch to the bounds
-        e = bounds.extent
-    elif mode == 'fill' or mode == 'normal' and (width > bounds.width or height > bounds.height):
-        # Keep same aspect as we scale
-        scale = min(bounds.width / width, bounds.height / height)
-        e = Extent(scale * width, scale * height)
-    else:
-        e = Extent(width, height)
-
-    # Place it relative to the bounds
-    dx = bounds.width - e.width
-    dy = bounds.height - e.height
-    if anchor in {'nw', 'w', 'sw'}:
-        x = 0
-    elif anchor in {'ne', 'e', 'se'}:
-        x = dx
-    else:
-        x = dx / 2
-
-    if anchor in {'nw', 'n', 'ne'}:
-        y = 0
-    elif anchor in {'sw', 's', 'se'}:
-        y = dy
-    else:
-        y = dy / 2
-
-    quality = layout.quality.for_image(image, e.width, bounds.width, e.height, bounds.height)
-    return PlacedImageContent(image, e, quality, location=Point(x + bounds.left, y + bounds.top))
+    content = PlacedImageContent(image, Extent(width, height), mode, anchor, bounds)
+    image_bounds = content.image_bounds()
+    content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
+    content.extent = image_bounds.extent
+    content.location = Point(content.location.x, 0)
+    LOGGER.error(f"{bounds} -> {image_bounds}, err={content.quality}")
+    return content
 
 
 class ExtentTooSmallError(RuntimeError):

@@ -45,8 +45,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
         plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
 
     plaque_quality = layout.quality.for_decoration('title')
-    plaque = PlacedRectContent(title_style, plaque_rect_to_draw.extent, plaque_quality,
-                               location=plaque_rect_to_draw.top_left)
+    plaque = PlacedRectContent(plaque_rect_to_draw, title_style, plaque_quality)
     title_extent = plaque_rect.extent + title_style.box.margin
     spacing = Spacing(0, 0, title_extent.height, 0)
 
@@ -94,7 +93,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
-        placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height, 'n')
+        placed_children = make_image(image, item_bounds,
+                                     opt.image_mode, opt.image_width, opt.image_height, opt.image_anchor)
 
     locate_title(title, outer, placed_children.bounds, pdf)
 
