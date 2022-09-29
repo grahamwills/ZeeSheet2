@@ -2,7 +2,8 @@ import time
 from random import Random
 from typing import List
 
-from layout import sheet_to_pdf_document
+import main.main
+from main.main import sheet_to_pdf_document
 from structure import operations
 
 
@@ -48,7 +49,7 @@ if __name__ == '__main__':
     TABLE_ROWS = list(range(3, 9))
 
     text = make_sheet(SECTION_COLUMNS, BLOCK_COUNT, TABLE_COLUMN, TABLE_ROWS)
-    sheet = operations.text_to_sheet(text)
+    sheet = main.main.text_to_sheet(text)
 
     N = 3
     times = [time_build(sheet) for _ in range(N)]

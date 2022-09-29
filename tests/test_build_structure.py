@@ -1,7 +1,8 @@
 import unittest
 import warnings
 
-from structure import text_to_sheet, description
+from structure import description
+from main.main import text_to_sheet
 from structure.model import Element
 from . import util
 

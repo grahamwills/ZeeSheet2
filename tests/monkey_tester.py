@@ -2,6 +2,8 @@ import random
 
 import structure.validate
 
+import main.main
+
 BLOCKS = [
     'one', 'two', 'three', 'four', 'five', '\n', '-', '*', '=====', ' ',
 ]
@@ -25,7 +27,7 @@ if __name__ == '__main__':
     for _ in range(0, 10000):
         phrase = random_phrase()
         try:
-            result = structure.validate.text_to_sheet(phrase)
+            result = main.main.text_to_sheet(phrase)
         except:
             print("Failed\n----------------------------------------------")
             print(phrase)

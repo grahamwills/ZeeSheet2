@@ -99,6 +99,16 @@ class PlacedGroupContent(PlacedContent):
         return f"Group({len(self.group)}){what}"
 
 
+class Pages(list[PlacedGroupContent]):
+    """ Document final form"""
+    pdf: PDF
+
+    def __init__(self, pdf: PDF, content:list[PlacedGroupContent]=None):
+        super().__init__()
+        self.pdf = pdf
+        if content:
+            self += content
+
 @dataclass
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces

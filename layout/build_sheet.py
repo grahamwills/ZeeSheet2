@@ -7,30 +7,11 @@ from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
-from layout.content import PlacedContent, PlacedGroupContent, make_frame
+from layout.content import PlacedContent, PlacedGroupContent, make_frame, Pages
 from structure import Sheet, style
-from structure.model import ImageDetail
 from structure.style import Style
 
 FONT_LIB = FontLibrary()
-
-
-def sheet_to_pdf_document(sheet: Sheet, images: Dict[str, ImageDetail]) -> bytes:
-    content, pdf = sheet_to_content(sheet, images)
-    content.draw(pdf)
-    return pdf.output()
-
-
-def sheet_to_content(sheet: Sheet, images: Dict[str, ImageDetail]) -> Tuple[PlacedGroupContent, PDF]:
-    # Use inheritance to make the values all defined
-    complete_styles = make_complete_styles(sheet.styles)
-    # Change 'auto' to be actual values
-    for s in complete_styles.values():
-        style.Defaults.set_auto_values(s)
-    pdf = PDF((int(sheet.options.width), int(sheet.options.height)), FONT_LIB,
-              styles=complete_styles, images=images, debug=sheet.options.debug)
-    content = build_sheet(sheet, pdf)
-    return content, pdf
 
 
 class SheetPacker(SectionPacker):
@@ -40,7 +21,7 @@ class SheetPacker(SectionPacker):
         return build_section.place_section(section, extent, self.pdf)
 
 
-def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
+def build_sheet(sheet: Sheet, pdf: PDF) -> Pages:
     extent = Extent(sheet.options.width, sheet.options.height)
     sheet_style = pdf.styles[sheet.options.style]
     page = Rect(0, extent.width, 0, extent.height)
@@ -54,9 +35,10 @@ def build_sheet(sheet: Sheet, pdf: PDF) -> PlacedGroupContent:
     frame_bounds = sheet_style.box.outset_to_border(content.bounds)
     frame = make_frame(frame_bounds, sheet_style)
     if frame:
-        content = PlacedGroupContent.from_items([frame, content], foobar)
+        # Just copy the quality of the content
+        content = PlacedGroupContent.from_items([frame, content], content.quality)
 
-    return content
+    return Pages(pdf, content)
 
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:

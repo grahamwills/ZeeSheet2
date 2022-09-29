@@ -1,12 +1,10 @@
 from typing import List, Union
 
-from docutils import parsers, utils, core, nodes
-from docutils.parsers import rst
+from docutils import nodes
 from docutils.parsers.rst import directives, Directive
 
 from . import model, style
-from . import visitors
-from .model import SheetOptions, Sheet, Section, Block, ContainerOptions
+from .model import SheetOptions, Section, Block, ContainerOptions
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -52,19 +50,6 @@ directives.register_directive('styles', StylesDirectiveHandler)
 directives.register_directive('page', SettingsDirectiveHandler)
 directives.register_directive('section', SettingsDirectiveHandler)
 directives.register_directive('block', SettingsDirectiveHandler)
-
-
-def text_to_sheet(text: str) -> model.Sheet:
-    """Parses the text and builds the basic structure out of it"""
-    parser = parsers.rst.Parser()
-    # noinspection PyTypeChecker
-    settings = core.Publisher(parser=parsers.rst.Parser).get_settings()
-    settings.halt_level = 99
-    document = utils.new_document(text, settings)
-    parser.parse(text, document)
-    main_visitor = visitors.StructureBuilder(document)
-    document.walkabout(main_visitor)
-    return main_visitor.get_sheet()
 
 
 class Prettify:
@@ -242,10 +227,6 @@ class Prettify:
             for b in section.children:
                 self.append_block_rst(b, b == section.children[0])
             self.append('')
-
-
-def prettify(sheet: Sheet, width: int = 100) -> str:
-    return Prettify(sheet, width).run()
 
 
 def description(comp: model.StructureUnit, short: bool = False) -> str:

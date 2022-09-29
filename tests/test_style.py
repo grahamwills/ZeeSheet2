@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from common import Spacing, Rect, Extent
 from layout.build_sheet import make_complete_styles
-from structure import text_to_sheet
+from main.main import text_to_sheet
 from structure.style import Style, Defaults, set_using_definition, BoxStyle
 
 

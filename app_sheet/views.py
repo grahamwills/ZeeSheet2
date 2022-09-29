@@ -13,9 +13,9 @@ from django.urls import reverse_lazy
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
 
-from layout import sheet_to_pdf_document
 from layout.content import ExtentTooSmallError
-from structure import prettify, text_to_sheet, ImageDetail
+from structure import ImageDetail
+from main.main import text_to_sheet, prettify, sheet_to_pdf_document
 from .forms import NewUserForm
 from .models import Sheet
 
