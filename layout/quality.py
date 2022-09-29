@@ -129,7 +129,9 @@ class PlacementQuality(Generic[T]):
             excess = self._score_excess_space()
             return breaks + excess
         if self.method == LayoutMethod.IMAGE:
-            return self._score_image()
+            excess = self._score_excess_space()
+            image = self._score_image()
+            return image + excess
         if self.method == LayoutMethod.NONE:
             return 0
 
@@ -193,16 +195,12 @@ def for_decoration(target: T) -> PlacementQuality[T]:
     return PlacementQuality(target, LayoutMethod.NONE)
 
 
-def for_table(target: T,
-              column_widths: list[float],
-              cells_columnwise: list[list[PlacementQuality]],
-              unplaced: int
-              ) -> PlacementQuality[T]:
+def for_table(target: T, cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
     q = PlacementQuality(target, LayoutMethod.TABLE, excess_ss=0, unplaced=unplaced)
-    for wid, row in zip(column_widths, cells_columnwise):
-        min_excess2 = wid * wid
+    for row in cells_columnwise:
+        min_excess2 = None
         for cell in row:
             if cell is not None:
                 if cell.method != LayoutMethod.NONE:
@@ -213,20 +211,17 @@ def for_table(target: T,
                 q.good_breaks += cell.good_breaks
                 q.image_shrinkage += cell.image_shrinkage
                 if cell.excess_ss is not None:
-                    min_excess2 = min(min_excess2, cell.excess_ss)
-        q.excess_ss += min_excess2
+                    min_excess2 = min(min_excess2, cell.excess_ss) if min_excess2 is not None else cell.excess_ss
+        if min_excess2:
+            q.excess_ss += min_excess2
 
     return q
 
 
-def for_columns(target: T,
-                column_widths: list[float], actual_heights: list[int],
-                cells_columnwise: list[list[PlacementQuality]],
-                unplaced: int
-                ) -> PlacementQuality[T]:
+def for_columns(target: T, actual_heights: list[int],
+                cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
-
-    q = for_table(target, column_widths, cells_columnwise, unplaced)
+    q = for_table(target, cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
-    q.height_dev = max(actual_heights) * len(column_widths) - sum(actual_heights)
+    q.height_dev = max(actual_heights) * len(cells_columnwise) - sum(actual_heights)
     return q

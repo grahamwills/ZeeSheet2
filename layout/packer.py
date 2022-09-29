@@ -161,7 +161,7 @@ class ColumnPacker:
         all_items = [placed for fit in columns for placed in fit.items]
         cell_qualities = [[cell.quality for cell in column.items] for column in columns]
         heights = [column.height for column in columns]
-        q = layout.quality.for_columns('Columnar', widths, heights, cell_qualities, unplaced=unplaced_count)
+        q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
         return PlacedGroupContent.from_items(all_items, q, extent=ext)
 
     def place_table(self, width_allocations: List[float] = None) -> PlacedGroupContent:
@@ -244,7 +244,7 @@ class ColumnPacker:
         # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
         table_bottom = bottom + self.average_spacing.bottom
         extent = Extent(bounds.extent.width, table_bottom)
-        table_quality = layout.quality.for_table('Group', column_sizes, quality_table, 0)
+        table_quality = layout.quality.for_table('Group', quality_table, 0)
         placed_children = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         placed_children.location = bounds.top_left
         return placed_children

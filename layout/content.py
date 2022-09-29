@@ -262,6 +262,12 @@ class PlacedImageContent(PlacedContent):
 
         return Rect(x, x + width, y, y + height)
 
+    def shrink_to_fit(self, bottom:float) -> float:
+        dy = self.bounds.bottom - bottom
+        self.extent = self.extent - Extent(0, dy)
+        return dy
+
+
     def _draw(self, pdf: PDF):
         pdf.draw_image(self.image.data, self.image_bounds())
 

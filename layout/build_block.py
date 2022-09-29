@@ -114,7 +114,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
 
     block_extent = Extent(size.width, total_height)
     cell_qualities = [i.quality for i in items]
-    block_quality = layout.quality.for_columns(block, [size.width], [total_height], [cell_qualities], 0)
+    block_quality = layout.quality.for_columns(block, [total_height], [cell_qualities], 0)
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden

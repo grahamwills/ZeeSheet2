@@ -3,7 +3,7 @@ from typing import Union, Tuple, Optional, List
 from common import Extent, Rect, Spacing
 from generate.pdf import PDF
 from layout import build_block
-from layout.content import PlacedContent, PlacedGroupContent, make_frame
+from layout.content import PlacedContent, PlacedGroupContent, make_frame, PlacedImageContent
 from layout.packer import ColumnPacker
 from structure import StructureUnit, Section
 
@@ -14,12 +14,14 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
 
     # Ensure that we have enough children for the column requested
-    contents = section.children
-    while len(contents) < section.options.columns:
-        contents = contents + [build_block.tiny_block()]
+    blocks = section.children
+    while len(blocks) < section.options.columns:
+        blocks = blocks + [build_block.tiny_block()]
 
-    sp = SectionPacker(content_bounds, contents, section.options.columns, pdf, granularity=25)
+    sp = SectionPacker(content_bounds, blocks, section.options.columns, pdf, granularity=25)
     content = sp.place_in_columns()
+
+    shrink_images_if_suitable(content)
 
     # Make the frame
     frame_bounds = section_style.box.outset_to_border(content.bounds)
@@ -29,6 +31,29 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
         content = PlacedGroupContent.from_items([frame, content], content.quality)
 
     return content
+
+
+def shrink_images_if_suitable(content: PlacedGroupContent):
+    """ If images have flexible sizes, reduce them to match heights if that helps """
+    shrinkable_images = []
+    lowest_other = content.bounds.top
+    for placed in content.items:
+        if isinstance(placed, PlacedImageContent) and placed.mode in {'fill', 'stretch'}:
+            shrinkable_images.append(placed)
+        else:
+            lowest_other = max(lowest_other, placed.bounds.bottom)
+
+    # We only care about shrinkable images that are too big
+    shrinkable_images = [s for s in shrinkable_images if s.bounds.bottom > lowest_other]
+    if not shrinkable_images:
+        return
+
+    # Shrink items, calculating the amount we have shrunk by and shrink the total extent by that
+    min_dy = 9e99
+    for s in shrinkable_images:
+        dy = s.shrink_to_fit(bottom=lowest_other)
+        min_dy = min(dy, min_dy)
+    content.extent = content.extent - Extent(0, min_dy)
 
 
 class SectionPacker(ColumnPacker):
