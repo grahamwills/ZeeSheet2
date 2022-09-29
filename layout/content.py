@@ -6,6 +6,8 @@ from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional
 
+from reportlab.lib.colors import toColor
+
 import common
 import layout.quality
 from common import Extent, Point, Rect, Spacing
@@ -20,15 +22,13 @@ LOGGER = configured_logger(__name__)
 ZERO = Point(0, 0)
 
 
-def _f(v) -> str:
-    return to_str(v, places=1)
-
-
 class PlacedContent(abc.ABC):
+    DEBUG_STYLE = ('#000000', 0.5, 0.1, 0.25, None)
+
     extent: Extent  # The size we made it
     quality: PlacementQuality  # How good the placement is
     location: Point  # Where it was placed within the parent
-    hidden: bool
+    hidden: bool  # Do we want to draw this?
 
     def __init__(self, extent: Extent, quality: PlacementQuality, location):
         self.quality = quality
@@ -64,14 +64,49 @@ class PlacedContent(abc.ABC):
         if self.hidden:
             return
         pdf.saveState()
-        _debug_draw_rect(pdf, self.bounds)
         if self.location:
             pdf.translate(self.location.x, self.location.y)
+
+        if pdf.debug and self.DEBUG_STYLE:
+            color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
+            pdf.saveState()
+            pdf.setFillColor(toColor(color))
+            pdf.setFillAlpha(fill_a)
+            pdf.rect(0, 0, self.extent.width, self.extent.height, fill=1, stroke=0)
+            pdf.restoreState()
+
         self._draw(pdf)
+
+        if pdf.debug and self.DEBUG_STYLE:
+            color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
+            pdf.setStrokeColor(toColor(color))
+            pdf.setStrokeAlpha(stroke_a)
+            pdf.setLineWidth(width)
+            if dash:
+                pdf.setDash(dash)
+            pdf.rect(0, 0, self.extent.width, self.extent.height, fill=0, stroke=1)
+
         pdf.restoreState()
+
+    def _debug_draw(self, pdf):
+        if pdf.debug:
+            color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
+            c = toColor(color)
+            pdf.saveState()
+            pdf.setFillColor(c)
+            pdf.setStrokeColor(c)
+            pdf.setFillAlpha(fill_a)
+            pdf.setStrokeAlpha(stroke_a)
+            pdf.setLineWidth(width)
+            if dash:
+                pdf.setDash(dash)
+            pdf.rect(0, 0, self.extent.width, self.extent.height, fill=1, stroke=1)
+            pdf.restoreState()
 
 
 class PlacedGroupContent(PlacedContent):
+    DEBUG_STYLE = ('#C70A80', 0.75, 0.1, 3, None)
+
     items: List[PlacedContent] = None
 
     def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
@@ -96,7 +131,7 @@ class PlacedGroupContent(PlacedContent):
 
     def __str__(self):
         base = super().__str__()
-        return base[0] + '#items=' + _f(len(self.items)) + ', ' + base[1:]
+        return base[0] + '#items=' + to_str(len(self.items), places=1) + ', ' + base[1:]
 
     def __copy__(self):
         items = [copy(g) for g in self.items]
@@ -116,6 +151,8 @@ class PlacedGroupContent(PlacedContent):
 
 @dataclass
 class PlacedRunContent(PlacedContent):
+    DEBUG_STYLE = ('#590696', 0.75, 0.1, 1, None)
+
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
 
@@ -147,6 +184,8 @@ class PlacedRunContent(PlacedContent):
 
 @dataclass
 class PlacedRectContent(PlacedContent):
+    DEBUG_STYLE = None
+
     style: Style  # Style for this item
 
     def __init__(self, style: Style, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
@@ -166,6 +205,8 @@ class PlacedRectContent(PlacedContent):
 
 @dataclass
 class PlacedImageContent(PlacedContent):
+    DEBUG_STYLE = ('#590696', 0.75, 0, 3, (1, 5))
+
     image: ImageDetail
 
     def __init__(self, image: ImageDetail, extent: Extent, quality: PlacementQuality, location: Point = ZERO):
@@ -183,25 +224,15 @@ class PlacedImageContent(PlacedContent):
         return 'Image#' + str(self.image.index)
 
 
-def _debug_draw_rect(pdf, rect):
-    if pdf.debug:
-        r, g, b, a = 1, 0, 1, 0.2
-        pdf.saveState()
-        pdf.setFillColorRGB(r, g, b, alpha=a)
-        pdf.setStrokeColorRGB(r, g, b, alpha=a * 2.5)
-        pdf._draw_rect(rect, 1, 1)
-        pdf.restoreState()
-
-
-def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
-    style = base_style.box
-    has_background = style.color != 'none' and style.opacity > 0
-    has_border = style.border_color != 'none' and style.border_opacity > 0 and style.width > 0
+def make_frame(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
+    s = style.box
+    has_background = s.color != 'none' and s.opacity > 0
+    has_border = s.border_color != 'none' and s.border_opacity > 0 and s.width > 0
     if has_border or has_background:
-        if style.has_border():
+        if s.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
-            bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(base_style, bounds.extent, layout.quality.for_decoration(bounds),
+            bounds = bounds - Spacing.balanced(s.width / 2)
+        return PlacedRectContent(style, bounds.extent, layout.quality.for_decoration(bounds),
                                  location=bounds.top_left)
     else:
         return None

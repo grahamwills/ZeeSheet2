@@ -91,9 +91,6 @@ class PDF(canvas.Canvas):
             font = self.font_lib.get_font(sim[0], style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
         return font
 
-    def _draw_rect(self, r: Rect, filled: int, stroked: int):
-        self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
-
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
         style = base_style.box
@@ -106,7 +103,7 @@ class PDF(canvas.Canvas):
         self.setFillColor(fill_color)
         filled = fill_color.alpha > 0
         if stroked or filled:
-            self._draw_rect(r, filled=filled, stroked=stroked)
+            self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
     def _draw_checkbox(self, rx, ry, font: Font, state, color: Color):
         size = font.ascent + font.descent
