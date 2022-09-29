@@ -33,11 +33,11 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨Rect(2, 3, 3, 4): NONE⟩', str(q))
         q = quality.for_decoration(run)
         self.assertEqual('⟨hello☒: NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [image, image], 123))
+        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [image, image]))
         self.assertEqual('⟨Group(2)-Image: NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [], 123))
+        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, []))
         self.assertEqual('⟨Group(0): NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [run, image, rect], 123))
+        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [run, image, rect]))
         self.assertEqual('⟨Group(3)-Image•Rect•Run: NONE⟩', str(q))
 
     def test_str_for_general(self):

@@ -42,7 +42,7 @@ class TestFullLayout(unittest.TestCase):
         txt = read_sample('one column')
         sheet = operations.text_to_sheet(txt)
         content, _ = sheet_to_content(sheet, images={})
-        self.assertEqual('(n=8, h=651)', as_str(column_structure(content[0])))
+        self.assertEqual('(n=8, h=737)', as_str(column_structure(content[0])))
 
     def test_columns_should_balance(self):
         txt = read_sample('columns should balance')

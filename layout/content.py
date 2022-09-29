@@ -38,7 +38,7 @@ class PlacedContent:
                     self.location.y,
                     self.location.y + self.extent.height)
 
-    def better(self, other:type(PlacedContent)):
+    def better(self, other: type(PlacedContent)):
         return other is None or self.quality.better(other.quality)
 
     def _draw(self, pdf: PDF):
@@ -65,7 +65,6 @@ class PlacedContent:
 @dataclass
 class PlacedGroupContent(PlacedContent):
     group: List[PlacedContent] = None
-    sum_squares_unused_space: float = None
 
     @classmethod
     def from_items(cls, items: List[PlacedContent], quality: PlacementQuality,
@@ -76,19 +75,17 @@ class PlacedGroupContent(PlacedContent):
             extent = r.extent
         return PlacedGroupContent(extent, Point(0, 0), quality, req_wid, items)
 
-
     def _draw(self, pdf: PDF):
         for p in self.group:
             p.draw(pdf)
 
     def __str__(self):
         base = super().__str__()
-        return base[0] + '#items=' + _f(len(self.group)) + ', ss=' + _f(self.sum_squares_unused_space) + ', ' + base[1:]
+        return base[0] + '#items=' + _f(len(self.group)) + ', ' + base[1:]
 
     def __copy__(self):
         group = [copy(g) for g in self.group]
-        return PlacedGroupContent(self.extent, self.location, self.quality, self.required_width,
-                                  group, self.sum_squares_unused_space)
+        return PlacedGroupContent(self.extent, self.location, self.quality, self.required_width, group)
 
     def __getitem__(self, item) -> type(PlacedContent):
         return self.group[item]
@@ -121,7 +118,8 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.extent, self.location, self.quality, self.required_width, self.segments, self.style)
+        return PlacedRunContent(self.extent, self.location, self.quality, self.required_width, self.segments,
+                                self.style)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)
@@ -175,7 +173,8 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(bounds.extent, bounds.top_left, layout.quality.for_decoration(bounds), None, base_style)
+        return PlacedRectContent(bounds.extent, bounds.top_left, layout.quality.for_decoration(bounds), None,
+                                 base_style)
     else:
         return None
 

@@ -235,7 +235,6 @@ class ColumnPacker:
         table_quality = layout.quality.for_table('Group', unused, quality_table, 0)
         placed_children = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         placed_children.location = bounds.top_left
-        placed_children.sum_squares_unused_space = sum(v * v for v in unused)
         return placed_children
 
     def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None,
