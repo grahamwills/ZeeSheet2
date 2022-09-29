@@ -23,9 +23,9 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨box: NONE⟩', str(q))
 
     def test_names_for_placed_items(self):
-        image = PlacedImageContent(EXTENT, POINT, None, None, IMAGE)
-        rect = PlacedRectContent(EXTENT, POINT, None, None, STYLE)
-        run = PlacedRunContent(EXTENT, POINT, None, None, SEGMENTS, STYLE)
+        image = PlacedImageContent(IMAGE, EXTENT, location=POINT, quality=None)
+        rect = PlacedRectContent(STYLE, EXTENT, location=POINT, quality=None)
+        run = PlacedRunContent(SEGMENTS, STYLE, EXTENT, location=POINT, quality=None)
 
         q = quality.for_decoration(image)
         self.assertEqual('⟨Image#2: NONE⟩', str(q))
@@ -33,11 +33,11 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨Rect(2, 3, 3, 4): NONE⟩', str(q))
         q = quality.for_decoration(run)
         self.assertEqual('⟨hello☒: NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [image, image]))
+        q = quality.for_decoration(PlacedGroupContent([image, image], EXTENT, location=POINT, quality=None))
         self.assertEqual('⟨Group(2)-Image: NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, []))
+        q = quality.for_decoration(PlacedGroupContent([], EXTENT, location=POINT, quality=None))
         self.assertEqual('⟨Group(0): NONE⟩', str(q))
-        q = quality.for_decoration(PlacedGroupContent(EXTENT, POINT, None, None, [run, image, rect]))
+        q = quality.for_decoration(PlacedGroupContent([run, image, rect], EXTENT, location=POINT, quality=None))
         self.assertEqual('⟨Group(3)-Image•Rect•Run: NONE⟩', str(q))
 
     def test_str_for_general(self):
@@ -157,7 +157,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         e = quality.for_image('name', 100, 200, 300, 1000)
 
         q = quality.for_table('g', [100, 200], [[a, b, a, c], [a, d, c, e]], 3)
-        self.assertEqual(100**2+200**2, q.excess_ss)
+        self.assertEqual(100 ** 2 + 200 ** 2, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
@@ -166,7 +166,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(None, q.height_dev)
 
         q = quality.for_columns('g', [100, 200], [50, 70], [[a, b, a, c], [a, d, c, e]], 3)
-        self.assertEqual(100**2+200**2, q.excess_ss)
+        self.assertEqual(100 ** 2 + 200 ** 2, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
@@ -185,7 +185,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         t2 = quality.for_table('g', [100, 200], [[d, e], [b, b]], 7)
 
         q = quality.for_columns('g', [400, 500], [50, 70], [[t1, t1], [t1, t2]], 3)
-        self.assertEqual(400**2+500**2, q.excess_ss)
+        self.assertEqual(400 ** 2 + 500 ** 2, q.excess_ss)
         self.assertAlmostEqual(6.666, q.image_shrinkage, places=2)
         self.assertEqual(6 * 7, q.bad_breaks)
         self.assertEqual(6 * 1 + 5 * 5, q.good_breaks)

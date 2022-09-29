@@ -45,11 +45,12 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
         plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
 
     plaque_quality = layout.quality.for_decoration('title')
-    plaque = PlacedRectContent(plaque_rect_to_draw.extent, plaque_rect_to_draw.top_left, plaque_quality, None, title_style)
+    plaque = PlacedRectContent(title_style, plaque_rect_to_draw.extent, plaque_quality,
+                               location=plaque_rect_to_draw.top_left)
     title_extent = plaque_rect.extent + title_style.box.margin
     spacing = Spacing(0, 0, title_extent.height, 0)
 
-    group_quality = placed.quality # The plaque makes no difference, so the group quality is the same as the title
+    group_quality = placed.quality  # The plaque makes no difference, so the group quality is the same as the title
     return PlacedGroupContent.from_items([plaque, placed], group_quality, title_extent), spacing
 
 

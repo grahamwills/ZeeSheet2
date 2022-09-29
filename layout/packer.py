@@ -30,7 +30,7 @@ class ColumnFit:
 
     @property
     def excess_width(self) -> float:
-        return min((max(0.0, i.extent.width - i.required_width) for i in self.items if i.required_width), default=0)
+        return min((max(0.0, i.extent.width - i.required) for i in self.items if i.required), default=0)
 
     def __str__(self):
         return f"(n={len(self.items)}, height={round(self.height)})"
@@ -238,7 +238,7 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
-                    unused[col] = min(unused[col], column_width - placed_cell.required_width)
+                    unused[col] = min(unused[col], column_width - placed_cell.required)
                     quality_table[col].append(cell_quality)
                 except ItemDoesNotExistError:
                     # Just ignore this

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
@@ -16,20 +17,32 @@ from structure.style import Style
 
 LOGGER = configured_logger(__name__)
 
+ZERO = Point(0, 0)
+
 
 def _f(v) -> str:
     return to_str(v, places=1)
 
 
-@dataclass
-class PlacedContent:
+class PlacedContent(abc.ABC):
     extent: Extent  # The size we made it
-    location: Point  # Where it was placed within the parent
     quality: PlacementQuality  # How good the placement is
-    required_width: Optional[float]  # The width we want to be
+    location: Point  # Where it was placed within the parent
+    required: float  # The width we want to be
+    hidden: bool
 
-    def __post_init__(self):
+    def __init__(self, extent: Extent, quality: PlacementQuality, location, required_width):
+        self.required = required_width
+        self.quality = quality
+        self.location = location
+        self.extent = extent
         self.hidden = False
+
+    def children(self) -> List[PlacedContent]:
+        raise AttributeError(self.__class__.__name__ + ' does not have children')
+
+    def child(self, i: int) -> PlacedContent:
+        return self.children()[i]
 
     @property
     def bounds(self) -> Rect:
@@ -47,8 +60,8 @@ class PlacedContent:
     def __str__(self):
         txt = '<HIDDEN, ' if self.hidden else '<'
         txt += 'bds=' + str(round(self.bounds)) + ", quality=" + str(self.quality)
-        if self.required_width is not None:
-            txt += ', req_wid=' + _f(self.required_width)
+        if self.required is not None:
+            txt += ', req_wid=' + _f(self.required)
         return txt + '>'
 
     def draw(self, pdf: PDF):
@@ -62,47 +75,61 @@ class PlacedContent:
         pdf.restoreState()
 
 
-@dataclass
 class PlacedGroupContent(PlacedContent):
-    group: List[PlacedContent] = None
+    items: List[PlacedContent] = None
+
+    def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
+                 location: Point = ZERO, required_width: float = None):
+        super().__init__(extent, quality, location, required_width)
+        self.items = items
+
+    def children(self) -> List[PlacedContent]:
+        return self.items
 
     @classmethod
     def from_items(cls, items: List[PlacedContent], quality: PlacementQuality,
                    extent: Extent = None) -> PlacedGroupContent:
-        req_wid = max((p.required_width for p in items if p.required_width), default=None)
+        req_wid = max((p.required for p in items if p.required), default=None)
         if extent is None:
             r = Rect.union(i.bounds for i in items)
             extent = r.extent
-        return PlacedGroupContent(extent, Point(0, 0), quality, req_wid, items)
+        return PlacedGroupContent(items, extent, quality, ZERO, req_wid)
 
     def _draw(self, pdf: PDF):
-        for p in self.group:
+        for p in self.items:
             p.draw(pdf)
 
     def __str__(self):
         base = super().__str__()
-        return base[0] + '#items=' + _f(len(self.group)) + ', ' + base[1:]
+        return base[0] + '#items=' + _f(len(self.items)) + ', ' + base[1:]
 
     def __copy__(self):
-        group = [copy(g) for g in self.group]
-        return PlacedGroupContent(self.extent, self.location, self.quality, self.required_width, group)
+        items = [copy(g) for g in self.items]
+        return PlacedGroupContent(items, self.extent, self.quality, self.location, self.required)
 
     def __getitem__(self, item) -> type(PlacedContent):
-        return self.group[item]
+        return self.items[item]
 
     def name(self):
-        contents = set(c.__class__.__name__.replace('Placed', '').replace('Content', '') for c in self.group)
+        contents = set(c.__class__.__name__.replace('Placed', '').replace('Content', '') for c in self.items)
         if contents:
             what = '-' + '•'.join(sorted(contents))
         else:
             what = ''
-        return f"Group({len(self.group)}){what}"
+        return f"Group({len(self.items)}){what}"
 
 
 @dataclass
 class PlacedRunContent(PlacedContent):
     segments: List[TextSegment]  # base text pieces
     style: Style  # Style for this item
+
+    def __init__(self, segments: List[TextSegment], style: Style,
+                 extent: Extent, quality: PlacementQuality,
+                 location: Point = ZERO, required_width: float = None):
+        super().__init__(extent, quality, location, required_width)
+        self.segments = segments
+        self.style = style
 
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
@@ -118,8 +145,7 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.extent, self.location, self.quality, self.required_width, self.segments,
-                                self.style)
+        return PlacedRunContent(self.segments, self.style, self.extent, self.quality, self.location, self.required)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)
@@ -129,12 +155,17 @@ class PlacedRunContent(PlacedContent):
 class PlacedRectContent(PlacedContent):
     style: Style  # Style for this item
 
+    def __init__(self, style: Style, extent: Extent, quality: PlacementQuality,
+                 location: Point = ZERO, required_width: float = None):
+        super().__init__(extent, quality, location, required_width)
+        self.style = style
+
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def __copy__(self):
-        return PlacedRectContent(self.extent, self.location, self.quality, self.required_width, self.style)
+        return PlacedRectContent(self.style, self.extent, self.quality, self.location, self.required)
 
     def name(self):
         return 'Rect' + common.name_of(tuple(self.bounds))
@@ -144,12 +175,17 @@ class PlacedRectContent(PlacedContent):
 class PlacedImageContent(PlacedContent):
     image: ImageDetail
 
+    def __init__(self, image: ImageDetail, extent: Extent, quality: PlacementQuality,
+                 location: Point = ZERO, required_width: float = None):
+        super().__init__(extent, quality, location, required_width)
+        self.image = image
+
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
         pdf.draw_image(self.image.data, self.extent)
 
     def __copy__(self):
-        return PlacedImageContent(self.extent, self.location, self.quality, self.required_width, self.image)
+        return PlacedImageContent(self.image, self.extent, self.quality, self.location, self.required)
 
     def name(self):
         return 'Image#' + str(self.image.index)
@@ -173,8 +209,8 @@ def make_frame(bounds: Rect, base_style: Style) -> Optional[PlacedRectContent]:
         if style.has_border():
             # Inset because the stroke is drawn centered around the box and we want it drawn just within
             bounds = bounds - Spacing.balanced(style.width / 2)
-        return PlacedRectContent(bounds.extent, bounds.top_left, layout.quality.for_decoration(bounds), None,
-                                 base_style)
+        return PlacedRectContent(base_style, bounds.extent, layout.quality.for_decoration(bounds),
+                                 location=bounds.top_left)
     else:
         return None
 
@@ -220,7 +256,8 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
 
     required_width = width if mode == 'normal' else None
     quality = layout.quality.for_image(image, e.width, bounds.width, e.height, bounds.height)
-    return PlacedImageContent(e, Point(x + bounds.left, y + bounds.top), quality, required_width, image)
+    return PlacedImageContent(image, e, quality, location=Point(x + bounds.left, y + bounds.top),
+                              required_width=required_width)
 
 
 class ExtentTooSmallError(RuntimeError):

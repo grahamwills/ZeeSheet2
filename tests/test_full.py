@@ -23,7 +23,7 @@ CS = namedtuple('cs', 'count width bottom')
 
 def column_structure(section: PlacedGroupContent) -> list[CS]:
     info = defaultdict(lambda: CS(0, 0, 0))
-    for s in section.group:
+    for s in section.items:
         r = round(s.bounds)
         t = info[r.left]
         info[r.left] = CS(t.count + 1, max(t.width, r.width), max(t.bottom, r.bottom))

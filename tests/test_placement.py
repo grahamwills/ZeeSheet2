@@ -25,7 +25,7 @@ class TestRunPlacement(unittest.TestCase):
     E2A = Element('brave new', 'strong')
     E3 = Element(' world')
     EX = Element('supercalifragilisticexpialidocious')
-    pdf = PDF((1000, 1000), font_lib=FontLibrary(), styles=None)
+    pdf = PDF((1000, 1000), font_lib=FontLibrary(), styles={})
 
     def test_split_with_checkboxes(self):
         e = Element('X', 'checkbox')
@@ -33,7 +33,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(30, 100), STYLE, self.pdf)
         self.assertEqual(12, len(placed.segments))
         self.assertEqual("excess=2, clipped=145, breaks=0•6", placed.quality.str_parts())
-        self.assertAlmostEqual(30 - 1.5, placed.required_width, places=0)
+        self.assertAlmostEqual(30 - 1.5, placed.required, places=0)
 
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
@@ -43,7 +43,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to this ', s1.text)
         self.assertEqual(Point(0, 0), s1.offset)
         self.assertEqual("excess=25", placed.quality.str_parts())
-        self.assertAlmostEqual(100 - 25, placed.required_width, places=0)
+        self.assertAlmostEqual(100 - 25, placed.required, places=0)
 
     def test_multiple_plenty_of_space(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -54,7 +54,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(139, 0)', locs)
         self.assertEqual("excess=23", placed.quality.str_parts())
-        self.assertAlmostEqual(200 - 23, placed.required_width, places=0)
+        self.assertAlmostEqual(200 - 23, placed.required, places=0)
 
     def test_run_aligned_right(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -63,7 +63,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(3, len(placed.segments))
         locs = '|'.join(str(round(s.offset)) for s in placed.segments)
         self.assertEqual('(123, 0)|(198, 0)|(263, 0)', locs)
-        self.assertAlmostEqual(300 - 123, placed.required_width, places=0)
+        self.assertAlmostEqual(300 - 123, placed.required, places=0)
 
     def test_bold_font(self):
         run = Run([self.E1, self.E2A, self.E3])
@@ -74,7 +74,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(143, 0)', locs)
         self.assertEqual("excess=19", placed.quality.str_parts())
-        self.assertAlmostEqual(200 - 19, placed.required_width, places=0)
+        self.assertAlmostEqual(200 - 19, placed.required, places=0)
 
     def test_wrapping_1(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -85,7 +85,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to this |brave|new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(0, 16)|(26, 16)', locs)
         self.assertEqual("excess=57, breaks=0•1", placed.quality.str_parts())
-        self.assertAlmostEqual(120 - 57, placed.required_width, places=0)
+        self.assertAlmostEqual(120 - 57, placed.required, places=0)
 
     def test_wrapping_2(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -96,7 +96,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
-        self.assertAlmostEqual(50 - 17, placed.required_width, places=0)
+        self.assertAlmostEqual(50 - 17, placed.required, places=0)
 
     def test_need_bad_break(self):
         run = Run([self.EX])
@@ -107,7 +107,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('superc|alifragi|listicex|pialido|cious', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=12, breaks=4•0", placed.quality.str_parts())
-        self.assertAlmostEqual(45 - 12, placed.required_width, places=0)
+        self.assertAlmostEqual(45 - 12, placed.required, places=0)
 
     def test_breaks_again(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -118,7 +118,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
-        self.assertAlmostEqual(50 - 17, placed.required_width, places=0)
+        self.assertAlmostEqual(50 - 17, placed.required, places=0)
 
     def test_not_enough_space_no_matter_what_we_try(self):
         run = Run([self.E1, self.EX, self.E3])
@@ -128,7 +128,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to this |supercalifra|gilisticexpial', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)', locs)
         self.assertEqual("excess=2, clipped=1318, breaks=2•1", placed.quality.str_parts())
-        self.assertAlmostEqual(80 - 2, placed.required_width, places=0)
+        self.assertAlmostEqual(80 - 2, placed.required, places=0)
 
     def test_split_item_into_cells(self):
         item = _make_item('a | b         \t| c | d ')
@@ -155,7 +155,7 @@ class TestBlockPlacement(unittest.TestCase):
         # Title by itself
         block = Block(self.title, [])
         placed = place_block(block, Extent(200, 100), self.pdf)
-        group = placed.group
+        group = placed.children()
         self.assertEqual(2, len(group))
         self.assertEqual(Point(1, 1), group[1].location)
 
@@ -168,7 +168,7 @@ class TestBlockPlacement(unittest.TestCase):
         ]
         block = Block(self.title, items)
         placed = place_block(block, Extent(300, 100), self.pdf)
-        group = placed.group
+        group = placed.children()
         self.assertEqual(3, len(group))
 
         # Background
@@ -181,8 +181,8 @@ class TestBlockPlacement(unittest.TestCase):
         self.assertEqual(Rect(0, 300, 0, 18), round(group[2].bounds))
 
         # Contents on the grid
-        self.assertEqual(Point(0, 0), round(placed.group[1].group[0].location))
-        self.assertEqual(Point(160, 0), round(placed.group[1].group[1].location))
-        self.assertEqual(Point(0, 13), round(placed.group[1].group[2].location))
-        self.assertEqual(Point(160, 13), round(placed.group[1].group[3].location))
-        self.assertEqual(Point(0, 27), round(placed.group[1].group[4].location))
+        self.assertEqual(Point(0, 0), round(placed.child(1).child(0).location))
+        self.assertEqual(Point(160, 0), round(placed.child(1).child(1).location))
+        self.assertEqual(Point(0, 13), round(placed.child(1).child(2).location))
+        self.assertEqual(Point(160, 13), round(placed.child(1).child(3).location))
+        self.assertEqual(Point(0, 27), round(placed.child(1).child(4).location))
