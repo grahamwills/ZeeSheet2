@@ -85,7 +85,7 @@ class Prettify:
             self.append('.. styles::')
             for name, s in self.sheet.styles.items():
                 self.append('   ' + name)
-                self.append('     ' + s.to_definition())
+                self.append_wrapped(s.to_definition(), prefix='     ')
 
         return '\n'.join(self.lines)
 
@@ -227,6 +227,21 @@ class Prettify:
                 self.append_block_rst(b, b == section.children[0])
             self.ensure_blank()
 
+    def append_wrapped(self, text: str, prefix: str):
+        allowed = self.width - len(prefix)
+        while True:
+            if len(text) <= allowed:
+                self.append(prefix + text)
+                return
+            p = text.rfind(' ', 0, self.width)
+            if p < 0:
+                # Fail; just throw everything in there
+                self.append(prefix + text)
+                return
+            else:
+                self.append(prefix + text[:p].rstrip())
+                text = text[p:].lstrip()
+
     def ensure_blank(self, n: int = 1) -> None:
         if len(self.lines) >= n:
             while not all(s == '' for s in self.lines[-n:]):
@@ -240,14 +255,15 @@ def description(comp: model.StructureUnit, short: bool = False) -> str:
         return str(comp)
 
 
-def prepare_for_visit(text:str) -> str:
+def prepare_for_visit(text: str) -> str:
     """ Solves common input formatting issues by modifying input"""
 
     def _surrounded(match):
         return '\n' + match.group(1) + '\n'
 
-    text = re.sub("^(-----*)\s*$",_surrounded, text, flags=re.MULTILINE)
+    text = re.sub("^(-----*)\s*$", _surrounded, text, flags=re.MULTILINE)
     return text
+
 
 class Prettify2:
 
