@@ -7,7 +7,7 @@ from docutils import parsers, core, utils
 from generate.pdf import PDF
 from layout import PlacedGroupContent
 from layout.build_sheet import make_complete_styles, FONT_LIB, sheet_to_pages
-from structure import visitors, Sheet, ImageDetail, Prettify, StyleDefaults
+from structure import visitors, Sheet, ImageDetail, Prettify, StyleDefaults, prepare_for_visit
 
 
 class Document:
@@ -31,11 +31,13 @@ class Document:
     # noinspection PyUnresolvedReferences
     def sheet(self):
         if not self._sheet:
+            text = prepare_for_visit(self.source)
+
             parser = parsers.rst.Parser()
             settings = core.Publisher(parser=parsers.rst.Parser).get_settings()
             settings.halt_level = 99
-            document = utils.new_document(self.source, settings)
-            parser.parse(self.source, document)
+            document = utils.new_document(text, settings)
+            parser.parse(text, document)
             main_visitor = visitors.StructureBuilder(document)
             document.walkabout(main_visitor)
             self._sheet = main_visitor.get_sheet()

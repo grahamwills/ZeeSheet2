@@ -6,7 +6,8 @@ import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
-from common.logging import message_unknown_attribute, message_parse, message_bad_value, configured_logger
+from common.logging import message_unknown_attribute, message_parse, message_bad_value, configured_logger, \
+    message_general
 from . import style
 from .model import *
 
@@ -183,6 +184,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         if p == 'document':
             self._make_new_block()
 
+    def visit_transition(self, node) -> None:
+        self.start(node)
+        self._make_new_section()
+
     def visit_paragraph(self, node) -> None:
         p = self.start(node, n=1)
         if p == '' or p == 'section':
@@ -351,7 +356,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         if p in BLOCK_TITLE_ANCESTRY:
             self.current_block.title.children += elements
         elif p == 'section • title':
-            self.current_section.title.children += elements
+            warnings.warn(message_general('Titles for sections are not supported', line=_line_of(node)))
         elif p == 'list_item • paragraph':
             self.current_run.children += elements
         else:

@@ -1,3 +1,4 @@
+import re
 from typing import List, Union
 
 from docutils import nodes
@@ -80,7 +81,7 @@ class Prettify:
 
         # Handle styles
         if self.sheet.styles:
-            self.append('')
+            self.ensure_blank()
             self.append('.. styles::')
             for name, s in self.sheet.styles.items():
                 self.append('   ' + name)
@@ -116,7 +117,7 @@ class Prettify:
                     (self.lines[-2].startswith('..') or self.lines[-2] == ''):
                 self.lines = self.lines[:-1]
             self.append(' '.join(parts))
-            self.append('')
+            self.ensure_blank()
 
     def append_sheet_options(self, options: SheetOptions):
         self._append_options('page', options, SheetOptions(),
@@ -134,16 +135,16 @@ class Prettify:
         self.append(txt)
 
         if len(item.children) > 1:
-            self.append('')
+            self.ensure_blank()
             for run in item.children[1:]:
                 txt = '  - ' + run.to_rst(self.width, indent=4)
                 self.append(txt.rstrip())
-            self.append('')
+            self.ensure_blank()
 
     def append_block_rst(self, block: model.Block, is_first: bool):
 
         if not block.title and not block.children and block.options.image > 0:
-            # This is just an image and we can represent it more easily
+            # This is just an image, so we can represent it  easily
             self.append_image_block(block)
             return
 
@@ -156,7 +157,7 @@ class Prettify:
 
         if block.title:
             self.append(block.title.to_rst(self.width))
-            self.append('')
+            self.ensure_blank()
 
         if not block.children:
             return
@@ -191,13 +192,13 @@ class Prettify:
                             txt = item.children[i].to_rst(space_for_last, indent=2).strip()
                             row_parts.append(txt)
                     self.append(('- ' + ' | '.join(row_parts).rstrip()))
-                self.append('')
+                self.ensure_blank()
                 return
 
         # Could not fit onto one line; need to use the simple method
         for item in block.children:
             self.append_item_rst(item)
-        self.append('')
+        self.ensure_blank()
 
     def append_image_block(self, block):
         # We just use the block options, but reformat for the image directive
@@ -210,23 +211,26 @@ class Prettify:
         """Adds restructured text lines for the given section"""
 
         # If we have no title, the options define the start of a section, so we need this
-        if section.options != self.current_section_options or not section.title:
+        if section.options != self.current_section_options:
             # We do not require this if we have a title or we are the first section
-            forced = not section.title and not is_first
-            self.append_container_options('section', section.options, self.current_section_options, forced)
+            self.append_container_options('section', section.options, self.current_section_options, False)
             self.current_section_options = section.options
-
-        if section.title:
-            # Since the section title has to be underlined, we cannot wrap it
-            title = section.title.to_rst()
-            self.append(title)
-            self.append('-' * len(title))
-            self.append('')
+        elif is_first:
+            pass
+        else:
+            self.ensure_blank()
+            self.append('-' * self.width)
+            self.ensure_blank()
 
         if section.children:
             for b in section.children:
                 self.append_block_rst(b, b == section.children[0])
-            self.append('')
+            self.ensure_blank()
+
+    def ensure_blank(self, n: int = 1) -> None:
+        if len(self.lines) >= n:
+            while not all(s == '' for s in self.lines[-n:]):
+                self.lines.append('')
 
 
 def description(comp: model.StructureUnit, short: bool = False) -> str:
@@ -235,6 +239,15 @@ def description(comp: model.StructureUnit, short: bool = False) -> str:
     except AttributeError:
         return str(comp)
 
+
+def prepare_for_visit(text:str) -> str:
+    """ Solves common input formatting issues by modifying input"""
+
+    def _surrounded(match):
+        return '\n' + match.group(1) + '\n'
+
+    text = re.sub("^(-----*)\s*$",_surrounded, text, flags=re.MULTILINE)
+    return text
 
 class Prettify2:
 
@@ -255,7 +268,7 @@ class Prettify2:
 
         # Add lines for each section
         for s in self.sheet.children:
-            self.process_section(s, s==self.sheet.children[0])
+            self.process_section(s, s == self.sheet.children[0])
 
         # Handle styles
         if self.sheet.styles:
@@ -268,28 +281,21 @@ class Prettify2:
 
         return '\n'.join(self.lines)
 
-    def process_section(self, section: model.Section, is_first:bool):
-        if section.title:
-            self.ensure_blank()
-            # TODO: Eliminate section titles
-            item = model.Item([section.title])
-            self.append_items([item], prefix='>> ')
-            self.ensure_blank()
-
-        elif not is_first:
+    def process_section(self, section: model.Section, is_first: bool):
+        if not is_first:
             self.ensure_blank()
             self.append('-' * self.width)
             self.ensure_blank()
-        if section.options != self.current_section_options or not section.title:
+        if section.options != self.current_section_options:
             # We do not require this if we have a title or we are the first section
             self.append_container_options('section', section.options, self.current_section_options)
         if section.children:
             self.ensure_blank()
             for b in section.children:
-                self.process_block(b, b==section.children[0])
+                self.process_block(b, b == section.children[0])
         self.current_section_options = section.options
 
-    def process_block(self, block: model.Block, is_first:bool):
+    def process_block(self, block: model.Block, is_first: bool):
         if block.title:
             self.ensure_blank()
             # TODO: Title should be an item in the model
@@ -372,7 +378,7 @@ class Prettify2:
         # Could not fit onto one line; need to use a simpler method
         for item in items:
             for run in item.children:
-                txt = prefix + '- ' + run.to_rst(self.width, indent=2+len(prefix))
+                txt = prefix + '- ' + run.to_rst(self.width, indent=2 + len(prefix))
                 self.append(txt.rstrip())
             self.ensure_blank()
 
@@ -389,4 +395,3 @@ class Prettify2:
         if len(self.lines) >= n:
             while not all(s == '' for s in self.lines[-n:]):
                 self.lines.append('')
-

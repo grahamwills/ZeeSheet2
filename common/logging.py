@@ -55,8 +55,13 @@ def message_parse(message: str, text: str, ancestors: str, line: int = None) -> 
     return txt
 
 
+def message_general(message: str, line: int = None) -> str:
+    if line is not None:
+        return f"{message} at line {line}. Ignoring the definition"
+
+
 def message_syntax(owner: str, text: str, message: str, category: str) -> str:
-    return f"{message}, but found '{text} for {category} '{owner}'. Ignoring the definition"
+    return f"{message}. Handling '{text}' for {category} '{owner}'. Ignoring the definition"
 
 
 def message_bad_value(owner: str, key: str, message: str, category: str) -> str:

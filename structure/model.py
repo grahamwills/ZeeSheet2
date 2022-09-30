@@ -295,12 +295,10 @@ class Block(StructureUnit):
 @dataclass
 class Section(StructureUnit):
     FMT = FormatPieces('', ' ', '')
-    title: Run = field(default_factory=lambda: Run())
     children: List[Block] = field(default_factory=lambda: [Block()])
     options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='none', style='default-section'))
 
     def tidy(self) -> None:
-        self._tidy_title()
         self._tidy_children()
 
 
