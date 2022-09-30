@@ -4,6 +4,7 @@ from unittest import TestCase
 
 import main
 from common import Spacing, Rect, Extent
+from generate.fonts import FontLibrary
 from layout.build_sheet import make_complete_styles
 from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle
 
@@ -200,6 +201,10 @@ class TestStyle(TestCase):
         # If we go all the way into the padding, then back out to border -- that's the same as into the margin
         self.assertEqual(style.inset_within_margin(r), style.outset_to_border(style.inset_within_padding(r)))
 
+
+    def test_find_similar_name(self):
+        lib = FontLibrary()
+        self.assertEqual(['Questrial'], lib.similar_names('Arial'))
 
 class TestMakeCompleteStyles(TestCase):
 

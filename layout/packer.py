@@ -81,7 +81,8 @@ class ColumnPacker:
         col_width = self.average_spacing.horizontal / 2
         available_space = self.bounds.width
         if need_gaps:
-            available_space -= col_width * self.k
+            # Padding on either side also
+            available_space -= col_width * (self.k+1)
 
         # The total number of granularity steps we can fit in
         segment_count = int(available_space / granularity)

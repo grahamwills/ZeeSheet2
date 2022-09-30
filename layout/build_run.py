@@ -1,10 +1,10 @@
 from functools import lru_cache
-from typing import Tuple
+from typing import Tuple, Union
 
 import layout.quality
 from common import Extent, Point
 from generate.fonts import Font
-from generate.pdf import TextSegment, CheckboxSegment, PDF
+from generate.pdf import TextSegment, CheckboxSegment, PDF, TextFieldSegment
 from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
 from structure.style import Style
@@ -118,6 +118,8 @@ class RunBuilder:
         y = 0
         right = 0
         last_top_right = (0, 0)
+
+        textfield_on_this_line = None
         for element in self.elements:
             text = element.value
             modifier = element.modifier
@@ -148,7 +150,17 @@ class RunBuilder:
                         last_top_right = (x, y)
                         right = max(right, x)
                         text = None
-
+                elif modifier == 'textfield':
+                    # Textfield has a minimum size based on content, plus a bit for the border
+                    # When initially placing, we use the minimum size
+                    text_width = min(font.width(text) + 4, 20)
+                    if x + text_width <= width:
+                        textfield_on_this_line = len(segments)
+                        segments.append(TextFieldSegment(text, Point(x, y), text_width, font))
+                        x += text_width
+                        last_top_right = (x, y)
+                        right = max(right, x)
+                        text = None
                 else:
                     # Place as much text as possible on this line
                     text_width = font.width(text)
@@ -176,12 +188,26 @@ class RunBuilder:
                         # We were unable to place it and had the whole space to place into
                         raise ExtentTooSmallError()
                     else:
+                        # First handle any textfields on this line, expanding to fill line
+                        if textfield_on_this_line is not None:
+                            self.expand_field_size(segments, textfield_on_this_line, width - x)
+                            right = width
+                        textfield_on_this_line = None
+
                         # Start a new line
                         x = 0
                         y += line_spacing
                         good_breaks += 1
 
+
+        # Handle any textfields on this line, expanding to fill line
+        if textfield_on_this_line is not None:
+            self.expand_field_size(segments, textfield_on_this_line, width - x)
+            right = width
+        textfield_on_this_line = None
+
         bottom = last_top_right[1] + line_spacing
+
         outer = Extent(right, bottom)
 
         good_breaks -= bad_breaks  # They have been double-counted
@@ -189,8 +215,13 @@ class RunBuilder:
 
         quality = layout.quality.for_wrapping(self.run, excess, clipped, bad_breaks, good_breaks, bottom)
         content = PlacedRunContent(segments, self.style, outer, quality)
-
         return content
+
+    def expand_field_size(self, segments: list[Union[TextFieldSegment, CheckboxSegment, TextSegment]],
+                          index: int, dx: float):
+        segments[index].width += dx
+        for s in segments[index + 1:]:
+            s.offset = Point(s.offset.x + dx, s.offset.y)
 
 
 def tiny_run() -> Run:

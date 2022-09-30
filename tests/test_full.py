@@ -85,3 +85,9 @@ class TestFullLayout(unittest.TestCase):
         self.assertEqual(6, structure[1].count)
         self.assertEqual(structure[0].bottom, structure[1].bottom)
         self.assertTrue(structure[1].width > 1.5 * structure[0].width)
+
+    def test_bad_font(self):
+        txt = read_sample('claude_bad_font')
+        document = main.Document(txt)
+        document.data()
+

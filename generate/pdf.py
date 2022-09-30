@@ -1,3 +1,4 @@
+import colorsys
 import reprlib
 import warnings
 from collections import defaultdict
@@ -46,6 +47,20 @@ class CheckboxSegment:
 
     def to_text(self):
         return checkbox_character(self.state)
+
+
+@dataclass
+class TextFieldSegment:
+    value: str
+    offset: Point
+    width: float
+    font: Font
+
+    def __str__(self):
+        return 'TEXTFIELD' + str(self.offset)
+
+    def to_text(self):
+        return '[[ ' + self.value + ' ]]'
 
 
 class PDF(canvas.Canvas):
@@ -105,9 +120,8 @@ class PDF(canvas.Canvas):
         if stroked or filled:
             self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
-    def _draw_checkbox(self, rx, ry, font: Font, state, color: Color):
+    def _draw_checkbox(self, rx, ry, font: Font, state: bool, color: Color):
         size = font.ascent + font.descent
-
         x, y = self.absolutePosition(rx, ry + size)
         y = self._pagesize[1] - y
         self._name_index += 1
@@ -117,7 +131,36 @@ class PDF(canvas.Canvas):
                                fillColor=_WHITE, borderColor=color,
                                buttonStyle='cross', borderWidth=0.5, checked=state)
 
-    def draw_text(self, style: Style, segments: List[Union[TextSegment, CheckboxSegment]]):
+    def _draw_textfield(self, content: str, rx, ry, width, font: Font, color: Color):
+
+        if font.name not in self.acroForm.formFontNames:
+            if font.family.category == 'serif':
+                fname = 'Times-Roman'
+                font = self.font_lib.get_font('Times', font.size*1.1)
+                height = font.line_spacing
+            else:
+                fname = 'Helvetica'
+                font = self.font_lib.get_font('Helvetica', font.size)
+                height = font.ascent + font.descent
+        else:
+            fname = font.name
+            height = font.line_spacing
+
+        x, y = self.absolutePosition(rx, ry + height)
+        y = self._pagesize[1] - y
+        self._name_index += 1
+        name = 'f' + str(self._name_index)
+        LOGGER.debug("Adding text field name='%s'", name)
+
+        bg = _adapt_color_value(color, 0.9, alpha=0.25)
+        border = _adapt_color_value(color, 0.2, alpha=0.8)
+
+        self.acroForm.textfield(name=name, value=content, x=x, y=y - 1, relative=False,
+                                width=width, height=height + 2,
+                                fontName=fname, fontSize=font.size, textColor=color,
+                                fillColor=bg, borderWidth=0.3333, borderColor=border)
+
+    def draw_text(self, style: Style, segments: List[Union[TextSegment, CheckboxSegment, TextFieldSegment]]):
         ss = ', '.join([str(s) for s in segments])
         LOGGER.debug(f"Drawing segments {ss}")
 
@@ -128,18 +171,22 @@ class PDF(canvas.Canvas):
         text.setFillColor(text_color)
         off = Point(0, 0)
         current_font = None
-        for segment in segments:
-            if segment.font != current_font:
-                current_font = segment.font
+        for seg in segments:
+            if seg.font != current_font:
+                current_font = seg.font
                 text.setFont(current_font.name, current_font.size, current_font.line_spacing)
-            if segment.offset:
-                text.moveCursor(segment.offset.x - off.x, segment.offset.y - off.y)
-                off = segment.offset
-            if hasattr(segment, 'text'):
+            if seg.offset:
+                text.moveCursor(seg.offset.x - off.x, seg.offset.y - off.y)
+                off = seg.offset
+            if isinstance(seg, TextSegment):
                 # It is text, so just output it
-                text.textOut(segment.text)
+                text.textOut(seg.text)
+            elif isinstance(seg, CheckboxSegment):
+                # Check Box
+                self._draw_checkbox(seg.offset.x, seg.offset.y, current_font, seg.state, text_color)
             else:
-                self._draw_checkbox(segment.offset.x, segment.offset.y, current_font, segment.state, text_color)
+                # Text field
+                self._draw_textfield(seg.value.strip(), seg.offset.x, seg.offset.y, seg.width, current_font, text_color)
 
         self.drawText(text)
 
@@ -166,3 +213,9 @@ class PDF(canvas.Canvas):
         self.translate(bounds.left, bounds.top)
         self.transform(1, 0, 0, -1, 0, bounds.height)
         self.drawImage(ImageReader(image), 0, 0, bounds.width, bounds.height)
+
+
+def _adapt_color_value(c: Color, value: float, alpha: float = 1.0) -> Color:
+    h, l, s = colorsys.rgb_to_hls(*c.rgb())
+    r, g, b = (i for i in colorsys.hls_to_rgb(h, value, s))
+    return Color(r, g, b, alpha * c.alpha)

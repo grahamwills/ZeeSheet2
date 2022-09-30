@@ -196,6 +196,7 @@ class FontLibrary():
     def families(self) -> Iterable[FontFamily]:
         return self.content.values()
 
+    @lru_cache
     def similar_names(self, family_name: str) -> List[str]:
         N = 3
         target = NGram(family_name.lower(), N)

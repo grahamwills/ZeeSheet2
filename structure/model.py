@@ -71,6 +71,8 @@ class Element:
         if short:
             if self.modifier == 'checkbox':
                 return checkbox_character(self.value)
+            if self.modifier == 'textfield':
+                return '[[  ]]'
             return self.value if len(self.value) <= 20 else self.value[:19] + '\u2026'
         elif self.modifier:
             return '\u00ab' + self.value + '\u22a3' + self.modifier[:3] + '\u00bb'
@@ -86,6 +88,8 @@ class Element:
             return '``' + self.value + '``'
         elif self.modifier == 'checkbox':
             return '[' + self.value + ']'
+        elif self.modifier == 'textfield':
+            return '[[' + self.value + ']]'
         elif self.modifier is None:
             return self.value
         else:
@@ -97,6 +101,10 @@ class Element:
             return cls(' ', 'checkbox')
         elif txt == '[X]' or txt == '[x]':
             return cls('X', 'checkbox')
+        elif txt.startswith('[[') and txt.endswith(']]'):
+            return cls(txt[2:-2], 'textfield')
+        elif txt.startswith('``') and txt.endswith('``'):
+            return cls(txt[2:-2], 'literal')
         else:
             return cls(txt, None)
 
@@ -106,9 +114,17 @@ class Element:
             # Keep it as it is
             return [cls(text, modifier)]
         else:
-            # Split up to define checkboxes and other special items
-            parts = re.split(r'(\[[ XOxo]])', text)
-            return [cls._from_text(t) for t in parts if t]
+            # Split up to define text fields and checkboxes
+            results = []
+            for f1 in re.split('(\\[\\[[^\\]]+]])', text):
+                if f1.startswith('[[') and f1.endswith(']]'):
+                    results.append(cls._from_text(f1))
+                else:
+                    for f2 in re.split(r'(\[[ XOxo]])', f1):
+                        for f3 in re.split(r'(``[^`]+``)', f2):
+                            if f3:
+                                results.append(cls._from_text(f3))
+            return results
 
 
 # noinspection PyUnresolvedReferences,PyAttributeOutsideInit
