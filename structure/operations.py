@@ -234,3 +234,159 @@ def description(comp: model.StructureUnit, short: bool = False) -> str:
         return comp.description(short)
     except AttributeError:
         return str(comp)
+
+
+class Prettify2:
+
+    def __init__(self, sheet: model.Sheet, width):
+        self.width = width
+        self.sheet = sheet
+        self.lines = []
+
+        self.current_section_options = Section().options
+        self.current_block_options = Block().options
+
+    def run(self) -> str:
+        self.lines = []
+
+        # Output the options if they are not the default
+        if self.sheet.options != SheetOptions():
+            self.append_sheet_options(self.sheet.options)
+
+        # Add lines for each section
+        for s in self.sheet.children:
+            self.process_section(s, s==self.sheet.children[0])
+
+        # Handle styles
+        if self.sheet.styles:
+            self.ensure_blank()
+            for name, s in self.sheet.styles.items():
+                head = format(name)
+                self.append(f".. style {name} " + s.to_definition())
+
+        self.add_blank_lines()
+
+        return '\n'.join(self.lines)
+
+    def process_section(self, section: model.Section, is_first:bool):
+        if section.title:
+            self.ensure_blank()
+            # TODO: Eliminate section titles
+            item = model.Item([section.title])
+            self.append_items([item], prefix='>> ')
+            self.ensure_blank()
+
+        elif not is_first:
+            self.ensure_blank()
+            self.append('-' * self.width)
+            self.ensure_blank()
+        if section.options != self.current_section_options or not section.title:
+            # We do not require this if we have a title or we are the first section
+            self.append_container_options('section', section.options, self.current_section_options)
+        if section.children:
+            self.ensure_blank()
+            for b in section.children:
+                self.process_block(b, b==section.children[0])
+        self.current_section_options = section.options
+
+    def process_block(self, block: model.Block, is_first:bool):
+        if block.title:
+            self.ensure_blank()
+            # TODO: Title should be an item in the model
+            item = model.Item([block.title])
+            self.append_items([item], prefix='# ')
+        elif not is_first:
+            self.ensure_blank()
+            self.append('#')
+        if block.options != self.current_block_options:
+            self.append_container_options('block', block.options, self.current_block_options)
+        if block.options.image > 0:
+            # Image first
+            self.append_image_block(block)
+        if block.children:
+            self.append_items(block.children)
+        self.current_block_options = block.options
+
+    def add_blank_lines(self):
+        pass
+
+    def append_sheet_options(self, options: SheetOptions):
+        self.append_options('sheet', options, SheetOptions(),
+                            "width height style image image_mode image_width image_height image_anchor debug")
+
+    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
+        self.append_options(owner, options, default,
+                            "columns title style title_style image image_mode image_width image_height image_anchor")
+
+    def append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions],
+                       default, attributes: str):
+
+        head = f".. {owner}"
+        parts = [f"{head:11}"]
+        for k in attributes.split():
+            v = getattr(options, k)
+            if v != getattr(default, k):  # Only output attributes which are not the default
+                k = k.replace('_', '-')
+                if v is True:
+                    parts.append(k)
+                else:
+                    if k in {'width', 'height', 'image-width', 'image-height'}:
+                        v = style.len2str(v)
+                    parts.append(k + '=' + str(v))
+
+        # Only add if there actually were any changed values
+        if len(parts) > 1:
+            self.append(' '.join(parts))
+
+    def append_items(self, items, prefix=''):
+        ncols = max(len(item.children) for item in items)
+        indent = max(2, len(prefix))
+
+        # Create a table of simple text representations and calculate the maximum widths of each column
+        table = [[run.to_rst().strip() for run in item.children] for item in items]
+        col_widths = [0] * ncols
+        for row in table:
+            for c, txt in enumerate(row):
+                col_widths[c] = max(col_widths[c], len(txt))
+        col_widths[-1] = 0  # stops it being left justified with trailing spaces
+
+        column_widths_except_last = sum(col_widths[:1])
+        column_dividers = 3 * (ncols - 1)  # ' | ' between each column
+        space_for_last = self.width - (indent + column_widths_except_last + column_dividers)
+
+        # Require at least 8 characters for the last cell. This is an ad-hoc number
+        if space_for_last >= 8:
+            for row, item in zip(table, items):
+                row_parts = []
+                for i, txt in enumerate(row):
+                    if i < ncols - 1 or len(txt) <= space_for_last:
+                        # Add the simple text, left-justified
+                        row_parts.append(txt.ljust(col_widths[i]))
+                    else:
+                        # Need to wrap the text onto the next line
+                        txt = item.children[i].to_rst(space_for_last, indent=2).strip()
+                        row_parts.append(txt)
+                self.append((prefix + ' | '.join(row_parts).rstrip()))
+            return
+
+        # Could not fit onto one line; need to use a simpler method
+        for item in items:
+            for run in item.children:
+                txt = prefix + '- ' + run.to_rst(self.width, indent=2+len(prefix))
+                self.append(txt.rstrip())
+            self.ensure_blank()
+
+    def append_image_block(self, block):
+        # We just use the block options, but reformat for the image directive
+        self.append_options('image', block.options, self.current_block_options,
+                            "image image_mode image_width image_height image_anchor")
+        self.lines[-1] = self.lines[-1].replace('image=', 'index=').replace('image-', '')
+
+    def append(self, txt: str) -> None:
+        self.lines.append(txt)
+
+    def ensure_blank(self, n: int = 1) -> None:
+        if len(self.lines) >= n:
+            while not all(s == '' for s in self.lines[-n:]):
+                self.lines.append('')
+

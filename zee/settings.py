@@ -126,9 +126,27 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CODEMIRROR_SETTINGS = codemirror_settings_update(CODEMIRROR_SETTINGS, {
-    'lineNumbers': True,
-    'indent': 4
+# CODEMIRROR_SETTINGS = codemirror_settings_update(CODEMIRROR_SETTINGS, {
+#     'lineNumbers': True,
+#     'indent': 4
+# })
+
+CODEMIRROR_THEMES.update({
+    'ttcn': 'CodeMirror/theme/ttcn.css',
+})
+CODEMIRROR_MODES.update(
+    {'markdown':'CodeMirror/mode/markdown/markdown.js'}
+)
+
+CODEMIRROR_SETTINGS.update({
+    'zeesheet': {
+        'mode': 'rst',
+        'modes': ['python', 'stex', 'rst'],
+        'lineNumbers': True,
+        'tabSize':3,
+        'indentUnit': 3,
+        'addons': ['CodeMirror/addon/mode/overlay.js']
+    },
 })
 
 CSRF_TRUSTED_ORIGINS = ['https://zeesheet.azurewebsites.net']

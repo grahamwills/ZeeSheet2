@@ -4,7 +4,7 @@ from common import Extent, Rect, Spacing
 from generate.pdf import PDF
 from layout import build_block
 from layout.content import PlacedContent, PlacedGroupContent, make_frame, PlacedImageContent
-from layout.packer import ColumnPacker
+from layout.packer import ColumnPacker, ColumnFit
 from structure import StructureUnit, Section
 
 
@@ -21,8 +21,6 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
     sp = SectionPacker(content_bounds, blocks, section.options.columns, pdf, granularity=25)
     content = sp.place_in_columns()
 
-    shrink_images_if_suitable(content)
-
     # Make the frame
     frame_bounds = section_style.box.outset_to_border(content.bounds)
     frame = make_frame(frame_bounds, section_style)
@@ -31,29 +29,6 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[Placed
         content = PlacedGroupContent.from_items([frame, content], content.quality)
 
     return content
-
-
-def shrink_images_if_suitable(content: PlacedGroupContent):
-    """ If images have flexible sizes, reduce them to match heights if that helps """
-    shrinkable_images = []
-    lowest_other = content.bounds.top
-    for placed in content.items:
-        if isinstance(placed, PlacedImageContent) and placed.mode in {'fill', 'stretch'}:
-            shrinkable_images.append(placed)
-        else:
-            lowest_other = max(lowest_other, placed.bounds.bottom)
-
-    # We only care about shrinkable images that are too big
-    shrinkable_images = [s for s in shrinkable_images if s.bounds.bottom > lowest_other]
-    if not shrinkable_images:
-        return
-
-    # Shrink items, calculating the amount we have shrunk by and shrink the total extent by that
-    min_dy = 9e99
-    for s in shrinkable_images:
-        dy = s.shrink_to_fit(bottom=lowest_other)
-        min_dy = min(dy, min_dy)
-    content.extent = content.extent - Extent(0, min_dy)
 
 
 class SectionPacker(ColumnPacker):
@@ -69,3 +44,24 @@ class SectionPacker(ColumnPacker):
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
         style_name = self.items[item_index].options.style
         return self.pdf.styles[style_name].box.margin
+
+    def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
+        """ If images have flexible sizes, reduce them to match heights if that helps """
+        shrinkable_images = []
+        lowest_other = -9e99
+        for fit in columns:
+            if fit.items:
+                # We need only consider the last one - -the lowest in the column
+                placed = fit.items[-1]
+                if isinstance(placed, PlacedImageContent) and placed.mode in {'fill', 'stretch'}:
+                    shrinkable_images.append((placed, fit))
+                else:
+                    lowest_other = max(lowest_other, placed.bounds.bottom)
+
+        if shrinkable_images and lowest_other > 0:
+            # We only care about shrinkable images that are too big
+            for s, fit in shrinkable_images:
+                if s.bounds.bottom > lowest_other:
+                    fit.height -= s.shrink_to_fit(bottom=lowest_other)
+
+        return columns

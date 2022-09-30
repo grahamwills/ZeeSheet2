@@ -280,7 +280,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
         # Apply default image style
         if 'style' not in definitions:
-            self.current_block.options.style = style.Defaults.image.name
+            self.current_block.options.style = style.StyleDefaults.image.name
 
         # And now start a new block
         self._make_new_block()

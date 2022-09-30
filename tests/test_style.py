@@ -5,19 +5,19 @@ from unittest import TestCase
 import main
 from common import Spacing, Rect, Extent
 from layout.build_sheet import make_complete_styles
-from structure.style import Style, Defaults, set_using_definition, BoxStyle
+from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle
 
 
 class TestStyle(TestCase):
 
     def test_default(self):
         # Tests a few items
-        self.assertEqual(Defaults.default.name, 'default')
-        self.assertEqual(Defaults.default.parent, None)
-        self.assertEqual(Defaults.default.text.align, 'left')
-        self.assertEqual(Defaults.default.font.family, 'Helvetica')
-        self.assertEqual(Defaults.default.box.opacity, 1.0)
-        self.assertEqual(Defaults.default.box.padding, Spacing(2, 2, 2, 2))
+        self.assertEqual(StyleDefaults.default.name, 'default')
+        self.assertEqual(StyleDefaults.default.parent, None)
+        self.assertEqual(StyleDefaults.default.text.align, 'left')
+        self.assertEqual(StyleDefaults.default.font.family, 'Helvetica')
+        self.assertEqual(StyleDefaults.default.box.opacity, 1.0)
+        self.assertEqual(StyleDefaults.default.box.padding, Spacing(2, 2, 2, 2))
 
     def test_initialization(self):
         s = Style('allowed_name')
@@ -32,13 +32,13 @@ class TestStyle(TestCase):
                          'font-family:Helvetica font-size:12 font-style:normal '
                          'border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
-                         'margin:0 padding:2', Defaults.default.to_definition())
+                         'margin:0 padding:2', StyleDefaults.default.to_definition())
 
     def test_to_definition_empty(self):
         self.assertEqual('inherit:default', Style('test', 'default').to_definition())
 
     def test_round_trip_for_default(self):
-        base = Defaults.default
+        base = StyleDefaults.default
         base_def = base.to_definition()
         parsed = Style('default')
         set_using_definition(parsed, base_def)
@@ -204,7 +204,7 @@ class TestStyle(TestCase):
 class TestMakeCompleteStyles(TestCase):
 
     def test_simple_inheritance(self):
-        input = {'default': Defaults.default,
+        input = {'default': StyleDefaults.default,
                  'test': Style('test').set('margin', '1in')
                  }
         output = make_complete_styles(input)
@@ -297,6 +297,6 @@ class TestAuto(TestCase):
             with self.subTest("Setting auto", input=before, expected=after):
                 txt, bg, bd = tuple(before.split())
                 s = Style('test').set('text-color', txt).set('border', bd).set('background', bg)
-                Defaults.set_auto_values(s)
+                StyleDefaults.set_auto_values(s)
                 output = s.text.color + ' ' + s.box.color + ' ' + s.box.border_color
                 self.assertEqual(after, output)

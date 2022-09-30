@@ -156,6 +156,8 @@ class ColumnPacker:
             previous_margin_right = next_margin_right
             at += count
 
+        columns = self.post_placement_modifications(columns)
+
         height = max(fit.height for fit in columns)
         ext = Extent(self.bounds.width, height)
         all_items = [placed for fit in columns for placed in fit.items]
@@ -304,3 +306,8 @@ class ColumnPacker:
             raise ExtentTooSmallError()
         LOGGER.info(f"Best placement is: {best.quality}")
         return best
+
+
+    def post_placement_modifications(self, columns:list[ColumnFit]) -> list[ColumnFit]:
+        return columns
+

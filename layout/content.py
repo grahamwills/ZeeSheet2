@@ -265,6 +265,7 @@ class PlacedImageContent(PlacedContent):
     def shrink_to_fit(self, bottom:float) -> float:
         dy = self.bounds.bottom - bottom
         self.extent = self.extent - Extent(0, dy)
+        self.quality = layout.quality.for_image(self.quality.target, self.mode, self.desired, self.image_bounds(), self.bounds)
         return dy
 
 

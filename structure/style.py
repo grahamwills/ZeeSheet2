@@ -347,7 +347,7 @@ def len2str(x: float) -> str:
 # TODO: IDEA:  Set colors to auto and have them set automatically based on the other information
 
 
-class Defaults:
+class StyleDefaults:
     """ Default Values """
 
     DEFAULT_DARK = '#0074B7'
@@ -379,14 +379,14 @@ class Defaults:
 
     @classmethod
     def all(cls):
-        return {s.name: s for s in [Defaults.default, Defaults.sheet, Defaults.block, Defaults.title, Defaults.section]}
+        return {s.name: s for s in [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block, StyleDefaults.title, StyleDefaults.section]}
 
     @classmethod
     def set_auto_text_box_border(cls, style: Style):
         if 'title' in style.name.lower():
-            style.box.color = Defaults.DEFAULT_DARK
+            style.box.color = StyleDefaults.DEFAULT_DARK
         elif 'block' in style.name.lower():
-            style.box.color = Defaults.DEFAULT_LIGHT
+            style.box.color = StyleDefaults.DEFAULT_LIGHT
         else:
             style.box.color = 'none'
         cls.set_auto_text_border(style)
@@ -408,13 +408,13 @@ class Defaults:
             if _is_grayscale(text):
                 style.box.color = 'black'
             else:
-                style.box.color = _modify_brightness(text, value=Defaults.DARK)
+                style.box.color = _modify_brightness(text, value=StyleDefaults.DARK)
         else:
             # Dark text
             if _is_grayscale(text):
                 style.box.color = 'white'
             else:
-                style.box.color = _modify_brightness(text, value=Defaults.BRIGHT)
+                style.box.color = _modify_brightness(text, value=StyleDefaults.BRIGHT)
         cls.set_auto_border(style)
 
     @classmethod
@@ -425,13 +425,13 @@ class Defaults:
             if _is_grayscale(border):
                 style.text.color = 'white'
             else:
-                style.text.color = _modify_brightness(border, value=Defaults.BRIGHT)
+                style.text.color = _modify_brightness(border, value=StyleDefaults.BRIGHT)
         else:
             # Dark text
             if _is_grayscale(border):
                 style.text.color = 'black'
             else:
-                style.text.color = _modify_brightness(border, value=Defaults.DARK)
+                style.text.color = _modify_brightness(border, value=StyleDefaults.DARK)
         cls.set_auto_box(style)
 
     @classmethod
@@ -443,12 +443,12 @@ class Defaults:
             if _is_grayscale(border):
                 style.text.color = 'black'
             else:
-                style.text.color = _modify_brightness(border, value=Defaults.DARK)
+                style.text.color = _modify_brightness(border, value=StyleDefaults.DARK)
         else:
             if _is_grayscale(border):
                 style.text.color = 'white'
             else:
-                style.text.color = _modify_brightness(border, value=Defaults.BRIGHT)
+                style.text.color = _modify_brightness(border, value=StyleDefaults.BRIGHT)
 
     @classmethod
     def set_auto_box(cls, style: Style):
@@ -459,12 +459,12 @@ class Defaults:
             if _is_grayscale(border):
                 style.box.color = 'black'
             else:
-                style.box.color = _modify_brightness(border, value=Defaults.DARK)
+                style.box.color = _modify_brightness(border, value=StyleDefaults.DARK)
         else:
             if _is_grayscale(border):
                 style.box.color = 'white'
             else:
-                style.box.color = _modify_brightness(border, Defaults.BRIGHT)
+                style.box.color = _modify_brightness(border, StyleDefaults.BRIGHT)
 
     @classmethod
     def set_auto_border(cls, style: Style):
@@ -474,7 +474,7 @@ class Defaults:
             if _is_grayscale(bg):
                 style.box.border_color = 'black'
             else:
-                style.box.border_color = _modify_brightness(bg, value=Defaults.DARK)
+                style.box.border_color = _modify_brightness(bg, value=StyleDefaults.DARK)
         else:
             # Dark background, no border needed
             style.box.border_color = 'none'

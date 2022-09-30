@@ -118,7 +118,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden
-    if main_style.name == style.Defaults.hidden.name:
+    if main_style.name == style.StyleDefaults.hidden.name:
         result.hidden = True
     return result
 
@@ -154,6 +154,6 @@ class BlockColumnPacker(ColumnPacker):
 
 def tiny_block() -> Block:
     """ Makes a small block to be added to a section when there are too few of them """
-    options = ContainerOptions('none', style.Defaults.hidden.name)
+    options = ContainerOptions('none', style.StyleDefaults.hidden.name)
     item = Item([build_run.tiny_run()])
     return Block(Run(), [item], options)

@@ -7,8 +7,7 @@ from docutils import parsers, core, utils
 from generate.pdf import PDF
 from layout import PlacedGroupContent
 from layout.build_sheet import make_complete_styles, FONT_LIB, sheet_to_pages
-from structure import visitors, Sheet, ImageDetail, style
-from structure.operations import Prettify
+from structure import visitors, Sheet, ImageDetail, Prettify, StyleDefaults
 
 
 class Document:
@@ -49,7 +48,7 @@ class Document:
             complete_styles = make_complete_styles(sheet.styles)
             # Change 'auto' to be actual values
             for s in complete_styles.values():
-                style.Defaults.set_auto_values(s)
+                StyleDefaults.set_auto_values(s)
             page_size = (int(sheet.options.width), int(sheet.options.height))
             self._pdf = PDF(page_size, FONT_LIB, styles=complete_styles, images=self.images, debug=sheet.options.debug)
         return self._pdf

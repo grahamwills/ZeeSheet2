@@ -44,8 +44,8 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
     base = source.copy()
-    for s in [style.Defaults.default, style.Defaults.title, style.Defaults.block, style.Defaults.section,
-              style.Defaults.sheet, style.Defaults.hidden, style.Defaults.image]:
+    for s in [style.StyleDefaults.default, style.StyleDefaults.title, style.StyleDefaults.block, style.StyleDefaults.section,
+              style.StyleDefaults.sheet, style.StyleDefaults.hidden, style.StyleDefaults.image]:
         if s.name in base:
             # This style has been redefined, so we need to juggle names
             # and make the redefined version inherit from the default with a modified name
