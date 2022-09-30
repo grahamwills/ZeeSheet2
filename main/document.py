@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Dict
 
 from docutils import parsers, core, utils
@@ -32,10 +33,10 @@ class Document:
     def sheet(self):
         if not self._sheet:
             text = prepare_for_visit(self.source)
-
             parser = parsers.rst.Parser()
             settings = core.Publisher(parser=parsers.rst.Parser).get_settings()
             settings.halt_level = 99
+            settings.report_level = 99
             document = utils.new_document(text, settings)
             parser.parse(text, document)
             main_visitor = visitors.StructureBuilder(document)

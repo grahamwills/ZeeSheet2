@@ -32,7 +32,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     title_style = pdf.styles[block.options.title_style]
 
     title_bounds = title_style.box.inset_within_padding(inner)
-    placed = copy(build_run.place_run(block.title, title_bounds.extent, title_style, pdf))
+    placed = copy(build_run.place_run(block.title.children[0], title_bounds.extent, title_style, pdf))
     placed.location = title_bounds.top_left
 
     r1 = title_style.box.inset_within_margin(inner)

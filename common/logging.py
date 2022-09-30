@@ -46,18 +46,15 @@ def configured_logger(name: str):
     return logging.getLogger(name)
 
 
-def message_parse(message: str, text: str, ancestors: str, line: int = None) -> str:
-    txt = f"{message}, but found '{text}'"
+def message_general(message: str, text: str, ancestors: str, line: int = None) -> str:
+    if message[-1] == '.':
+        message = message[:-1]
+    text = f"Warning: {message}, while processing '{text}'"
     if ancestors:
         text += f' in parse tree elements [{ancestors}]'
     if line is not None:
         text += f' at line {line}'
-    return txt
-
-
-def message_general(message: str, line: int = None) -> str:
-    if line is not None:
-        return f"{message} at line {line}. Ignoring the definition"
+    return text
 
 
 def message_syntax(owner: str, text: str, message: str, category: str) -> str:

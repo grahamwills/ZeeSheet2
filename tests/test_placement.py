@@ -134,7 +134,7 @@ class TestBlockPlacement(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.title = Run([Element('A simple title')])
+        cls.title = Item([Run([Element('A simple title')])])
         styles = Sheet().styles
         styles['default-block'] = Style('default-block').set('padding', '0').set('border', 'none')
         styles = make_complete_styles(styles)

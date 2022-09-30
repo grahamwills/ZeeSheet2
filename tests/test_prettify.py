@@ -39,7 +39,7 @@ class PrettifyTests(unittest.TestCase):
             """
                 hello
                 
-                -------
+                ----------------
                 
                 world
                   --

@@ -5,7 +5,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives, Directive
 
 from . import model, style
-from .model import SheetOptions, Section, Block, ContainerOptions
+from .model import SheetOptions, Section, Block, ContainerOptions, Item
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -128,22 +128,21 @@ class Prettify:
                              "columns title style title_style image image_mode image_width image_height image_anchor",
                              forced)
 
-    def append_item_rst(self, item: model.Item):
+    def append_item_rst(self, item: model.Item, prefix: str):
         if not item.children:
             return
-        txt = '- ' + item.children[0].to_rst(self.width, indent=2)
+        txt = prefix + item.children[0].to_rst(self.width, indent=len(prefix))
         self.append(txt)
 
         if len(item.children) > 1:
-            self.ensure_blank()
             for run in item.children[1:]:
-                txt = '  - ' + run.to_rst(self.width, indent=4)
+                txt = '  | ' + run.to_rst(self.width, indent=4)
                 self.append(txt.rstrip())
-            self.ensure_blank()
 
     def append_block_rst(self, block: model.Block, is_first: bool):
 
-        if not block.title and not block.children and block.options.image > 0:
+        block_items = block.children
+        if not block.title and not block_items and block.options.image > 0:
             # This is just an image, so we can represent it  easily
             self.append_image_block(block)
             return
@@ -156,32 +155,35 @@ class Prettify:
             self.current_block_options = block.options
 
         if block.title:
-            self.append(block.title.to_rst(self.width))
+            self.append_items([block.title], prefix='')
             self.ensure_blank()
 
-        if not block.children:
+        if not block_items:
             return
 
+        self.append_items(block_items, prefix='- ')
+
+    def append_items(self, items: list[Item], prefix: str):
         # Try to show as matrix of aligned cells
-        ncols = block.column_count()
+        ncols = max(len(i.children) for i in items)
+        indent = len(prefix)
 
         if ncols > 1:
             # Create a table of simple text representations and calculate the maximum widths of each column
-            table = [[run.to_rst().strip() for run in item.children] for item in block.children]
+            table = [[run.to_rst().strip() for run in item.children] for item in items]
             col_widths = [0] * ncols
             for row in table:
                 for c, txt in enumerate(row):
                     col_widths[c] = max(col_widths[c], len(txt))
             col_widths[-1] = 0  # stops it being left justified with trailing spaces
 
-            indent = 2  # leading '- '
             column_widths_except_last = sum(col_widths[:1])
             column_dividers = 3 * (ncols - 1)  # ' | ' between each column
             space_for_last = self.width - (indent + column_widths_except_last + column_dividers)
 
             # Require at least 8 characters for the last cell. This is an ad-hoc number
             if space_for_last >= 8:
-                for row, item in zip(table, block.children):
+                for row, item in zip(table, items):
                     row_parts = []
                     for i, txt in enumerate(row):
                         if i < ncols - 1 or len(txt) <= space_for_last:
@@ -191,13 +193,12 @@ class Prettify:
                             # Need to wrap the text onto the next line
                             txt = item.children[i].to_rst(space_for_last, indent=2).strip()
                             row_parts.append(txt)
-                    self.append(('- ' + ' | '.join(row_parts).rstrip()))
+                    self.append((prefix + ' | '.join(row_parts).rstrip()))
                 self.ensure_blank()
                 return
-
         # Could not fit onto one line; need to use the simple method
-        for item in block.children:
-            self.append_item_rst(item)
+        for item in items:
+            self.append_item_rst(item, prefix=prefix)
         self.ensure_blank()
 
     def append_image_block(self, block):
@@ -257,11 +258,7 @@ def description(comp: model.StructureUnit, short: bool = False) -> str:
 
 def prepare_for_visit(text: str) -> str:
     """ Solves common input formatting issues by modifying input"""
-
-    def _surrounded(match):
-        return '\n' + match.group(1) + '\n'
-
-    text = re.sub("^(-----*)\s*$", _surrounded, text, flags=re.MULTILINE)
+    text = re.sub("^(---*)\s*$", '\n----------------\n', text, flags=re.MULTILINE)
     return text
 
 
@@ -315,8 +312,7 @@ class Prettify2:
         if block.title:
             self.ensure_blank()
             # TODO: Title should be an item in the model
-            item = model.Item([block.title])
-            self.append_items([item], prefix='# ')
+            self.append_items([block.title], prefix='# ')
         elif not is_first:
             self.ensure_blank()
             self.append('#')

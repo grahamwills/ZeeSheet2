@@ -273,7 +273,7 @@ class Item(StructureUnit):
 @dataclass
 class Block(StructureUnit):
     FMT = FormatPieces('\u276e', ' ', '\u276f')
-    title: Run = field(default_factory=lambda: Run())
+    title: Item = field(default_factory=lambda: Item())
     children: List[Item] = field(default_factory=lambda: [Item()])
     options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='simple', style='default-block'))
 

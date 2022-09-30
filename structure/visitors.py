@@ -6,8 +6,7 @@ import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
-from common.logging import message_unknown_attribute, message_parse, message_bad_value, configured_logger, \
-    message_general
+from common.logging import message_unknown_attribute, message_bad_value, configured_logger, message_general
 from . import style
 from .model import *
 
@@ -19,10 +18,13 @@ IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference'
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
-NO_ACTION_TAGS = {'title', 'bullet_list', 'list_item', 'definition_list', 'term', 'emphasis', 'strong'}
+NO_ACTION_TAGS = {'title', 'bullet_list', 'list_item', 'definition_list', 'term', 'emphasis', 'strong', 'block_quote'}
 
 # These items as out ancestors determine that text is the title of a block
 BLOCK_TITLE_ANCESTRY = {'paragraph', 'section • paragraph', 'definition_list_item • term'}
+
+# System messages we can ignore
+IGNORE_SYSTEM_MESSAGES = {'Unexpected indentation.'}
 
 
 def _tag(node: docutils.nodes.Node):
@@ -192,6 +194,9 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         p = self.start(node, n=1)
         if p == '' or p == 'section':
             self._make_new_block()
+        elif p == 'block_quote':
+            # We don't care about block quotes -- their content is treated as if it were not quoted
+            pass
         elif p == 'list_item':
             if self._count_ancestors('list_item') > 1:
                 # New run within the item
@@ -204,7 +209,8 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def visit_system_message(self, node: docutils.nodes.system_message) -> None:
         # The departure will not be noted, so must not record this
         message = node.children[0].astext()
-        self.error(node, message)
+        if message not in IGNORE_SYSTEM_MESSAGES:
+            self.error(node, message)
 
         # No processing of children
         raise docutils.nodes.SkipChildren
@@ -225,10 +231,10 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def visit_Text(self, node: docutils.nodes.Text) -> None:
         if self._parent() == 'emphasis':
             s = 'emphasis'
-            p = self.start(node, skip_last=True)
+            p = self.start(node, skip_last=1)
         elif self._parent() == 'strong':
             s = 'strong'
-            p = self.start(node, skip_last=True)
+            p = self.start(node, skip_last=1)
         else:
             s = None
             p = self.start(node)
@@ -336,7 +342,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     # Other methods ####################################################################
 
-    def start(self, node: docutils.nodes.Node, n: int = 2, skip_last: bool = False) -> str:
+    def start(self, node: docutils.nodes.Node, n: int = 2, skip_last: int = 0) -> str:
         current = self._processing(n, skip_last=skip_last)
         self.process_stack.append(_tag(node))
         return current
@@ -350,11 +356,16 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def error(self, node: docutils.nodes.Node, message: str):
         ancestors = self._processing(n=5).strip()
         text = reprlib.repr(node.astext())
-        warnings.warn(message_parse(message, text, ancestors, line=_line_of(node)))
+        warnings.warn(message_general(message, text, ancestors, line=_line_of(node)))
 
-    def add_elements(self, elements, node, p):
+    def add_elements(self, elements: list[Element], node, p):
+        if 'block_quote' in p:
+            # Remove the quote from the list of parents and so treat the text as normal
+            # But we will then also need to add a space to separate items
+            p = self._processing(n=3, skip_last=1).replace('• block_quote ', '')
+            self.current_run.children.append(Element(' '))
         if p in BLOCK_TITLE_ANCESTRY:
-            self.current_block.title.children += elements
+            self.current_block.title.children[0].children += elements
         elif p == 'section • title':
             warnings.warn(message_general('Titles for sections are not supported', line=_line_of(node)))
         elif p == 'list_item • paragraph':
@@ -362,7 +373,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         else:
             self.error(node, 'Unexpected text encountered')
 
-    def _processing(self, n: int = 2, skip_last: bool = False):
+    def _processing(self, n: int = 2, skip_last: int = 0):
         """Text form of where we are in the processing tree"""
         if skip_last:
             return ' • '.join(self.process_stack[-n - 1:-1])
