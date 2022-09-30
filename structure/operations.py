@@ -311,7 +311,6 @@ class Prettify2:
     def process_block(self, block: model.Block, is_first: bool):
         if block.title:
             self.ensure_blank()
-            # TODO: Title should be an item in the model
             self.append_items([block.title], prefix='# ')
         elif not is_first:
             self.ensure_blank()

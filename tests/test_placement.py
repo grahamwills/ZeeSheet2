@@ -172,7 +172,7 @@ class TestBlockPlacement(unittest.TestCase):
 
         # Contents on the grid
         self.assertEqual(Point(0, 0), round(placed.child(1).child(0).location))
-        self.assertEqual(Point(160, 0), round(placed.child(1).child(1).location))
+        self.assertEqual(Point(148, 0), round(placed.child(1).child(1).location))
         self.assertEqual(Point(0, 13), round(placed.child(1).child(2).location))
-        self.assertEqual(Point(160, 13), round(placed.child(1).child(3).location))
+        self.assertEqual(Point(148, 13), round(placed.child(1).child(3).location))
         self.assertEqual(Point(0, 27), round(placed.child(1).child(4).location))

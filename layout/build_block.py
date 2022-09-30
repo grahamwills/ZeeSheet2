@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from copy import copy
 from functools import lru_cache
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 import layout.quality
 from common import Extent, Point, Spacing, Rect
@@ -133,22 +133,43 @@ def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[Place
 
 
 class BlockColumnPacker(ColumnPacker):
+    item_map: dict[Tuple[int, int], Run]
+    span_map: dict[Tuple[int, int], int]
+
     def __init__(self, bounds: Rect, block: Block, pdf: PDF):
         column_count = max(len(item.children) for item in block.children)
-        self.items = block.children
         self.pdf = pdf
         self.content_style = pdf.styles[block.options.style]
         super().__init__(bounds, len(block.children), column_count)
+
+        self.item_map = {}
+        self.span_map = {}
+
+        k = block.column_count()
+        for r, row in enumerate(block.children):
+            for c, item in enumerate(row):
+                self.item_map[(r, c)] = item
+                if item == row[-1]:
+                    # Last item fills to the end
+                    self.span_map[(r, c)] = k - c
+                else:
+                    self.span_map[(r, c)] = 1
 
     def margins_of_item(self, idx) -> Spacing:
         # All block items share common margins
         return self.content_style.box.padding
 
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
-        items = self.items[idx[0]]
-        if idx[1] < len(items.children):
-            return copy(build_run.place_run(items[idx[1]], extent, self.content_style, self.pdf))
-        else:
+        try:
+            item = self.item_map[idx]
+            return copy(build_run.place_run(item, extent, self.content_style, self.pdf))
+        except KeyError:
+            raise ItemDoesNotExistError()
+
+    def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
+        try:
+            return self.span_map[idx]
+        except KeyError:
             raise ItemDoesNotExistError()
 
 
@@ -156,4 +177,4 @@ def tiny_block() -> Block:
     """ Makes a small block to be added to a section when there are too few of them """
     options = ContainerOptions('none', style.StyleDefaults.hidden.name)
     item = Item([build_run.tiny_run()])
-    return Block(Run(), [item], options)
+    return Block(Item(), [item], options)

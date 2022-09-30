@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union, List
 
@@ -50,6 +49,10 @@ class ColumnPacker:
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
         """ Margin of an item indexed by a list index, or table-wise by (row, count)"""
+        raise NotImplementedError('This method must be defined by an inheriting class')
+
+    def span_of_item(self, item_index: Union[int, Tuple[int, int]]) -> int:
+        """ The number of columns spanned by this item. Defaults to 1 """
         raise NotImplementedError('This method must be defined by an inheriting class')
 
     def column_count_possibilities(self, defined: list[int, ...] = None, limit: int = 100) -> list[list[int, ...]]:
@@ -224,9 +227,17 @@ class ColumnPacker:
             max_row_height = bounds.bottom - top
             for col in range(0, self.k):
                 column_width = column_sizes[col]
-                cell_extent = Extent(column_width, max_row_height)
+                index = (row, col)
                 try:
-                    placed_cell = self.place_item((row, col), cell_extent)
+                    span = self.span_of_item(index)
+                    if span == 1:
+                        cell_extent = Extent(column_width, max_row_height)
+                    else:
+                        # Add up widths to find the correct column width (don't forget the gaps!)
+                        combined = sum(i for i in column_sizes[col:col + span]) + (span - 1) * col_gap
+                        cell_extent = Extent(combined, max_row_height)
+
+                    placed_cell = self.place_item(index, cell_extent)
                     cell_quality = placed_cell.quality
                     accumulated_error.unplaced += cell_quality.unplaced
                     accumulated_error.clipped += cell_quality.clipped
@@ -307,7 +318,5 @@ class ColumnPacker:
         LOGGER.info(f"Best placement is: {best.quality}")
         return best
 
-
-    def post_placement_modifications(self, columns:list[ColumnFit]) -> list[ColumnFit]:
+    def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
         return columns
-
