@@ -302,7 +302,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
                 definitions[oo[0]] = oo[1]
 
         # Find the options to set into
-        if node.name == 'page':
+        if node.name == 'sheet':
             _apply_option_definitions(node.name, definitions, self.sheet.options)
         elif node.name == 'section':
             _apply_option_definitions(node.name, definitions, self.section_options)

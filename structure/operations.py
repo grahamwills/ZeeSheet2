@@ -48,7 +48,7 @@ class SettingsDirectiveHandler(Directive):
 
 # Register our directives
 directives.register_directive('styles', StylesDirectiveHandler)
-directives.register_directive('page', SettingsDirectiveHandler)
+directives.register_directive('sheet', SettingsDirectiveHandler)
 directives.register_directive('section', SettingsDirectiveHandler)
 directives.register_directive('block', SettingsDirectiveHandler)
 
@@ -120,7 +120,7 @@ class Prettify:
             self.ensure_blank()
 
     def append_sheet_options(self, options: SheetOptions):
-        self._append_options('page', options, SheetOptions(),
+        self._append_options('sheet', options, SheetOptions(),
                              "width height style image image_mode image_width image_height image_anchor debug", False)
 
     def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions, forced: bool):

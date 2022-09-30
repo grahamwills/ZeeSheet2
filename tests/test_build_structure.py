@@ -51,14 +51,10 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual("❮name ~ [first] [second]❯ ❮address ~ [street] [city] [country]❯", description(sheet))
 
     def test_section_titled(self):
-        with warnings.catch_warnings(record=True) as warning_messages:
-            warnings.simplefilter('default', Warning)
-            source = self.items['Sections'][0]
-            sheet = main.Document(source).sheet()
-            self.assertEqual("❮item ~ [a] [b]❯ --- ❮another ~❯ ❮yet another ~❯", description(sheet))
-            self.assertEqual(2, len(warning_messages))
-            self.assertTrue(str(warning_messages[0].message).startswith('Titles for sections are not supported'))
-            self.assertTrue(str(warning_messages[1].message).startswith('Titles for sections are not supported'))
+        warnings.simplefilter('default', Warning)
+        source = self.items['Sections'][0]
+        sheet = main.Document(source).sheet()
+        self.assertEqual("❮item ~ [a] [b]❯ --- ❮another ~❯ ❮yet another ~❯", description(sheet))
 
     def test_bold_and_italic(self):
         source = self.items['Bold and Italic'][0]
