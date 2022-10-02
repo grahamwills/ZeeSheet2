@@ -367,7 +367,8 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         if p in BLOCK_TITLE_ANCESTRY:
             self.current_block.title.children[0].children += elements
         elif p == 'section • title':
-            warnings.warn(message_general('Titles for sections are not supported', line=_line_of(node)))
+            warnings.warn(message_general('Titles for sections are not supported',
+                                          text=node.astext(), ancestors=p, line=_line_of(node)))
         elif p == 'list_item • paragraph':
             self.current_run.children += elements
         else:

@@ -29,7 +29,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
         # warnings.warn(f"Border style '{block.options.title}' is not yet supported, treating as 'simple'")
         pass
 
-    title_style = pdf.styles[block.options.title_style]
+    title_style = pdf.style(block.options.title_style, 'default-title')
 
     title_bounds = title_style.box.inset_within_padding(inner)
     placed = copy(build_run.place_run(block.title.children[0], title_bounds.extent, title_style, pdf))
@@ -64,7 +64,7 @@ def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf:
 def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]:
     """ Margins have already been inset when we get into here"""
 
-    main_style = pdf.styles[block.options.style]
+    main_style = pdf.style(block.options.style, 'default-block')
     container = Rect(0, size.width, 0, size.height)
 
     image = pdf.get_image(block.options.image)
@@ -139,7 +139,7 @@ class BlockColumnPacker(ColumnPacker):
     def __init__(self, bounds: Rect, block: Block, pdf: PDF):
         column_count = max(len(item.children) for item in block.children)
         self.pdf = pdf
-        self.content_style = pdf.styles[block.options.style]
+        self.content_style = pdf.style(block.options.style)
         super().__init__(bounds, len(block.children), column_count)
 
         self.item_map = {}

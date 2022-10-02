@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 import zipfile
 from dataclasses import dataclass
 from functools import lru_cache
@@ -9,9 +10,12 @@ from typing import Dict, Any, Iterable, Tuple, List
 
 from reportlab.lib import fonts
 from reportlab.pdfbase import pdfmetrics as metrics, pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 
+import common
 from common.textual import NGram
+
+LOGGER = common.configured_logger(__name__)
 
 FONT_DIR = Path(__file__).parent / 'resources' / 'google-fonts'
 
@@ -26,11 +30,17 @@ class FontFamily:
     category: str
     faces: Dict[str, str]
 
-    def font_file(self, is_bold, is_italic) -> str:
+    def ps_name(self, is_bold, is_italic) -> str:
+        """ Returns the bane by which it is known internally (file name if not built in)"""
+        if self.category == 'builtin':
+            return fonts.tt2ps(self.name, 1 if is_bold else 0, 1 if is_italic else 0)
+
         faces = self.faces
         if len(faces) == 1:
             # Only one font, so that must be used for everything
             return list(faces.values())[0]
+
+        # See which of these options is best
 
         if not is_bold and not is_italic:
             if 'Regular' in faces:
@@ -41,13 +51,23 @@ class FontFamily:
                 raise KeyError('Cannot find a regular font!')
 
         possibles = list(faces.keys())
-        if is_bold:
-            possibles = [p for p in possibles if 'Bold' in p or 'Black' in p]
-        if is_italic:
-            possibles = [p for p in possibles if 'Italic' in p]
+        bold_possibles = {p for p in possibles if 'Bold' in p or 'Black' in p}
+        italic_possibles = {p for p in possibles if 'Italic' in p}
+        if is_bold and is_italic:
+            possibles = bold_possibles & italic_possibles
+        elif is_bold:
+            possibles = bold_possibles - italic_possibles
+        elif is_italic:
+            possibles = italic_possibles - bold_possibles
         if not possibles:
-            return self.font_file(False, False)
+            warnings.warn(f"For font {self.name}, could not find face with bold={is_bold} and italic={is_italic}. "
+                          f"Options are {sorted(faces.keys())}")
+            return self.ps_name(False, False)
         # Shortest name that qualifies (note that 'bold' is thus preferred to 'black')
+        mediums = {p for p in possibles if 'Medium' in p}
+        if mediums:
+            possibles = mediums
+
         return faces[min(possibles, key=lambda x: len(x))]
 
     def __lt__(self, other):
@@ -56,9 +76,61 @@ class FontFamily:
 
     def contains_standard_faces(self) -> bool:
         """ Returns true if it has regular, bold, italic, and boldItalic"""
-        files = {self.font_file(False, False), self.font_file(False, True),
-                 self.font_file(True, False), self.font_file(True, True)}
+        files = {self.ps_name(False, False), self.ps_name(False, True),
+                 self.ps_name(True, False), self.ps_name(True, True)}
         return len(files) == 4
+
+    def _register_font(self, zipfile_name, is_bold, is_italic) -> str:
+        name = self.ps_name(is_bold, is_italic)
+        if self.category == 'builtin':
+            return name
+        with zipfile.ZipFile(zipfile_name.absolute(), 'r') as z:
+            file = z.open(name + '.ttf')
+            font = TTFont(name, file)
+            pdfmetrics.registerFont(font)
+            return font.fontName
+
+    def register_single_font(self, ps_name, face):
+        if self.category == 'builtin':
+            return
+        try:
+            pdfmetrics.getFont(ps_name)
+        except KeyError:
+            zf = _zipfile(self.name)
+            with zipfile.ZipFile(zf.absolute(), 'r') as z:
+                file = z.open(ps_name + '.ttf')
+                font = TTFont(ps_name, file)
+                # My conversion of variable google fonts did not do a good job of setting thr face names in the files,
+                # so they need to be fixed up here
+                font.face.familyName = TTFNameBytes(face.encode('utf-8'))
+                font.face.styleName = TTFNameBytes(ps_name.replace('-', ' ').encode('utf-8'))
+                font.face.fullName = font.face.familyName
+                font.face.name = font.face.familyName
+
+                LOGGER.debug(f"Registering {ps_name}")
+                pdfmetrics.registerFont(font)
+                return font.fontName
+
+    def register_with_reportlab(self):
+        zf = _zipfile(self.name)
+        regular = self._register_font(zf, False, False)
+        bold = self._register_font(zf, True, False)
+        italic = self._register_font(zf, False, True)
+        boldItalic = self._register_font(zf, True, True)
+        pdfmetrics.registerFontFamily(self.name, normal=regular, bold=bold, italic=italic, boldItalic=boldItalic)
+
+    def face(self, bold: bool, italic: bool) -> str:
+        if bold and italic:
+            return 'BoldItalic'
+        elif bold:
+            return 'Bold'
+        elif italic:
+            return 'Italic'
+        else:
+            return 'Regular'
+
+    def __str__(self):
+        return self.name + '(' + self.category + ')'
 
 
 @dataclass
@@ -68,12 +140,15 @@ class Font:
     family: FontFamily
     face: str
     size: float
-    ascent: float
-    descent: float
+    ascent: float = None
+    descent: float = None
     _font: pdfmetrics.Font = None
 
     def __post_init__(self):
         self._font = pdfmetrics.getFont(self.name)
+        a, d = metrics.getAscentDescent(self.name, self.size)
+        self.ascent = abs(a)
+        self.descent = abs(d)
 
     @lru_cache(maxsize=10000)
     def width(self, text: str) -> float:
@@ -96,8 +171,11 @@ class Font:
         if bold is None and italic is None:
             return self
         return self.library.get_font(self.family.name, self.size,
-                                     'Bold' in self.face if bold is None else bold,
-                                     'Italic' in self.face if italic is None else italic)
+                                     ('Bold' in self.face) if bold is None else bold,
+                                     ('Italic' in self.face) if italic is None else italic)
+
+    def __str__(self):
+        return f"{self.name}:{self.size}({self.family}, {self.face})"
 
     def __hash__(self):
         return hash((self.name, self.size))
@@ -141,62 +219,31 @@ class FontLibrary():
         return self.content[_key(item)]
 
     @lru_cache
-    def get_font(self, familyName: str, size: float, bold: bool = False, italic: bool = False) -> Font:
+    def get_font(self, family_name: str, size: float, bold: bool = False, italic: bool = False) -> Font:
         """ Registers the font family if needed and returns the font requested"""
 
-        try:
-            # Family and types
-            family = self[familyName]
-            if family.category == 'builtin':
-                name = fonts.tt2ps(family.name, 1 if bold else 0, 1 if italic else 0)
-            else:
-                name = family.font_file(bold, italic)
-
-            if bold and italic:
-                face = 'BoldItalic'
-            elif bold:
-                face = 'Bold'
-            elif italic:
-                face = 'Italic'
-            else:
-                face = 'Regular'
-        except KeyError:
-            name = None
-
-        if not name:
-            # Maybe it's an individual font name, not a family
-            family, face = self._search_for_font_by_name(familyName)
-            name = family.faces[face]
+        LOGGER.debug(f"Looking for font: {family_name}")
 
         try:
-            a, d = metrics.getAscentDescent(name, size)
+            family = self[family_name]
+            face = family.face(bold, italic)
+            name = family.ps_name(bold, italic)
+            family.register_with_reportlab()
         except KeyError:
-            zipfile_name = self._zipfile(name)
-            with zipfile.ZipFile(zipfile_name.absolute(), 'r') as z:
-                file = z.open(name + '.ttf')
-                font = TTFont(name, file)
-            pdfmetrics.registerFont(font)
-            a, d = metrics.getAscentDescent(name, size)
+            # The family name could actually be a name including fact like 'Generic-ExtraBold'; search for that
+            name = family_name
+            family, face = self._search_for_font_by_name(name)
+            family.register_single_font(name, face)
+            LOGGER.debug(f"Registering family: {name}")
+            pdfmetrics.registerFontFamily(name, name, name, name, name)
 
-        return Font(self, name, family, face, size, abs(a), abs(d))
-
-    @staticmethod
-    def _zipfile(name):
-        s = name.lower()
-        if re.match(r'Noto Sans ..-.*', name):
-            stem = 'noto-sans-xx'
-        elif re.match(r'Noto Serif ..-.*', name):
-            stem = 'noto-serif-xx'
-        elif s[0] == 's':
-            stem = 'sa-se' if s[1] < 'h' else 'sh-sz'
-        else:
-            stem = s[0]
-        return FONT_DIR / ('fonts-' + stem + '.zip')
+        font = Font(self, name, family, face, size)
+        LOGGER.debug(f"Created font: {font}")
+        return font
 
     def families(self) -> Iterable[FontFamily]:
         return self.content.values()
 
-    @lru_cache
     def similar_names(self, family_name: str) -> List[str]:
         N = 3
         target = NGram(family_name.lower(), N)
@@ -215,7 +262,6 @@ class FontLibrary():
                 result.append(c[1])
         return result
 
-    @lru_cache
     def _search_for_font_by_name(self, fontName) -> Tuple[FontFamily, str]:
         name_key = _key(fontName)
         for k, family in self.content.items():
@@ -225,3 +271,17 @@ class FontLibrary():
                     if _key(face) == face_key:
                         return family, face
         raise KeyError(fontName)
+
+
+def _zipfile(name):
+    """ Return the zipfile containing the info """
+    s = name.lower()
+    if re.match(r'Noto Sans ..-.*', name):
+        stem = 'noto-sans-xx'
+    elif re.match(r'Noto Serif ..-.*', name):
+        stem = 'noto-serif-xx'
+    elif s[0] == 's':
+        stem = 'sa-se' if s[1] < 'h' else 'sh-sz'
+    else:
+        stem = s[0]
+    return FONT_DIR / ('fonts-' + stem + '.zip')

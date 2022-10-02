@@ -76,7 +76,7 @@ class PDF(canvas.Canvas):
         self.font_lib = font_lib
         self.setLineJoin(1)
         self.setLineCap(1)
-        self.styles = styles
+        self._styles = styles
         self.images = images
         self.debug = debug
 
@@ -136,7 +136,7 @@ class PDF(canvas.Canvas):
         if font.name not in self.acroForm.formFontNames:
             if font.family.category == 'serif':
                 fname = 'Times-Roman'
-                font = self.font_lib.get_font('Times', font.size*1.1)
+                font = self.font_lib.get_font('Times', font.size * 1.1)
                 height = font.line_spacing
             else:
                 fname = 'Helvetica'
@@ -213,6 +213,16 @@ class PDF(canvas.Canvas):
         self.translate(bounds.left, bounds.top)
         self.transform(1, 0, 0, -1, 0, bounds.height)
         self.drawImage(ImageReader(image), 0, 0, bounds.width, bounds.height)
+
+    def style(self, style_name: str, default='default'):
+        try:
+            return self._styles[style_name]
+        except KeyError:
+            warnings.warn(f"Style '{style_name}' was not defined, using '{default}' instead")
+            try:
+                return self._styles[default]
+            except:
+                raise RuntimeError(f"Default style '{default}' was not found")
 
 
 def _adapt_color_value(c: Color, value: float, alpha: float = 1.0) -> Color:

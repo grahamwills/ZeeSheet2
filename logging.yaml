@@ -40,12 +40,12 @@ loggers:
 
   layout:
     level: INFO
-    handlers: [ all, file ]
+    handlers: [ important, file ]
     propagate: no
 
   generate:
     level: DEBUG
-    handlers: [ important, file ]
+    handlers: [ all, file ]
     propagate: no
 
   PIL.rst:

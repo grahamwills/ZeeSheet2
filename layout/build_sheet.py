@@ -23,7 +23,7 @@ class SheetPacker(SectionPacker):
 
 def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     extent = Extent(sheet.options.width, sheet.options.height)
-    sheet_style = pdf.styles[sheet.options.style]
+    sheet_style = pdf.style(sheet.options.style, 'default-sheet')
     page = Rect(0, extent.width, 0, extent.height)
     content_bounds = sheet_style.box.inset_within_padding(page)
 

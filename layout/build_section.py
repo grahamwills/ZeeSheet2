@@ -9,7 +9,7 @@ from structure import StructureUnit, Section
 
 
 def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[PlacedContent]:
-    section_style = pdf.styles[section.options.style]
+    section_style = pdf.style(section.options.style, 'default-section')
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
 
@@ -43,7 +43,7 @@ class SectionPacker(ColumnPacker):
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
         style_name = self.items[item_index].options.style
-        return self.pdf.styles[style_name].box.margin
+        return self.pdf.style(style_name, 'default-block').box.margin
 
     def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
         """ If images have flexible sizes, reduce them to match heights if that helps """

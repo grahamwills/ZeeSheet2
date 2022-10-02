@@ -1,3 +1,4 @@
+import itertools
 import unittest
 import zipfile
 
@@ -42,14 +43,14 @@ class TestFonts(unittest.TestCase):
 
     def test_library_has_regular_font_for_all(self):
         for family in self.LIBRARY.content.values():
-            font_file = family.font_file(False, False)
+            font_file = family.ps_name(False, False)
             self.assertIsNotNone(font_file, 'Searching for regular font for: ' + family.name)
 
     def test_library_has_many_bolds(self):
         different = 0
         for family in self.LIBRARY.content.values():
-            reg_file = family.font_file(False, False)
-            bold_file = family.font_file(True, False)
+            reg_file = family.ps_name(False, False)
+            bold_file = family.ps_name(True, False)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 625, f'Only found {different} bold version')
@@ -57,8 +58,8 @@ class TestFonts(unittest.TestCase):
     def test_library_has_several_italics(self):
         different = 0
         for family in self.LIBRARY.content.values():
-            reg_file = family.font_file(False, False)
-            bold_file = family.font_file(False, True)
+            reg_file = family.ps_name(False, False)
+            bold_file = family.ps_name(False, True)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 260, f'Only found {different} italic version')
@@ -66,8 +67,8 @@ class TestFonts(unittest.TestCase):
     def test_library_has_several_bold_italics(self):
         different = 0
         for family in self.LIBRARY.content.values():
-            reg_file = family.font_file(False, False)
-            bold_file = family.font_file(True, True)
+            reg_file = family.ps_name(False, False)
+            bold_file = family.ps_name(True, True)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 210, f'Only found {different} bold italic version')
@@ -120,3 +121,13 @@ class TestFonts(unittest.TestCase):
     def test_similar_names(self):
         self.assertEqual(['Baskervville', 'Libre Baskerville'], self.LIBRARY.similar_names('Baskerville'))
         self.assertEqual(['Freehand'], self.LIBRARY.similar_names('Fredhand'))
+
+    def _faces(self, family:str )->str:
+        fonts = [self.LIBRARY.get_font(family, 12, b, i) for i in [False, True] for b in [False, True]]
+        return ' • '.join(f.name.replace(family + '-', '') for f in fonts)
+
+    def test_font_versions(self):
+        self.assertEqual('Regular • Bold • MediumItalic • BoldItalic', self._faces('Montserrat'))
+
+
+
