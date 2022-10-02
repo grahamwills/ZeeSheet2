@@ -90,11 +90,12 @@ class FontFamily:
             pdfmetrics.registerFont(font)
             return font.fontName
 
-    def register_single_font(self, ps_name, face):
+    def register_single_font(self, ps_name):
         if self.category == 'builtin':
             return
         try:
             pdfmetrics.getFont(ps_name)
+            return ps_name
         except KeyError:
             zf = _zipfile(self.name)
             with zipfile.ZipFile(zf.absolute(), 'r') as z:
@@ -102,21 +103,21 @@ class FontFamily:
                 font = TTFont(ps_name, file)
                 # My conversion of variable google fonts did not do a good job of setting thr face names in the files,
                 # so they need to be fixed up here
-                font.face.familyName = TTFNameBytes(face.encode('utf-8'))
-                font.face.styleName = TTFNameBytes(ps_name.replace('-', ' ').encode('utf-8'))
-                font.face.fullName = font.face.familyName
-                font.face.name = font.face.familyName
+                full_name = TTFNameBytes(ps_name.replace('-', ' ').encode('utf-8'))
+                font.face.familyName = full_name
+                font.face.styleName = full_name
+                font.face.fullName = full_name
+                font.face.name = full_name
 
                 LOGGER.debug(f"Registering {ps_name}")
                 pdfmetrics.registerFont(font)
                 return font.fontName
 
     def register_with_reportlab(self):
-        zf = _zipfile(self.name)
-        regular = self._register_font(zf, False, False)
-        bold = self._register_font(zf, True, False)
-        italic = self._register_font(zf, False, True)
-        boldItalic = self._register_font(zf, True, True)
+        regular = self.register_single_font(self.ps_name(False, False))
+        bold = self.register_single_font(self.ps_name (True, False))
+        italic = self.register_single_font(self.ps_name ( False, True))
+        boldItalic = self.register_single_font(self.ps_name (True, True))
         pdfmetrics.registerFontFamily(self.name, normal=regular, bold=bold, italic=italic, boldItalic=boldItalic)
 
     def face(self, bold: bool, italic: bool) -> str:
@@ -233,7 +234,7 @@ class FontLibrary():
             # The family name could actually be a name including fact like 'Generic-ExtraBold'; search for that
             name = family_name
             family, face = self._search_for_font_by_name(name)
-            family.register_single_font(name, face)
+            family.register_single_font(name)
             LOGGER.debug(f"Registering family: {name}")
             pdfmetrics.registerFontFamily(name, name, name, name, name)
 

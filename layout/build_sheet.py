@@ -1,3 +1,4 @@
+import warnings
 from copy import copy
 from typing import Dict, Union, Tuple, Optional, Iterable
 
@@ -30,7 +31,7 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     # Make the content
     sp = SheetPacker(content_bounds, sheet.children, sheet.options.columns, pdf)
     content = sp.place_in_columns()
-    content.extent =extent
+    content.extent = extent
 
     # Make the frame
     frame_bounds = sheet_style.box.outset_to_border(content.bounds)
@@ -44,7 +45,8 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
 
 def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
     base = source.copy()
-    for s in [style.StyleDefaults.default, style.StyleDefaults.title, style.StyleDefaults.block, style.StyleDefaults.section,
+    for s in [style.StyleDefaults.default, style.StyleDefaults.title, style.StyleDefaults.block,
+              style.StyleDefaults.section,
               style.StyleDefaults.sheet, style.StyleDefaults.hidden, style.StyleDefaults.image]:
         if s.name in base:
             # This style has been redefined, so we need to juggle names
@@ -74,5 +76,12 @@ def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
     if parent_style_name is None and s.name != 'default' and s.name != '#default':
         parent_style_name = 'default'
     if parent_style_name:
-        yield from ancestors_descending(base, base[parent_style_name])
+        try:
+            parent = base[parent_style_name]
+        except KeyError:
+            # Check inheritance parents exist
+            warnings.warn(f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}. "
+                          f"Using 'default' as the parent instead")
+            parent = base['default']
+        yield from ancestors_descending(base, parent)
     yield s
