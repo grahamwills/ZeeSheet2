@@ -75,7 +75,7 @@ def validate_value(key: str, value: str, possibles: Iterable[str]):
 class FontStyle:
     family: str = None
     size: float = None
-    style: str = None
+    face: str = None
 
     def set(self, key: str, value):
         FACES = ('normal', 'regular', 'bold', 'italic', 'bolditalic')
@@ -84,10 +84,10 @@ class FontStyle:
         elif key == 'size':
             self.size = float(value)
         elif value is None and key.lower() in FACES:
-            self.style = key.lower()
+            self.face = key.lower()
         elif key in ['style', 'face']:
             validate_value(key, value, FACES)
-            self.style = value.lower()
+            self.face = value.lower()
         else:
             raise AttributeError(key)
 
@@ -96,16 +96,16 @@ class FontStyle:
             parts.append(f'font-family:{_q(self.family)}')
         if self.size is not None:
             parts.append(f'font-size:{num2str(self.size)}')
-        if self.style is not None:
-            parts.append(f'font-style:{self.style}')
+        if self.face is not None:
+            parts.append(f'font-style:{self.face}')
 
     @property
     def is_bold(self):
-        return 'bold' in self.style
+        return 'bold' in self.face
 
     @property
     def is_italic(self):
-        return 'italic' in self.style
+        return 'italic' in self.face
 
 
 @dataclass
