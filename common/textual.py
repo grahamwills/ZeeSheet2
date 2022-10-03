@@ -81,8 +81,12 @@ def to_str(v: Any, places: int = 3):
         pass
     if isinstance(v, str):
         return v
-    if isinstance(v, Iterable):
-        return ', '.join(to_str(x, places) for x in v)
+    if isinstance(v, tuple):
+        return '(' + ', '.join(to_str(x, places) for x in v) + ')'
+    if isinstance(v, list):
+        return '[' + ', '.join(to_str(x, places) for x in v) + ']'
+    if isinstance(v, set):
+        return '{' + ', '.join(to_str(x, places) for x in v) + '}'
 
     return str(v)
 

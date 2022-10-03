@@ -12,7 +12,7 @@ from structure import StructureUnit, Section
 LOGGER = common.configured_logger(__name__)
 
 
-def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[PlacedContent]:
+def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     section_style = pdf.style(section.options.style, 'default-section')
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)

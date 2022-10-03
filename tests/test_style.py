@@ -30,7 +30,7 @@ class TestStyle(TestCase):
 
     def test_to_definition_default(self):
         self.assertEqual('text-color:auto text-opacity:1 text-align:left text-indent:0 '
-                         'font-family:Helvetica font-size:12 font-style:normal '
+                         'font-family:Helvetica font-size:12 font-face:Regular '
                          'border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
                          'margin:0 padding:2', StyleDefaults.default.to_definition())
@@ -58,7 +58,7 @@ class TestStyle(TestCase):
         style = Style('test')
         self.assertEqual('font-size:1', style.set('font-size', '1.0').to_definition())
         self.assertEqual('font-size:2', style.set('fontSize', '2').to_definition())
-        self.assertEqual('font-size:2 font-style:bold', style.set('bold', None).to_definition())
+        self.assertEqual('font-size:2 font-face:bold', style.set('bold', None).to_definition())
 
         style = Style('test')
         self.assertEqual('text-align:right', style.set('text-align', 'right').to_definition())

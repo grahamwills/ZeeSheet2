@@ -48,8 +48,12 @@ class FontFamily:
                 return a
 
         if key == 'regular':
+            if len(self.faces) == 1:
+                return tuple(self.faces.keys())[0]
             if 'Medium' in self.faces:
                 return 'Medium'
+            if 'Light' in self.faces:
+                    return 'Light'
             else:
                 raise RuntimeError(f"Family '{self.name}' did not contain a regular font")
         if key == 'bold':
@@ -65,6 +69,12 @@ class FontFamily:
 
     def internal_font_name(self, face: str) -> str:
         return self.faces[face]
+
+    def contains_standard_faces(self):
+        return 'BoldItalic' in self.faces \
+               and ('Italic' in self.faces or 'MediumItalic' in self.faces) \
+               and ('Bold' in self.faces or 'Black' in self.faces) \
+               and ('Regular' in self.faces or 'Medium' in self.faces)
 
 
 @dataclass

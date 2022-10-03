@@ -87,7 +87,7 @@ class FontStyle:
             self.face = key.lower()
         elif key in ['style', 'face']:
             # Too many face options to validate
-            self.face = value.lower()
+            self.face = value
         else:
             raise AttributeError(key)
 
@@ -97,7 +97,7 @@ class FontStyle:
         if self.size is not None:
             parts.append(f'font-size:{num2str(self.size)}')
         if self.face is not None:
-            parts.append(f'font-style:{self.face}')
+            parts.append(f'font-face:{self.face}')
 
     @property
     def is_bold(self):

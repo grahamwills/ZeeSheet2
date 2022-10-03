@@ -1,4 +1,3 @@
-import itertools
 import unittest
 import zipfile
 
@@ -29,29 +28,27 @@ class TestFonts(unittest.TestCase):
         self.assertAlmostEqual(14.42, info.ascent, places=2)
         self.assertAlmostEqual(3.61, info.descent, places=2)
         self.assertAlmostEqual(50.11, info.width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.modify(bold=True).width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.modify(italic=True).width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.modify(italic=True, bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(50.11, info.modify('strong').width('hello world'), places=2)
+        self.assertAlmostEqual(50.11, info.modify('emphasis').width('hello world'), places=2)
 
     def test_font_with_multiple_single_files(self):
         info = self.LIBRARY.get_font('Arvo', 14)
         self.assertAlmostEqual(10.64, info.ascent, places=2)
         self.assertAlmostEqual(3.22, info.descent, places=2)
         self.assertAlmostEqual(77.20, info.width('hello world'), places=2)
-        self.assertAlmostEqual(83.54, info.modify(bold=True).width('hello world'), places=2)
-        self.assertAlmostEqual(77.69, info.modify(italic=True).width('hello world'), places=2)
-        self.assertAlmostEqual(81.49, info.modify(italic=True, bold=True).width('hello world'), places=2)
+        self.assertAlmostEqual(83.54, info.modify('strong').width('hello world'), places=2)
+        self.assertAlmostEqual(77.69, info.modify('emphasis').width('hello world'), places=2)
 
     def test_library_has_regular_font_for_all(self):
         for family in self.LIBRARY._families.values():
-            font_file = family.closest_face_to(False, False)
+            font_file = family.match_face_name('regular')
             self.assertIsNotNone(font_file, 'Searching for regular font for: ' + family.name)
 
     def test_library_has_many_bolds(self):
         different = 0
         for family in self.LIBRARY._families.values():
-            reg_file = family.closest_face_to(False, False)
-            bold_file = family.closest_face_to(True, False)
+            reg_file = family.match_face_name('regular')
+            bold_file = family.match_face_name('bold')
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 625, f'Only found {different} bold version')
@@ -59,8 +56,8 @@ class TestFonts(unittest.TestCase):
     def test_library_has_several_italics(self):
         different = 0
         for family in self.LIBRARY._families.values():
-            reg_file = family.closest_face_to(False, False)
-            bold_file = family.closest_face_to(False, True)
+            reg_file = family.match_face_name('regular')
+            bold_file = family.match_face_name('italic')
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 260, f'Only found {different} italic version')
@@ -68,8 +65,8 @@ class TestFonts(unittest.TestCase):
     def test_library_has_several_bold_italics(self):
         different = 0
         for family in self.LIBRARY._families.values():
-            reg_file = family.closest_face_to(False, False)
-            bold_file = family.closest_face_to(True, True)
+            reg_file = family.match_face_name('regular')
+            bold_file = family.match_face_name('boldItalic')
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 210, f'Only found {different} bold italic version')
@@ -79,13 +76,12 @@ class TestFonts(unittest.TestCase):
             self.assertTrue(len(self.LIBRARY[family.name].faces) > 0)
 
     def test_get_font_by_full_name(self):
-        f = self.LIBRARY.get_font('Noto Serif Display BoldItalic', 12)
+        f = self.LIBRARY.get_font('Noto Serif Display', 12, 'BoldItalic')
         self.assertEqual('Noto Serif Display-BoldItalic', f.name)
 
     def test_font_found_by_name_has_other_faces(self):
-        f1 = self.LIBRARY.get_font('Georama-Bold', 12)
-        self.assertEqual('Georama-Regular', f1.modify(bold=False).name)
-        self.assertEqual('Georama-BoldItalic', f1.modify(italic=True).name)
+        f1 = self.LIBRARY.get_font('Georama', 12, 'bold')
+        self.assertEqual('Georama-BoldItalic', f1.modify('emphasis').name)
 
     def test_all_fonts_exist(self):
         all_names = []
@@ -123,12 +119,9 @@ class TestFonts(unittest.TestCase):
         self.assertEqual(['Baskervville', 'Libre Baskerville'], self.LIBRARY.similar_names('Baskerville'))
         self.assertEqual(['Freehand'], self.LIBRARY.similar_names('Fredhand'))
 
-    def _faces(self, family:str )->str:
-        fonts = [self.LIBRARY.get_font(family, 12, b, i) for i in [False, True] for b in [False, True]]
+    def _faces(self, family: str) -> str:
+        fonts = [self.LIBRARY.get_font(family, 12, face) for face in 'Regular Bold Italic BoldItalic'.split()]
         return ' • '.join(f.name.replace(family + '-', '') for f in fonts)
 
     def test_font_versions(self):
         self.assertEqual('Regular • Bold • MediumItalic • BoldItalic', self._faces('Montserrat'))
-
-
-
