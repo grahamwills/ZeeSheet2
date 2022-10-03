@@ -309,7 +309,6 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
     content.extent = image_bounds.extent
     content.location = Point(content.location.x, 0)
-    LOGGER.error(f"{bounds} -> {image_bounds}, err={content.quality}")
     return content
 
 
