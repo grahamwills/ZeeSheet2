@@ -4,7 +4,7 @@ import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from reportlab.lib.colors import toColor
 
@@ -15,6 +15,7 @@ from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
 from layout.quality import PlacementQuality
 from structure import ImageDetail
+from structure.model import SheetOptions, ContainerOptions
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -262,12 +263,12 @@ class PlacedImageContent(PlacedContent):
 
         return Rect(x, x + width, y, y + height)
 
-    def shrink_to_fit(self, bottom:float) -> float:
+    def shrink_to_fit(self, bottom: float) -> float:
         dy = self.bounds.bottom - bottom
         self.extent = self.extent - Extent(0, dy)
-        self.quality = layout.quality.for_image(self.quality.target, self.mode, self.desired, self.image_bounds(), self.bounds)
+        self.quality = layout.quality.for_image(self.quality.target, self.mode, self.desired, self.image_bounds(),
+                                                self.bounds)
         return dy
-
 
     def _draw(self, pdf: PDF):
         pdf.draw_image(self.image.data, self.image_bounds())
@@ -279,7 +280,24 @@ class PlacedImageContent(PlacedContent):
         return 'Image#' + str(self.image.index)
 
 
-def make_frame(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
+def make_frame(bounds: Rect, style: Style,
+               options: Union[ContainerOptions, SheetOptions], pdf: PDF) -> Optional[PlacedContent]:
+    box = make_frame_box(bounds, style)
+    if options.image:
+        im = pdf.get_image(options.image)
+        image = make_image(im, bounds, options.image_mode, options.image_width,
+                           options.image_height, options.image_anchor, force_to_top=False)
+        if box:
+            return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
+        else:
+            return image
+    elif box:
+        return box
+    else:
+        return None
+
+
+def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
     s = style.box
     has_background = s.color != 'none' and s.opacity > 0
     has_border = s.border_color != 'none' and s.border_opacity > 0 and s.width > 0
@@ -293,7 +311,7 @@ def make_frame(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
 
 
 def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height: float,
-               anchor: str) -> PlacedImageContent:
+               anchor: str, force_to_top:bool) -> PlacedImageContent:
     # Ensure width and height are defined
     aspect = image.height / image.width
     if not width and not height:
@@ -307,8 +325,12 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     content = PlacedImageContent(image, Extent(width, height), mode, anchor, bounds)
     image_bounds = content.image_bounds()
     content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
-    content.extent = image_bounds.extent
-    content.location = Point(content.location.x, 0)
+    if force_to_top:
+        # We do this when it is the only content of a block as we don't want that extra space on top
+        content.location = Point(content.location.x, 0)
+        content.extent = image_bounds.extent
+    else:
+        content.extent=bounds.extent
     return content
 
 

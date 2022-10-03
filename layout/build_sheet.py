@@ -34,8 +34,8 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     content.extent = extent
 
     # Make the frame
-    frame_bounds = sheet_style.box.outset_to_border(content.bounds)
-    frame = make_frame(frame_bounds, sheet_style)
+    frame_bounds = sheet_style.box.inset_within_margin(page)
+    frame = make_frame(frame_bounds, sheet_style, sheet.options, pdf)
     if frame:
         # Just copy the quality of the content
         content = PlacedGroupContent.from_items([frame, content], content.quality)

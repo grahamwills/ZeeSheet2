@@ -93,8 +93,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
-        placed_children = make_image(image, item_bounds,
-                                     opt.image_mode, opt.image_width, opt.image_height, opt.image_anchor)
+        placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
+                                     opt.image_anchor, force_to_top=True)
 
     locate_title(title, outer, placed_children.bounds, pdf)
 
@@ -105,7 +105,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     if main_style.box.has_border():
         total_height += main_style.box.width
     frame_bounds = Rect(0, size.width, 0, total_height)
-    frame = content.make_frame(frame_bounds, main_style)
+    frame = content.make_frame(frame_bounds, main_style, block.options, pdf)
 
     # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Dict
 
 from docutils import parsers, core, utils
@@ -44,7 +43,7 @@ class Document:
             self._sheet = main_visitor.get_sheet()
         return self._sheet
 
-    def pdf(self):
+    def pdf(self) -> PDF:
         if not self._pdf:
             sheet = self.sheet()
             # Use inheritance to make the values all defined
@@ -68,7 +67,9 @@ class Document:
         if not self._data:
             pages = self.pages()
             pdf = self.pdf()
-            pages[0].draw(pdf)
+            for page in pages:
+                page.draw(pdf)
+                pdf.showPage()
             self._data = pdf.output()
         return self._data
 

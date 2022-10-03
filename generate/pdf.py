@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
-from structure.model import checkbox_character, ImageDetail
+from structure.model import checkbox_character, ImageDetail, SheetOptions
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
