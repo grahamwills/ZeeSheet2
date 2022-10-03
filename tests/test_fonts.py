@@ -2,6 +2,7 @@ import itertools
 import unittest
 import zipfile
 
+from generate import fonts
 from generate.fonts import FontLibrary
 
 
@@ -42,39 +43,39 @@ class TestFonts(unittest.TestCase):
         self.assertAlmostEqual(81.49, info.modify(italic=True, bold=True).width('hello world'), places=2)
 
     def test_library_has_regular_font_for_all(self):
-        for family in self.LIBRARY.content.values():
-            font_file = family.ps_name(False, False)
+        for family in self.LIBRARY._families.values():
+            font_file = family.closest_face_to(False, False)
             self.assertIsNotNone(font_file, 'Searching for regular font for: ' + family.name)
 
     def test_library_has_many_bolds(self):
         different = 0
-        for family in self.LIBRARY.content.values():
-            reg_file = family.ps_name(False, False)
-            bold_file = family.ps_name(True, False)
+        for family in self.LIBRARY._families.values():
+            reg_file = family.closest_face_to(False, False)
+            bold_file = family.closest_face_to(True, False)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 625, f'Only found {different} bold version')
 
     def test_library_has_several_italics(self):
         different = 0
-        for family in self.LIBRARY.content.values():
-            reg_file = family.ps_name(False, False)
-            bold_file = family.ps_name(False, True)
+        for family in self.LIBRARY._families.values():
+            reg_file = family.closest_face_to(False, False)
+            bold_file = family.closest_face_to(False, True)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 260, f'Only found {different} italic version')
 
     def test_library_has_several_bold_italics(self):
         different = 0
-        for family in self.LIBRARY.content.values():
-            reg_file = family.ps_name(False, False)
-            bold_file = family.ps_name(True, True)
+        for family in self.LIBRARY._families.values():
+            reg_file = family.closest_face_to(False, False)
+            bold_file = family.closest_face_to(True, True)
             if reg_file != bold_file:
                 different += 1
         self.assertTrue(different > 210, f'Only found {different} bold italic version')
 
     def test_library_values_match_keys(self):
-        for family in self.LIBRARY.content.values():
+        for family in self.LIBRARY._families.values():
             self.assertTrue(len(self.LIBRARY[family.name].faces) > 0)
 
     def test_get_font_by_full_name(self):
@@ -88,19 +89,19 @@ class TestFonts(unittest.TestCase):
 
     def test_all_fonts_exist(self):
         all_names = []
-        for family in self.LIBRARY.content.values():
+        for family in self.LIBRARY._families.values():
             if not family.name.startswith('Noto') and not family.category == 'builtin':
                 all_names += family.faces.values()
 
         last_zip = None
         for name in sorted(all_names):
             if not last_zip:
-                zipfile_name = FontLibrary._zipfile(name)
+                zipfile_name = fonts._zipfile(name)
                 last_zip = zipfile.ZipFile(zipfile_name.absolute(), 'r')
             try:
                 self.assertIsNotNone(last_zip.getinfo(name + '.ttf'))
             except KeyError:
-                zipfile_name = FontLibrary._zipfile(name)
+                zipfile_name = fonts._zipfile(name)
                 last_zip = zipfile.ZipFile(zipfile_name.absolute(), 'r')
                 self.assertIsNotNone(last_zip.getinfo(name + '.ttf'))
 

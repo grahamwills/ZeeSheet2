@@ -8,7 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple, List
 
-from reportlab.lib import fonts
 from reportlab.pdfbase import pdfmetrics as metrics, pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 
@@ -30,108 +29,42 @@ class FontFamily:
     category: str
     faces: Dict[str, str]
 
-    def ps_name(self, is_bold, is_italic) -> str:
-        """ Returns the bane by which it is known internally (file name if not built in)"""
-        if self.category == 'builtin':
-            return fonts.tt2ps(self.name, 1 if is_bold else 0, 1 if is_italic else 0)
-
-        faces = self.faces
-        if len(faces) == 1:
-            # Only one font, so that must be used for everything
-            return list(faces.values())[0]
-
-        # See which of these options is best
-
-        if not is_bold and not is_italic:
-            if 'Regular' in faces:
-                return faces['Regular']
-            elif 'Medium' in faces:
-                return faces['Medium']
-            else:
-                raise KeyError('Cannot find a regular font!')
-
-        possibles = list(faces.keys())
-        bold_possibles = {p for p in possibles if 'Bold' in p or 'Black' in p}
-        italic_possibles = {p for p in possibles if 'Italic' in p}
-        if is_bold and is_italic:
-            possibles = bold_possibles & italic_possibles
-        elif is_bold:
-            possibles = bold_possibles - italic_possibles
-        elif is_italic:
-            possibles = italic_possibles - bold_possibles
-        if not possibles:
-            warnings.warn(f"For font {self.name}, could not find face with bold={is_bold} and italic={is_italic}. "
-                          f"Options are {sorted(faces.keys())}")
-            return self.ps_name(False, False)
-        # Shortest name that qualifies (note that 'bold' is thus preferred to 'black')
-        mediums = {p for p in possibles if 'Medium' in p}
-        if mediums:
-            possibles = mediums
-
-        return faces[min(possibles, key=lambda x: len(x))]
-
     def __lt__(self, other):
         """ Sort using names """
         return self.name < other.name
 
-    def contains_standard_faces(self) -> bool:
-        """ Returns true if it has regular, bold, italic, and boldItalic"""
-        files = {self.ps_name(False, False), self.ps_name(False, True),
-                 self.ps_name(True, False), self.ps_name(True, True)}
-        return len(files) == 4
-
-    def _register_font(self, zipfile_name, is_bold, is_italic) -> str:
-        name = self.ps_name(is_bold, is_italic)
-        if self.category == 'builtin':
-            return name
-        with zipfile.ZipFile(zipfile_name.absolute(), 'r') as z:
-            file = z.open(name + '.ttf')
-            font = TTFont(name, file)
-            pdfmetrics.registerFont(font)
-            return font.fontName
-
-    def register_single_font(self, ps_name):
-        if self.category == 'builtin':
-            return
-        try:
-            pdfmetrics.getFont(ps_name)
-            return ps_name
-        except KeyError:
-            zf = _zipfile(self.name)
-            with zipfile.ZipFile(zf.absolute(), 'r') as z:
-                file = z.open(ps_name + '.ttf')
-                font = TTFont(ps_name, file)
-                # My conversion of variable google fonts did not do a good job of setting thr face names in the files,
-                # so they need to be fixed up here
-                full_name = TTFNameBytes(ps_name.replace('-', ' ').encode('utf-8'))
-                font.face.familyName = full_name
-                font.face.styleName = full_name
-                font.face.fullName = full_name
-                font.face.name = full_name
-
-                LOGGER.debug(f"Registering {ps_name}")
-                pdfmetrics.registerFont(font)
-                return font.fontName
-
-    def register_with_reportlab(self):
-        regular = self.register_single_font(self.ps_name(False, False))
-        bold = self.register_single_font(self.ps_name (True, False))
-        italic = self.register_single_font(self.ps_name ( False, True))
-        boldItalic = self.register_single_font(self.ps_name (True, True))
-        pdfmetrics.registerFontFamily(self.name, normal=regular, bold=bold, italic=italic, boldItalic=boldItalic)
-
-    def face(self, bold: bool, italic: bool) -> str:
-        if bold and italic:
-            return 'BoldItalic'
-        elif bold:
-            return 'Bold'
-        elif italic:
-            return 'Italic'
-        else:
-            return 'Regular'
-
     def __str__(self):
         return self.name + '(' + self.category + ')'
+
+    def match_face_name(self, name: str) -> str:
+        """ Find the face with the closest matching name"""
+        if name in self.faces:
+            return name
+
+        # Caseless match
+        key = _key(name)
+        for a in self.faces.keys():
+            if key == _key(a):
+                return a
+
+        if key == 'regular':
+            if 'Medium' in self.faces:
+                return 'Medium'
+            else:
+                raise RuntimeError(f"Family '{self.name}' did not contain a regular font")
+        if key == 'bold':
+            if 'Black' in self.faces:
+                return 'Black'
+        if key == 'italic':
+            if 'MediumItalic' in self.faces:
+                return 'MediumItalic'
+
+        warnings.warn(f"Face '{name}' is not defined for font family {self.name}. "
+                      f"Defined faces are: {', '.join(sorted(self.faces.keys()))}. Using default face instead.")
+        return self.match_face_name('regular')
+
+    def internal_font_name(self, face: str) -> str:
+        return self.faces[face]
 
 
 @dataclass
@@ -168,12 +101,11 @@ class Font:
         leading = self.line_spacing - (self.ascent + self.descent)
         return self.ascent + leading / 2
 
-    def modify(self, bold: bool = None, italic: bool = None) -> Font:
-        if bold is None and italic is None:
+    def modify(self, modifier: str):
+        if modifier:
+            return self.library.modify(self, modifier)
+        else:
             return self
-        return self.library.get_font(self.family.name, self.size,
-                                     ('Bold' in self.face) if bold is None else bold,
-                                     ('Italic' in self.face) if italic is None else italic)
 
     def __str__(self):
         return f"{self.name}:{self.size}({self.family}, {self.face})"
@@ -197,53 +129,92 @@ def read_font_info() -> List[FontFamily]:
 
 
 class FontLibrary():
+    _families: Dict[str, FontFamily]
+
     def __init__(self):
         families = read_font_info()
-        self.content: Dict[str, FontFamily] = {_key(f.name): f for f in families}
+        self._families: Dict[str, FontFamily] = {_key(f.name): f for f in families}
 
         # Add built-in fonts
-        self.content['courier'] = FontFamily('Courier', 'builtin',
-                                             {'Regular': '', 'Bold': 'Bold', 'Italic': 'Oblique',
-                                              'BoldItalic': 'BoldOblique'})
-        self.content['helvetica'] = FontFamily('Helvetica', 'builtin',
-                                               {'Regular': '', 'Bold': 'Bold', 'Italic': 'Oblique',
-                                                'BoldItalic': 'BoldOblique'})
-        self.content['times'] = FontFamily('Times', 'builtin', {'Regular': '', 'Bold': 'Bold', 'Italic': 'Italic',
-                                                                'BoldItalic': 'BoldItalic'})
-        self.content['symbol'] = FontFamily('Symbol', 'builtin', {'Regular': ''})
-        self.content['zapfdingbats'] = FontFamily('ZapfDingbats', 'builtin', {'Regular': ''})
+        self._families['courier'] = FontFamily('Courier', 'builtin',
+                                               {'Regular': 'Courier', 'Bold': 'Courier-Bold',
+                                                'Italic': 'Courier-Oblique',
+                                                'BoldItalic': 'Courier-BoldOblique'})
+        self._families['helvetica'] = FontFamily('Helvetica', 'builtin',
+                                                 {'Regular': 'Helvetica', 'Bold': 'Helvetica-Bold',
+                                                  'Italic': 'Helvetica-Oblique',
+                                                  'BoldItalic': 'Helvetica-BoldOblique'})
+        self._families['times'] = FontFamily('Times', 'builtin',
+                                             {'Regular': 'Times-Roman', 'Bold': 'Times-Bold',
+                                              'Italic': 'Times-Italic', 'BoldItalic': 'Times-BoldItalic'})
+        self._families['symbol'] = FontFamily('Symbol', 'builtin', {'Regular': 'Symbol'})
+        self._families['zapfdingbats'] = FontFamily('ZapfDingbats', 'builtin', {'Regular': 'ZapfDingbats'})
 
     def __len__(self):
-        return len(self.content)
+        return len(self._families)
 
     def __getitem__(self, item: str):
-        return self.content[_key(item)]
+        return self._families[_key(item)]
 
     @lru_cache
-    def get_font(self, family_name: str, size: float, bold: bool = False, italic: bool = False) -> Font:
-        """ Registers the font family if needed and returns the font requested"""
+    def get_font(self, family_name: str, size: float, face_name: str = 'regular') -> Font:
+        """
+            Returns the requested font
 
-        LOGGER.debug(f"Looking for font: {family_name}")
+            :param family_name: The name of the family, e.g 'Montserrat'
+            :param size: The font size
+            :param face: Face variant of the font, e.g. regular, bold, thin, italic, etc.
 
-        try:
-            family = self[family_name]
-            face = family.face(bold, italic)
-            name = family.ps_name(bold, italic)
-            family.register_with_reportlab()
-        except KeyError:
-            # The family name could actually be a name including fact like 'Generic-ExtraBold'; search for that
-            name = family_name
-            family, face = self._search_for_font_by_name(name)
-            family.register_single_font(name)
-            LOGGER.debug(f"Registering family: {name}")
-            pdfmetrics.registerFontFamily(name, name, name, name, name)
+            If the font has not been registered, then it is automatically registered
+        """
+
+        family = self.family_named(family_name)
+        face = family.match_face_name(face_name)
+        name = family.internal_font_name(face)
+
+        register_single_font(family, name)
 
         font = Font(self, name, family, face, size)
         LOGGER.debug(f"Created font: {font}")
         return font
 
+    def family_named(self, name: str) -> FontFamily:
+        key = _key(name)
+        try:
+            return self[key]
+        except KeyError:
+            similar = self.similar_names(key)
+            if len(similar) == 1:
+                warnings.warn(f"Unknown font family '{key}'. "
+                              f"Using similarly-named family '{similar[0]}' instead")
+            else:
+                ss = ', '.join("'" + s + "'" for s in similar)
+                warnings.warn(f"Unknown font family '{key}'. Did you mean one of {ss}? "
+                              f"Using '{similar[0]}' instead")
+            return self[similar[0]]
+
     def families(self) -> Iterable[FontFamily]:
-        return self.content.values()
+        return self._families.values()
+
+    def modify(self, font: Font, modifier: str) -> Font:
+        new_face = None
+        if modifier == 'strong':
+            if font.face == 'Regular' or font.face == 'Medium':
+                new_face = 'Bold'
+            if font.face == 'Italic':
+                new_face = 'BoldItalic'
+            if font.face == 'Bold':
+                new_face = 'ExtraBold'
+        if modifier == 'emphasis':
+            if font.face == 'Regular' or font.face == 'Medium':
+                new_face = 'italic'
+            if font.face == 'Bold':
+                new_face = 'BoldItalic'
+        if not new_face:
+            warnings.warn(f"Cannot modify {font.face} for '{modifier}'. Ignoring modifier")
+            return font
+        else:
+            return self.get_font(font.family.name, font.size, new_face)
 
     def similar_names(self, family_name: str) -> List[str]:
         N = 3
@@ -265,13 +236,36 @@ class FontLibrary():
 
     def _search_for_font_by_name(self, fontName) -> Tuple[FontFamily, str]:
         name_key = _key(fontName)
-        for k, family in self.content.items():
+        for k, family in self._families.items():
             if name_key.startswith(k):
                 face_key = name_key[len(k):]
                 for face in family.faces.keys():
                     if _key(face) == face_key:
                         return family, face
         raise KeyError(fontName)
+
+
+def register_single_font(family: FontFamily, full_name: str):
+    if family.category == 'builtin':
+        return
+    try:
+        pdfmetrics.getFont(full_name)
+    except KeyError:
+        zf = _zipfile(family.name)
+        with zipfile.ZipFile(zf.absolute(), 'r') as z:
+            file = z.open(full_name + '.ttf')
+            font = TTFont(full_name, file)
+            # My conversion of variable google fonts did not do a good job of setting thr face names in the files,
+            # so they need to be fixed up here
+            full_name = TTFNameBytes(full_name.replace('-', ' ').encode('utf-8'))
+            font.face.familyName = full_name
+            font.face.styleName = full_name
+            font.face.fullName = full_name
+            font.face.name = full_name
+
+            LOGGER.debug(f"Registering {full_name}")
+            pdfmetrics.registerFont(font)
+            return font.fontName
 
 
 def _zipfile(name):

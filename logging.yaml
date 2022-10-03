@@ -21,6 +21,12 @@ handlers:
     formatter: screen
     stream: ext://sys.stdout
 
+  info:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: screen
+    stream: ext://sys.stdout
+
   file:
     class: logging.handlers.TimedRotatingFileHandler
     backupCount: 5
@@ -39,18 +45,24 @@ loggers:
     propagate: no
 
   layout:
-    level: INFO
-    handlers: [ important, file ]
+    level: DEBUG
+    handlers: [ info, file ]
     propagate: no
 
   generate:
     level: DEBUG
-    handlers: [ all, file ]
+    handlers: [ important, file ]
     propagate: no
 
   PIL.rst:
     level: ERROR
     handlers: [ important, file ]
+    propagate: no
+
+
+  layout.build_section:
+    level: FINE
+    handlers: [ all, file ]
     propagate: no
 
 

@@ -82,7 +82,7 @@ class ColumnPacker:
         available_space = self.bounds.width
         if need_gaps:
             # Padding on either side also
-            available_space -= col_width * (self.k+1)
+            available_space -= col_width * (self.k + 1)
 
         # The total number of granularity steps we can fit in
         segment_count = int(available_space / granularity)
@@ -168,7 +168,9 @@ class ColumnPacker:
         cell_qualities = [[cell.quality for cell in column.items] for column in columns]
         heights = [column.height for column in columns]
         q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
-        return PlacedGroupContent.from_items(all_items, q, extent=ext)
+        items = PlacedGroupContent.from_items(all_items, q, extent=ext)
+        self.report(widths, counts, items)
+        return items
 
     def place_table(self, width_allocations: List[float] = None) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
@@ -264,7 +266,7 @@ class ColumnPacker:
         return placed_children
 
     def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None,
-                         limit: int = 2000) -> PlacedGroupContent:
+                         limit: int = 5000) -> PlacedGroupContent:
         count_limit = limit
         granularity = self.granularity
 
@@ -275,7 +277,7 @@ class ColumnPacker:
             n_width = len(width_choices)
             if n_count * n_width <= limit:
                 break
-            if n_count > n_width:
+            if n_count > 3 * n_width:
                 count_limit = min(count_limit, n_count) * 2 // 3
                 LOGGER.debug(f"Too many combinations ({n_count} x {n_width}), reducing count limit to {count_limit}")
             else:
@@ -287,6 +289,7 @@ class ColumnPacker:
                     f"and {len(count_choices)} count options")
 
         best = None
+        best_combo = None
 
         # Naively try all combinations
         for widths in width_choices:
@@ -307,6 +310,7 @@ class ColumnPacker:
                     LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
+                        best_combo = widths, counts
                 except ColumnOverfullError as ex:
                     start = sum(counts[:ex.column])
                     end = ex.max_items
@@ -316,8 +320,13 @@ class ColumnPacker:
                     pass
         if not best:
             raise ExtentTooSmallError()
-        LOGGER.info(f"Best placement is: {best.quality}")
+        self.report(best_combo[0], best_combo[1], best, True)
         return best
 
     def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
+        # Do nothing by default
         return columns
+
+    def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
+        # Do nothing by default
+        pass

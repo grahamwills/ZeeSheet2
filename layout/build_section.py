@@ -1,11 +1,15 @@
+import logging
 from typing import Union, Tuple, Optional, List
 
+import common
 from common import Extent, Rect, Spacing
 from generate.pdf import PDF
 from layout import build_block
 from layout.content import PlacedContent, PlacedGroupContent, make_frame, PlacedImageContent
 from layout.packer import ColumnPacker, ColumnFit
 from structure import StructureUnit, Section
+
+LOGGER = common.configured_logger(__name__)
 
 
 def place_section(section: Section, extent: Extent, pdf: PDF) -> Optional[PlacedContent]:
@@ -65,3 +69,12 @@ class SectionPacker(ColumnPacker):
                     fit.height -= s.shrink_to_fit(bottom=lowest_other)
 
         return columns
+
+    def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
+        q = placed.quality
+        text = 'Best Placement' if final else 'Trial Placement'
+        LOGGER.debug(f"{text}: "
+                     f"counts=[{common.to_str(counts,0)}]: "
+                     f"widths=[{common.to_str(widths, 0)}], "
+                     f"quality={q.unplaced}|{common.to_str(q.clipped,1)}|{common.to_str(q.minor_score())}")
+

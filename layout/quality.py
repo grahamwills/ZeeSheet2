@@ -101,18 +101,6 @@ class PlacementQuality(Generic[T]):
     def minor_score(self) -> float:
         """ Score ignoring unplaced and clipped items; lower is better """
 
-        '''
-            count: int = 0
-
-            unplaced: int = 0
-            clipped: float = 0
-            
-            desired: float = None
-            actual: float = None
-            bad_breaks: int = 0
-            good_breaks: int = 0
-            image_shrinkage: float = 0
-    '''
         if self.method == LayoutMethod.TABLE:
             breaks = self._score_breaks()
             excess = self._score_excess_space()

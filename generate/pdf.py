@@ -69,7 +69,7 @@ class PDF(canvas.Canvas):
                  pagesize: Tuple[int, int],
                  font_lib: FontLibrary,
                  styles: Dict[str, Style],
-                 images: Dict[str, ImageDetail] = {},
+                 images: Dict[str, ImageDetail] = None,
                  debug: bool = False) -> None:
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
@@ -77,7 +77,7 @@ class PDF(canvas.Canvas):
         self.setLineJoin(1)
         self.setLineCap(1)
         self._styles = styles
-        self.images = images
+        self.images = images or {}
         self.debug = debug
 
         # Caching of built objects.
@@ -91,20 +91,7 @@ class PDF(canvas.Canvas):
         self.setLineJoin(0)
 
     def get_font(self, style: Style) -> Font:
-        try:
-            font = self.font_lib.get_font(style.font.family, style.font.size, bold=style.font.is_bold,
-                                          italic=style.font.is_italic)
-        except KeyError:
-            sim = self.font_lib.similar_names(style.font.family)
-            if len(sim) == 1:
-                warnings.warn(f"Unknown font family '{style.font.family}'. "
-                              f"Using similarly-named family '{sim[0]}' instead")
-            else:
-                ss = ', '.join("'" + s + "'" for s in sim)
-                warnings.warn(f"Unknown font family '{style.font.family}'. Did you mean one of {ss}? "
-                              f"Using '{sim[0]}' instead")
-            font = self.font_lib.get_font(sim[0], style.font.size, bold=style.font.is_bold, italic=style.font.is_italic)
-        return font
+        return self.font_lib.get_font(style.font.family, style.font.size, style.font.face)
 
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
@@ -136,7 +123,7 @@ class PDF(canvas.Canvas):
         if font.name not in self.acroForm.formFontNames:
             if font.family.category == 'serif':
                 fname = 'Times-Roman'
-                font = self.font_lib.get_font('Times', font.size * 1.1)
+                font = self.font_lib.get_font('Times', font.size)
                 height = font.line_spacing
             else:
                 fname = 'Helvetica'
@@ -146,7 +133,7 @@ class PDF(canvas.Canvas):
             fname = font.name
             height = font.line_spacing
 
-        x, y = self.absolutePosition(rx, ry + height)
+        x, y = self.absolutePosition(rx, ry + height+font.descent)
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)

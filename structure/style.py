@@ -86,7 +86,7 @@ class FontStyle:
         elif value is None and key.lower() in FACES:
             self.face = key.lower()
         elif key in ['style', 'face']:
-            validate_value(key, value, FACES)
+            # Too many face options to validate
             self.face = value.lower()
         else:
             raise AttributeError(key)
@@ -361,7 +361,7 @@ class StyleDefaults:
         'default',
         None,
         TextStyle('auto', 1.0, 'left', 0.0),
-        FontStyle('Helvetica', 12.0, 'normal'),
+        FontStyle('Helvetica', 12.0, 'Regular'),
         BoxStyle(
             'auto', 1.0,
             1.0, 'auto', 1.0,

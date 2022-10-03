@@ -124,8 +124,8 @@ class RunBuilder:
             text = element.value
             modifier = element.modifier
             font = self.font
-            if modifier:
-                font = font.modify(element.modifier == 'strong', element.modifier == 'emphasis')
+            if modifier in {'emphasis', 'strong'}:
+                font = font.modify(element.modifier)
 
             while text:
 

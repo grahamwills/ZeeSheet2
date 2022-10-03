@@ -4,7 +4,7 @@ import math
 import numbers
 import reprlib
 from collections import defaultdict
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Iterable
 
 
 class MyRepr(reprlib.Repr):
@@ -79,6 +79,11 @@ def to_str(v: Any, places: int = 3):
         return format(v, f'0.{places}f')
     except:
         pass
+    if isinstance(v, str):
+        return v
+    if isinstance(v, Iterable):
+        return ', '.join(to_str(x, places) for x in v)
+
     return str(v)
 
 
