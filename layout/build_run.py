@@ -133,13 +133,9 @@ class RunBuilder:
                     # No leading white space on new lines
                     text = text.lstrip()
 
-                # If it does not fit vertically, record how much was clipped (in pixels) and do nothing else
+                # If it does not fit vertically, raise an exception
                 if y + line_spacing > height:
-                    if y == 0:
-                        raise ExtentTooSmallError()
-                    clipped += font.width(text) * line_spacing
-                    text = None
-                    continue
+                    raise ExtentTooSmallError()
 
                 if modifier == 'checkbox':
                     # Try to place checkbox on the line
@@ -199,12 +195,10 @@ class RunBuilder:
                         y += line_spacing
                         good_breaks += 1
 
-
         # Handle any textfields on this line, expanding to fill line
         if textfield_on_this_line is not None:
             self.expand_field_size(segments, textfield_on_this_line, width - x)
             right = width
-        textfield_on_this_line = None
 
         bottom = last_top_right[1] + line_spacing
 
@@ -213,7 +207,7 @@ class RunBuilder:
         good_breaks -= bad_breaks  # They have been double-counted
         excess = self.extent.width - last_top_right[0]
 
-        quality = layout.quality.for_wrapping(self.run, excess, clipped, bad_breaks, good_breaks, bottom)
+        quality = layout.quality.for_wrapping(self.run, excess, bad_breaks, good_breaks)
         content = PlacedRunContent(segments, self.style, outer, quality)
         return content
 

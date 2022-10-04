@@ -3,6 +3,7 @@ import unittest
 from common import Extent, Point, Rect
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
+from layout import ExtentTooSmallError
 from layout.build_block import place_block
 from layout.build_run import place_run
 from layout.build_sheet import make_complete_styles
@@ -30,9 +31,9 @@ class TestRunPlacement(unittest.TestCase):
     def test_split_with_checkboxes(self):
         e = Element('X', 'checkbox')
         run = Run([e] * 13)
-        placed = place_run(run, Extent(30, 100), STYLE, self.pdf)
-        self.assertEqual(12, len(placed.segments))
-        self.assertEqual("excess=2, clipped=145, breaks=0•6", placed.quality.str_parts())
+        placed = place_run(run, Extent(30, 200), STYLE, self.pdf)
+        self.assertEqual(13, len(placed.segments))
+        self.assertEqual("excess=16, breaks=0•6", placed.quality.str_parts())
 
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
@@ -113,12 +114,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_not_enough_space_no_matter_what_we_try(self):
         run = Run([self.E1, self.EX, self.E3])
-        placed = place_run(run, Extent(80, 60), STYLE, self.pdf)
-        texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
-        self.assertEqual('hello to this |supercalifra|gilisticexpial', texts)
-        self.assertEqual('(0, 0)|(0, 16)|(0, 31)', locs)
-        self.assertEqual("excess=2, clipped=1318, breaks=2•1", placed.quality.str_parts())
+        self.assertRaises(ExtentTooSmallError, lambda: place_run(run, Extent(80, 60), STYLE, self.pdf))
 
     def test_split_item_into_cells(self):
         item = _make_item('a | b         \t| c | d ')

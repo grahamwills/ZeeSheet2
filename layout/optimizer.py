@@ -43,7 +43,8 @@ class TableWidthOptimizer:
         return score
 
     def placed_to_score(self, placed: PlacedGroupContent):
-        return 1e9 * placed.quality.clipped + 1e6 * placed.quality.bad_breaks + placed.quality.minor_score()
+        # TODO: Double counted breaks?
+        return 1e6 * placed.quality.bad_breaks + placed.quality.minor_score()
 
     def run(self) -> Optional[PlacedGroupContent]:
         x0 = np.asarray([0.5] * (self.k - 1))

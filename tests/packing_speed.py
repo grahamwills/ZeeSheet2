@@ -27,22 +27,23 @@ def random_block(table_columns, table_rows, rand):
 
 def make_sheet(section_columns: int, block_count, table_columns: int, table_rows: List[int]):
     rand = Random(13)
-    header = f'.. page:: width=800 height=10000\n.. section:: columns={section_columns}\n\n'
+    header = f'.. sheet:: width=800 height=1000\n.. section:: columns={section_columns}\n\n'
     return header + '\n\n'.join(random_block(table_columns, table_rows, rand) for _ in range(block_count))
 
 
 def time_build(text: str) -> float:
-    print('Running ...', end='', flush=True)
+    print('Running Speed Test', flush=True)
     t0 = time.time_ns()
-    bytes = main.Document(text).data()
+    doc = main.Document(text)
+    bytes = doc.data()
     t = (time.time_ns() - t0) / 1e9
-    print(f' done ({len(bytes)} bytes)')
+    print(f'Finished Speed Test: {len(doc.pages())} pages, {len(bytes)} bytes')
     return t
 
 
 if __name__ == '__main__':
     SECTION_COLUMNS = 3
-    BLOCK_COUNT = 10
+    BLOCK_COUNT = 40
     TABLE_COLUMN = 2
     TABLE_ROWS = list(range(3, 9))
 

@@ -26,23 +26,6 @@ class LayoutMethod(Enum):
     IMAGE = 4
     NONE = 5
 
-
-@dataclass
-class PartialQuality:
-    unplaced: int = 0
-    unplaced_descendants: int = 0
-    clipped: float = 0
-
-    def worse(self, other: PlacementQuality):
-        if other is None:
-            return False
-        if self.unplaced != other.unplaced:
-            return self.unplaced > other.unplaced
-        if self.unplaced_descendants != other.unplaced_descendants:
-            return self.unplaced_descendants > other.unplaced_descendants
-        return self.clipped > other.clipped
-
-
 @dataclass
 class PlacementQuality(Generic[T]):
     """
@@ -55,7 +38,6 @@ class PlacementQuality(Generic[T]):
             :param desired: The desired width of the placement
             :param unplaced: A count of the number of items that could not be added at all
             :param unplaced_descendants: A count of the number of items in childrern that could not be added
-            :param clipped: Sum of the amount of clipped items, in characters or character-equivalents
             :param bad_breaks: Number of times we had to break within a word (a bad break)
             :param good_breaks: Number of times we had to break between words (a good break)
             :param image_shrinkage: Sum of factors by which images was shrunk from their desired size
@@ -69,7 +51,6 @@ class PlacementQuality(Generic[T]):
     excess_ss: float = None
     unplaced: int = 0
     unplaced_descendants: int = 0
-    clipped: float = 0
     bad_breaks: int = 0
     good_breaks: int = 0
     image_shrinkage: float = 0
@@ -83,8 +64,6 @@ class PlacementQuality(Generic[T]):
             return self.unplaced < other.unplaced
         if self.unplaced_descendants != other.unplaced_descendants:
             return self.unplaced_descendants < other.unplaced_descendants
-        if self.clipped != other.clipped:
-            return self.clipped < other.clipped
         return self.minor_score() < other.minor_score()
 
     @property
@@ -144,8 +123,6 @@ class PlacementQuality(Generic[T]):
             parts.append(f"unplaced={self.unplaced}")
         if self.unplaced_descendants:
             parts.append(f"unplaced_descendants={self.unplaced_descendants}")
-        if self.clipped:
-            parts.append(f"clipped={_f(self.clipped)}")
         if self.bad_breaks or self.good_breaks:
             parts.append(f"breaks={self.bad_breaks}•{self.good_breaks}")
         if self.image_shrinkage:
@@ -171,11 +148,10 @@ class PlacementQuality(Generic[T]):
         raise RuntimeError('Conversion to boolean is confusing; do not call this')
 
 
-def for_wrapping(target: T, excess_width: float, clipped: int, bad_breaks: int, good_breaks: int,
-                 height: float) -> PlacementQuality[T]:
+def for_wrapping(target: T, excess_width: float, bad_breaks: int, good_breaks: int) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
     return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width ** 2,
-                            clipped=clipped, bad_breaks=bad_breaks, good_breaks=good_breaks)
+                            bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 
 def for_image(target: T, mode, desired: Extent, drawn: Rect, outer: Rect) -> PlacementQuality[T]:
@@ -200,7 +176,6 @@ def for_table(target: T, cells_columnwise: list[list[PlacementQuality]], unplace
                 if cell.method != LayoutMethod.NONE:
                     q.count += 1
                 q.unplaced_descendants += cell.unplaced
-                q.clipped += cell.clipped
                 q.bad_breaks += cell.bad_breaks
                 q.good_breaks += cell.good_breaks
                 q.image_shrinkage += cell.image_shrinkage

@@ -340,7 +340,3 @@ class ExtentTooSmallError(RuntimeError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
-
-class ErrorLimitExceededError(RuntimeError):
-    """ The accumulated error has exceeded the maximum allowed"""
-    pass

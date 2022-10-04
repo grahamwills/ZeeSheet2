@@ -46,7 +46,7 @@ loggers:
 
   layout:
     level: DEBUG
-    handlers: [ info, file ]
+    handlers: [ important, file ]
     propagate: no
 
   generate:
@@ -60,10 +60,6 @@ loggers:
     propagate: no
 
 
-  layout.build_section:
-    level: FINE
-    handlers: [ all, file ]
-    propagate: no
 
 
 root:

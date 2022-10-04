@@ -46,14 +46,14 @@ class TestQuality(unittest.TestCase):
     def test_str_for_general(self):
         q = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 80, 0, 100), Rect(0, 100, 0, 200))
         self.assertEqual('⟨name: IMAGE(1), excess=20, image_shrink=2⟩', str(q))
-        q = quality.for_wrapping('name', 1, 0, 4, 5, 300)
+        q = quality.for_wrapping('name', 1, 4, 5)
         self.assertEqual('⟨name: WRAPPING(1), excess=1, breaks=4•5⟩', str(q))
-        q = quality.for_wrapping('name', 1, 0, 0, 0, 300)
+        q = quality.for_wrapping('name', 1, 0, 0)
         self.assertEqual('⟨name: WRAPPING(1), excess=1⟩', str(q))
 
     def test_str_for_groups(self):
-        a = quality.for_wrapping('name', 1, 0, 4, 1, 100)
-        b = quality.for_wrapping('name', 31, 0, 0, 5, 130)
+        a = quality.for_wrapping('name', 1, 4, 1)
+        b = quality.for_wrapping('name', 31, 0, 5)
         c = quality.for_decoration('box')
         q = quality.for_table('name', [[a, b, c], [a, None, c]], 7)
 
@@ -68,8 +68,8 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨name: TABLE(3), excess=1, breaks=8•7⟩', str(q))
 
     def test_str_for_columns(self):
-        a = quality.for_wrapping('name', 1, 0, 4, 1, 100)
-        b = quality.for_wrapping('name', 31, 0, 0, 5, 130)
+        a = quality.for_wrapping('name', 1, 4, 1)
+        b = quality.for_wrapping('name', 31, 0, 5)
         c = quality.for_decoration('box')
         q = quality.for_columns('name', [20, 90], [[a, b, c, c], [a, None, c]], 7)
 
@@ -77,8 +77,8 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨name: COLUMNS(3), excess=1, unplaced=7, breaks=8•7, ∆height=70⟩', str(q))
 
     def test_compatibility(self):
-        a = quality.for_wrapping('name', 1, 0, 4, 1, 100)
-        b = quality.for_wrapping('foo', 1, 0, 3, 4, 5)
+        a = quality.for_wrapping('name', 1, 4, 1)
+        b = quality.for_wrapping('foo', 1, 3, 4)
         c = quality.for_decoration('box')
         d = quality.for_table('name', [[a, b, c], [a, None, b]], 7)
         e = quality.for_table('name', [[a, b, c], [b, None, None]], 8)
@@ -97,17 +97,17 @@ class TestQuality(unittest.TestCase):
 class TestQualityComparisonForNonGroups(unittest.TestCase):
 
     def test_perfect_and_near_perfect(self):
-        a = quality.for_wrapping('perfect', 0, 0, 0, 0, 100)
+        a = quality.for_wrapping('perfect', 0, 0, 0)
         self.assertEqual(0, a.minor_score())
-        a = quality.for_wrapping('near perfect', 1, 0, 0, 0, 100)
+        a = quality.for_wrapping('near perfect', 1, 0, 0)
         self.assertTrue(5 > a.minor_score() > 0)
-        a = quality.for_wrapping('near perfect', 0, 0, 1, 0, 100)
+        a = quality.for_wrapping('near perfect', 0, 1, 0)
         self.assertTrue(100 > a.minor_score() > 5)
 
     def test_bad_versus_good_breaks(self):
-        a = quality.for_wrapping('a', 6, 0, 0, 6, 100)
-        b = quality.for_wrapping('a', 6, 0, 1, 0, 100)
-        c = quality.for_wrapping('a', 6, 0, 0, 20, 100)
+        a = quality.for_wrapping('a', 6, 0, 6)
+        b = quality.for_wrapping('a', 6, 1, 0)
+        c = quality.for_wrapping('a', 6, 0, 20)
 
         self.assertTrue(a.better(b))
         self.assertTrue(b.better(c))
@@ -116,9 +116,9 @@ class TestQualityComparisonForNonGroups(unittest.TestCase):
         self.assertFalse(c.better(b))
 
     def test_breaks_versus_excess_space(self):
-        no_break_5_pixels = quality.for_wrapping('t', 5, 0, 0, 0, 100)
-        one_break_0_pixels = quality.for_wrapping('t', 0, 0, 0, 1, 100)
-        no_break_20_pixels = quality.for_wrapping('t', 20, 0, 0, 0, 100)
+        no_break_5_pixels = quality.for_wrapping('t', 5, 0, 0)
+        one_break_0_pixels = quality.for_wrapping('t', 0, 0, 1)
+        no_break_20_pixels = quality.for_wrapping('t', 20, 0, 0)
 
         self.assertTrue(no_break_5_pixels.better(one_break_0_pixels))
         self.assertTrue(one_break_0_pixels.better(no_break_20_pixels))
@@ -138,8 +138,8 @@ class TestQualityComparisonForNonGroups(unittest.TestCase):
 class TestQualityComparisonForGroups(unittest.TestCase):
 
     def test_adding_decoration_changes_nothing(self):
-        a = quality.for_wrapping('a', 1, 0, 4, 1, 100)
-        b = quality.for_wrapping('b', 31, 0, 0, 5, 130)
+        a = quality.for_wrapping('a', 1, 4, 1)
+        b = quality.for_wrapping('b', 31, 0, 5)
         c = quality.for_decoration('decor')
 
         cols1 = quality.for_table('g', [[a, b, a], [b, b, b]], 3)
@@ -151,8 +151,8 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertAlmostEqual(cols1.minor_score(), cols2.minor_score())
 
     def test_aggregation(self):
-        a = quality.for_wrapping('a', 1, 2, 4, 1, 100)
-        b = quality.for_wrapping('b', 31, 3, 0, 5, 130)
+        a = quality.for_wrapping('a', 1, 4, 1)
+        b = quality.for_wrapping('b', 31, 0, 5)
         c = quality.for_decoration('decor')
         d = quality.for_image('name', 'normal', Extent(200, 200), Rect(0, 100, 0, 200), Rect(0, 100, 0, 200))
         e = quality.for_image('name', 'normal', Extent(300, 200), Rect(0, 100, 0, 200), Rect(0, 100, 0, 200))
@@ -163,7 +163,6 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
         self.assertEqual(3, q.unplaced)
-        self.assertEqual(9, q.clipped)
         self.assertEqual(None, q.height_dev)
 
         q = quality.for_columns('g', [50, 70], [[a, b, a, c], [a, d, c, e]], 3)
@@ -172,12 +171,11 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
         self.assertEqual(3, q.unplaced)
-        self.assertEqual(9, q.clipped)
         self.assertEqual(20.0, q.height_dev)
 
     def test_aggregation_of_aggregations(self):
-        a = quality.for_wrapping('a', 1, 2, 7, 1, 100)
-        b = quality.for_wrapping('b', 31, 3, 0, 5, 130)
+        a = quality.for_wrapping('a', 1, 7, 1)
+        b = quality.for_wrapping('b', 31, 0, 5)
         c = quality.for_decoration('decor')
         d = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 50, 0, 100), Rect(0, 100, 0, 200))
         e = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 100, 0, 100), Rect(0, 100, 0, 200))
@@ -192,14 +190,13 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(6 * 1 + 5 * 5, q.good_breaks)
         self.assertEqual(3, q.unplaced)
         self.assertEqual(3 * 3 + 7, q.unplaced_descendants)
-        self.assertEqual(6 * 2 + 5 * 3, q.clipped)
         self.assertEqual(20.0, q.height_dev)
 
     def test_image_versus_wrapping(self):
-        perfect_text = quality.for_wrapping('a', 0, 0, 0, 0, 100)
-        no_break_10_excess = quality.for_wrapping('a', 10, 0, 0, 0, 100)
-        no_break_20_excess = quality.for_wrapping('a', 20, 0, 0, 0, 100)
-        bad_break_no_excess = quality.for_wrapping('a', 0, 0, 1, 0, 100)
+        perfect_text = quality.for_wrapping('a', 0, 0, 0)
+        no_break_10_excess = quality.for_wrapping('a', 10, 0, 0)
+        no_break_20_excess = quality.for_wrapping('a', 20, 0, 0)
+        bad_break_no_excess = quality.for_wrapping('a', 0, 1, 0)
 
         perfect_image = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 100, 0, 200), Rect(0, 100, 0, 200))
         slightly_shrunk_image = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 90, 0, 200),
@@ -224,9 +221,9 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertTrue(e.better(f))
 
     def test_column_sizes_versus_wrapping(self):
-        none = quality.for_wrapping('a', 10, 0, 0, 0, 10)
-        one = quality.for_wrapping('a', 10, 0, 0, 1, 10)
-        ten = quality.for_wrapping('a', 10, 0, 0, 10, 10)
+        none = quality.for_wrapping('a', 10, 0, 0)
+        one = quality.for_wrapping('a', 10, 0, 1)
+        ten = quality.for_wrapping('a', 10, 0, 10)
 
         no_breaks_5_height_difference = quality.for_columns('t', [100, 105], [[none], [none, none]], 0)
         no_breaks_20_height_difference = quality.for_columns('t', [120, 100], [[none], [none, none]], 0)

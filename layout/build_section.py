@@ -76,4 +76,4 @@ class SectionPacker(ColumnPacker):
                      f"counts=[{common.to_str(counts, 0)}]: "
                      f"widths=[{common.to_str(widths, 0)}], "
                      f"quality={q.unplaced}|{q.unplaced_descendants}"
-                     f"|{common.to_str(q.clipped, 1)}|{common.to_str(q.minor_score())}")
+                     f"|{common.to_str(q.minor_score())}")

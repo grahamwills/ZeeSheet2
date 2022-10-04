@@ -49,7 +49,6 @@ class TestFullLayout(unittest.TestCase):
         structure = column_structure(content[0])
         stdev = common.variance([v.bottom for v in structure]) ** 0.5
 
-        self.assertEqual(0, content.quality.clipped)
         self.assertEqual(0, content.quality.bad_breaks)
         self.assertTrue(stdev < 20, f"Std dev was {stdev}")
 

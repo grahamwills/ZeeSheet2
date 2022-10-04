@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Union, List
 
 import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
-from layout.content import ExtentTooSmallError, ErrorLimitExceededError, PlacedGroupContent, PlacedContent
+from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
 from layout.optimizer import TableWidthOptimizer
 from layout.quality import PlacementQuality
 
@@ -111,7 +111,6 @@ class ColumnPacker:
         previous_margin_right = 0
         next_margin_right = 0
         columns = []
-        accumulated_quality = layout.quality.PartialQuality()
         space_is_full = False
         for width, count, in zip(widths, counts):
             fit = ColumnFit()
@@ -141,10 +140,6 @@ class ColumnPacker:
                     # No room for this block
                     space_is_full = True
                     break
-                accumulated_quality.unplaced_descendants += placed.quality.unplaced
-                accumulated_quality.clipped += placed.quality.clipped
-                if accumulated_quality.worse(limit):
-                    raise ErrorLimitExceededError()
                 placed.location = r.top_left
                 y = placed.bounds.bottom + margins.bottom
                 previous_margin_bottom = margins.bottom
@@ -198,12 +193,11 @@ class ColumnPacker:
         best_widths = None
         for column_sizes in width_choices:
             try:
-                best_quality = best.quality if best else None
-                placed_children = self.place_table_given_widths(column_sizes, self.bounds, best_quality)
+                placed_children = self.place_table_given_widths(column_sizes, self.bounds)
                 if placed_children.better(best):
                     best = placed_children
                     best_widths = column_sizes
-            except (ExtentTooSmallError, ErrorLimitExceededError):
+            except ExtentTooSmallError:
                 # Skip this option
                 pass
         if best is None:
@@ -215,7 +209,7 @@ class ColumnPacker:
 
             class TableOptimizer(TableWidthOptimizer):
                 def make_table(self, widths):
-                    return packer.place_table_given_widths(list(widths), optimizer_bounds, None)
+                    return packer.place_table_given_widths(list(widths), optimizer_bounds)
 
             adj = TableOptimizer(best_widths)
             adjusted = adj.run()
@@ -224,8 +218,7 @@ class ColumnPacker:
 
         return best
 
-    def place_table_given_widths(self, column_sizes: List[float], bounds: Rect,
-                                 limit_quality: Optional[PlacementQuality]) -> PlacedGroupContent:
+    def place_table_given_widths(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
         col_gap = self.average_spacing.horizontal / 2
         row_gap = self.average_spacing.vertical / 2
 
@@ -233,7 +226,6 @@ class ColumnPacker:
         bottom = top
         placed_items = []
         quality_table = [[] for _ in column_sizes]
-        accumulated_error = layout.quality.PartialQuality()
         for row in range(0, self.n):
             left = self.average_spacing.left
             max_row_height = bounds.bottom - top
@@ -251,10 +243,6 @@ class ColumnPacker:
 
                     placed_cell = self.place_item(index, cell_extent)
                     cell_quality = placed_cell.quality
-                    accumulated_error.unplaced_descendants += cell_quality.unplaced
-                    accumulated_error.clipped += cell_quality.clipped
-                    if accumulated_error.worse(limit_quality):
-                        raise ErrorLimitExceededError()
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
@@ -323,7 +311,7 @@ class ColumnPacker:
                     start = sum(counts[:ex.column])
                     end = ex.max_items
                     known_limits[ex.column][start] = end
-                except (ErrorLimitExceededError, ExtentTooSmallError):
+                except ExtentTooSmallError:
                     # Just ignore failures
                     pass
         if not best:
