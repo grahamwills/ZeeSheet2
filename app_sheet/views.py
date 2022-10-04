@@ -1,21 +1,21 @@
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict
 
 from PIL import Image
 from django.contrib import messages
 from django.contrib.auth import login
 from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
+from django.core.files.storage import default_storage, FileSystemStorage
 from django.http import HttpRequest, FileResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
 
 import main
 from layout.content import ExtentTooSmallError
-from structure import ImageDetail
 from .forms import NewUserForm
 from .models import Sheet
 
@@ -112,13 +112,13 @@ def show_sheet(request, sheet_id, edit_content=None, pdf_file=None):
     )
 
 
-def make_image_detail(idx, image) -> ImageDetail:
+def make_image_detail(idx, image) -> main.ImageDetail:
     image.open()
     image_data = Image.open(image)
-    return ImageDetail(idx, image_data, image.width, image.height)
+    return main.ImageDetail(idx, image_data, image.width, image.height)
 
 
-def images_info(csd: Sheet) -> Dict[str, ImageDetail]:
+def images_info(csd: Sheet) -> Dict[str, main.ImageDetail]:
     # Returns the image information read from the record
     result = {}
     if csd.image1:
@@ -185,6 +185,7 @@ def action_dispatcher(request, sheet_id):
             try:
                 pdf_bytes = doc.data()
                 file_name = f"sheets/{request.user.username}-sheet.pdf"
+                delete_old_sheets()
                 path = default_storage.save(file_name, ContentFile(pdf_bytes))
                 pdf_file = path[7:]  # remove the 'sheets/' prefix
                 for w in warning_messages:
@@ -206,6 +207,17 @@ def show_file(request, file_name: str):
         return FileResponse(pdf)
     else:
         return HttpResponseForbidden('You cannot access sheets of other users')
+
+
+def delete_old_sheets():
+    storage: FileSystemStorage = default_storage
+    _, files = storage.listdir('sheets/')
+    one_day_ago = timezone.now()- timedelta(days=1)
+    for f in files:
+        file = 'sheets/' + f
+        t = storage.get_modified_time(file)
+        if t < one_day_ago:
+            storage.delete(file)
 
 
 def _extract_errors(html: str):
