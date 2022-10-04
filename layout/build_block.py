@@ -105,7 +105,12 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     if main_style.box.has_border():
         total_height += main_style.box.width
     frame_bounds = Rect(0, size.width, 0, total_height)
-    frame = content.make_frame(frame_bounds, main_style, block.options, pdf)
+
+    if block.children:
+        frame = content.make_frame(frame_bounds, main_style, block.options, pdf)
+    else:
+        # We are showing just an image, which is our children, so do not add  it here also
+        frame = content.make_frame_box(frame_bounds, main_style)
 
     # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]

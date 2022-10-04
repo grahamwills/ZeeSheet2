@@ -32,12 +32,12 @@ class TableWidthOptimizer:
         widths = self.params_to_widths(x)
         low = min(widths)
         if low < 20:
-            return 1e10
+            return 2e10
         try:
             placed = self.make_table(widths)
         except Error as ex:
             LOGGER.fine(f"{widths}: Error is '{ex}'")
-            return 2e10
+            return 1e10
         score = placed.quality.minor_score()
         LOGGER.fine(f"{widths}: Score is '{score}'")
         return score
