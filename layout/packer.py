@@ -8,7 +8,6 @@ import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
 from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
 from layout.optimizer import TableWidthOptimizer
-from layout.quality import PlacementQuality
 
 LOGGER = configured_logger(__name__)
 
@@ -102,66 +101,36 @@ class ColumnPacker:
             results.append(column_widths)
         return results
 
-    def place_in_defined_columns(self, widths: List[float], counts: List[int],
-                                 limit: Optional[PlacementQuality]) -> PlacedGroupContent:
-        at = 0
-        height = self.bounds.height
-        column_left = self.bounds.left
+    def place_in_defined_columns(self, widths: List[float], counts: List[int]) -> PlacedGroupContent:
 
-        previous_margin_right = 0
-        next_margin_right = 0
+        # Translate counts to indices
+        indices = []
+        prev = 0
+        for c in counts:
+            indices.append((prev, prev + c))
+            prev += c
+
+        # Translate widths to column left-right pairs
+        spans = []
+        prev = self.bounds.left
+        for w in widths:
+            spans.append((prev, prev + w))
+            prev += w
+
+        previous_margin = 0
         columns = []
-        space_is_full = False
-        for width, count, in zip(widths, counts):
-            fit = ColumnFit()
+        for c in range(0, self.k):
+            fit, previous_margin, overflow = self.place_in_single_column(indices[c], spans[c], previous_margin)
             columns.append(fit)
-            y = self.bounds.top
-            previous_margin_bottom = 0
-            for i in range(at, at + count):
-                if y >= height:
-                    space_is_full = True
-                    break
-                # Create the rectangle to be fitted into
-                r = Rect(column_left, column_left + width, y, height)
-                # Collapse this margin with the previous: use the larger only, don't add
-                margins = self.margins_of_item(i)
-                margins = Spacing(max(margins.left - previous_margin_right, 0),
-                                  margins.right,
-                                  max(margins.top - previous_margin_bottom, 0),
-                                  margins.bottom)
-                r = r - margins
 
-                if r.width < MIN_BLOCK_DIMENSION:
-                    raise ExtentTooSmallError('Block cannot be placed in small area')
-
-                try:
-                    placed = self.place_item(i, r.extent)
-                except ExtentTooSmallError as ex:
-                    # No room for this block
-                    space_is_full = True
-                    break
-                placed.location = r.top_left
-                y = placed.bounds.bottom + margins.bottom
-                previous_margin_bottom = margins.bottom
-                next_margin_right = max(next_margin_right, margins.right)
-                fit.items.append(placed)
-                if placed.quality.unplaced:
-                    space_is_full = True
-                    break
-
-            if space_is_full:
-                if len(columns) < self.k:
+            if overflow:
+                if c < self.k - 1:
                     # We ran out of space in a middle column; this is a bad count allocation
-                    raise ColumnOverfullError(len(columns) - 1, len(fit.items))
+                    raise ColumnOverfullError(c, len(fit.items))
                 else:
                     # We did not have enough room in the final columns -- extra items will
                     # need to go to the next page
                     break
-
-            fit.height = y
-            column_left += width
-            previous_margin_right = next_margin_right
-            at += count
 
         columns = self.post_placement_modifications(columns)
 
@@ -175,6 +144,45 @@ class ColumnPacker:
         items = PlacedGroupContent.from_items(all_items, q, extent=ext)
         self.report(widths, counts, items)
         return items
+
+    def place_in_single_column(self, ids, span, previous_margin_right):
+        height = self.bounds.height
+        space_is_full = False
+        fit = ColumnFit()
+        y = self.bounds.top
+        previous_margin_bottom = 0
+        next_margin_right = previous_margin_right
+        for i in range(ids[0], ids[1]):
+            if y >= height:
+                space_is_full = True
+                break
+            # Create the rectangle to be fitted into
+            r = Rect(span[0], span[1], y, height)
+            # Collapse this margin with the previous: use the larger only, don't add
+            margins = self.margins_of_item(i)
+            margins = Spacing(max(margins.left - previous_margin_right, 0), margins.right,
+                              max(margins.top - previous_margin_bottom, 0), margins.bottom)
+            r = r - margins
+
+            if r.width < MIN_BLOCK_DIMENSION:
+                raise ExtentTooSmallError('Block cannot be placed in small area')
+
+            try:
+                placed = self.place_item(i, r.extent)
+            except ExtentTooSmallError as ex:
+                # No room for this block
+                space_is_full = True
+                break
+            placed.location = r.top_left
+            y = placed.bounds.bottom + margins.bottom
+            previous_margin_bottom = margins.bottom
+            next_margin_right = max(next_margin_right, margins.right)
+            fit.items.append(placed)
+            if placed.quality.unplaced:
+                space_is_full = True
+                break
+        fit.height = y
+        return fit, next_margin_right, space_is_full
 
     def place_table(self, width_allocations: List[float] = None) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
@@ -301,8 +309,7 @@ class ColumnPacker:
                     continue
 
                 try:
-                    limit = best.quality if best else None
-                    trial = self.place_in_defined_columns(widths, counts, limit=limit)
+                    trial = self.place_in_defined_columns(widths, counts)
                     LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
