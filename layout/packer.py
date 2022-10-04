@@ -152,6 +152,7 @@ class ColumnPacker:
                 fit.items.append(placed)
                 if placed.quality.unplaced:
                     space_is_full = True
+                    break
 
             if space_is_full:
                 if len(columns) < self.k:
