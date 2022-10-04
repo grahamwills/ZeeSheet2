@@ -1,4 +1,5 @@
 import unittest
+import warnings
 import zipfile
 
 from generate import fonts
@@ -24,12 +25,14 @@ class TestFonts(unittest.TestCase):
         self.assertAlmostEqual(67.28, info.modify('strong').width('hello world'), places=2)
 
     def test_font_with_only_one_variant(self):
-        info = self.LIBRARY.get_font('Rochester', 14)
-        self.assertAlmostEqual(14.42, info.ascent, places=2)
-        self.assertAlmostEqual(3.61, info.descent, places=2)
-        self.assertAlmostEqual(50.11, info.width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.modify('strong').width('hello world'), places=2)
-        self.assertAlmostEqual(50.11, info.modify('emphasis').width('hello world'), places=2)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', Warning)
+            info = self.LIBRARY.get_font('Rochester', 14)
+            self.assertAlmostEqual(14.42, info.ascent, places=2)
+            self.assertAlmostEqual(3.61, info.descent, places=2)
+            self.assertAlmostEqual(50.11, info.width('hello world'), places=2)
+            self.assertAlmostEqual(50.11, info.modify('strong').width('hello world'), places=2)
+            self.assertAlmostEqual(50.11, info.modify('emphasis').width('hello world'), places=2)
 
     def test_font_with_multiple_single_files(self):
         info = self.LIBRARY.get_font('Arvo', 14)
@@ -46,29 +49,35 @@ class TestFonts(unittest.TestCase):
 
     def test_library_has_many_bolds(self):
         different = 0
-        for family in self.LIBRARY._families.values():
-            reg_file = family.match_face_name('regular')
-            bold_file = family.match_face_name('bold')
-            if reg_file != bold_file:
-                different += 1
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', Warning)
+            for family in self.LIBRARY._families.values():
+                reg_file = family.match_face_name('regular')
+                bold_file = family.match_face_name('bold')
+                if reg_file != bold_file:
+                    different += 1
         self.assertTrue(different > 625, f'Only found {different} bold version')
 
     def test_library_has_several_italics(self):
         different = 0
-        for family in self.LIBRARY._families.values():
-            reg_file = family.match_face_name('regular')
-            bold_file = family.match_face_name('italic')
-            if reg_file != bold_file:
-                different += 1
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', Warning)
+            for family in self.LIBRARY._families.values():
+                reg_file = family.match_face_name('regular')
+                bold_file = family.match_face_name('italic')
+                if reg_file != bold_file:
+                    different += 1
         self.assertTrue(different > 260, f'Only found {different} italic version')
 
     def test_library_has_several_bold_italics(self):
         different = 0
-        for family in self.LIBRARY._families.values():
-            reg_file = family.match_face_name('regular')
-            bold_file = family.match_face_name('boldItalic')
-            if reg_file != bold_file:
-                different += 1
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', Warning)
+            for family in self.LIBRARY._families.values():
+                reg_file = family.match_face_name('regular')
+                bold_file = family.match_face_name('boldItalic')
+                if reg_file != bold_file:
+                    different += 1
         self.assertTrue(different > 210, f'Only found {different} bold italic version')
 
     def test_library_values_match_keys(self):
