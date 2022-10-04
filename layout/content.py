@@ -341,11 +341,6 @@ class ExtentTooSmallError(RuntimeError):
         super().__init__(*args)
 
 
-class ItemDoesNotExistError(RuntimeError):
-    """ The item requested to be placed does not exist"""
-    pass
-
-
 class ErrorLimitExceededError(RuntimeError):
     """ The accumulated error has exceeded the maximum allowed"""
     pass

@@ -1,4 +1,3 @@
-import logging
 from typing import Union, Tuple, Optional, List
 
 import common
@@ -74,7 +73,7 @@ class SectionPacker(ColumnPacker):
         q = placed.quality
         text = 'Best Placement' if final else 'Trial Placement'
         LOGGER.debug(f"{text}: "
-                     f"counts=[{common.to_str(counts,0)}]: "
+                     f"counts=[{common.to_str(counts, 0)}]: "
                      f"widths=[{common.to_str(widths, 0)}], "
-                     f"quality={q.unplaced}|{common.to_str(q.clipped,1)}|{common.to_str(q.minor_score())}")
-
+                     f"quality={q.unplaced}|{q.unplaced_descendants}"
+                     f"|{common.to_str(q.clipped, 1)}|{common.to_str(q.minor_score())}")

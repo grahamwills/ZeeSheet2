@@ -6,8 +6,7 @@ from typing import Optional, Tuple, Union, List
 
 import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
-from layout.content import ExtentTooSmallError, ErrorLimitExceededError, PlacedGroupContent, PlacedContent, \
-    ItemDoesNotExistError
+from layout.content import ExtentTooSmallError, ErrorLimitExceededError, PlacedGroupContent, PlacedContent
 from layout.optimizer import TableWidthOptimizer
 from layout.quality import PlacementQuality
 
@@ -45,6 +44,10 @@ class ColumnPacker:
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
+        raise NotImplementedError('This method must be defined by an inheriting class')
+
+    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
+        """ Return true if the item exists """
         raise NotImplementedError('This method must be defined by an inheriting class')
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
@@ -107,9 +110,9 @@ class ColumnPacker:
 
         previous_margin_right = 0
         next_margin_right = 0
-        unplaced_count = 0
         columns = []
         accumulated_quality = layout.quality.PartialQuality()
+        space_is_full = False
         for width, count, in zip(widths, counts):
             fit = ColumnFit()
             columns.append(fit)
@@ -117,11 +120,8 @@ class ColumnPacker:
             previous_margin_bottom = 0
             for i in range(at, at + count):
                 if y >= height:
-                    if len(columns) == self.k:
-                        unplaced_count += 1
-                        continue
-                    else:
-                        raise ColumnOverfullError(len(columns) - 1, len(fit.items))
+                    space_is_full = True
+                    break
                 # Create the rectangle to be fitted into
                 r = Rect(column_left, column_left + width, y, height)
                 # Collapse this margin with the previous: use the larger only, don't add
@@ -137,25 +137,30 @@ class ColumnPacker:
 
                 try:
                     placed = self.place_item(i, r.extent)
-                    accumulated_quality.unplaced += placed.quality.unplaced
-                    accumulated_quality.clipped += placed.quality.clipped
-                    if accumulated_quality.worse(limit):
-                        raise ErrorLimitExceededError()
-                    placed.location = r.top_left
-                    y = placed.bounds.bottom + margins.bottom
-                    previous_margin_bottom = margins.bottom
-                    next_margin_right = max(next_margin_right, margins.right)
-                    fit.items.append(placed)
-                except ItemDoesNotExistError:
-                    pass
                 except ExtentTooSmallError as ex:
                     # No room for this block
-                    # If we are the last column, it is unplaced. Otherwise, the placement is bad
-                    if len(columns) == self.k:
-                        unplaced_count += 1
-                        continue
-                    else:
-                        raise ColumnOverfullError(len(columns) - 1, len(fit.items))
+                    space_is_full = True
+                    break
+                accumulated_quality.unplaced_descendants += placed.quality.unplaced
+                accumulated_quality.clipped += placed.quality.clipped
+                if accumulated_quality.worse(limit):
+                    raise ErrorLimitExceededError()
+                placed.location = r.top_left
+                y = placed.bounds.bottom + margins.bottom
+                previous_margin_bottom = margins.bottom
+                next_margin_right = max(next_margin_right, margins.right)
+                fit.items.append(placed)
+                if placed.quality.unplaced:
+                    space_is_full = True
+
+            if space_is_full:
+                if len(columns) < self.k:
+                    # We ran out of space in a middle column; this is a bad count allocation
+                    raise ColumnOverfullError(len(columns) - 1, len(fit.items))
+                else:
+                    # We did not have enough room in the final columns -- extra items will
+                    # need to go to the next page
+                    break
 
             fit.height = y
             column_left += width
@@ -169,6 +174,7 @@ class ColumnPacker:
         all_items = [placed for fit in columns for placed in fit.items]
         cell_qualities = [[cell.quality for cell in column.items] for column in columns]
         heights = [column.height for column in columns]
+        unplaced_count = self.n - len(all_items)
         q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
         items = PlacedGroupContent.from_items(all_items, q, extent=ext)
         self.report(widths, counts, items)
@@ -231,9 +237,9 @@ class ColumnPacker:
             left = self.average_spacing.left
             max_row_height = bounds.bottom - top
             for col in range(0, self.k):
-                column_width = column_sizes[col]
                 index = (row, col)
-                try:
+                if self.item_exists(index):
+                    column_width = column_sizes[col]
                     span = self.span_of_item(index)
                     if span == 1:
                         cell_extent = Extent(column_width, max_row_height)
@@ -244,7 +250,7 @@ class ColumnPacker:
 
                     placed_cell = self.place_item(index, cell_extent)
                     cell_quality = placed_cell.quality
-                    accumulated_error.unplaced += cell_quality.unplaced
+                    accumulated_error.unplaced_descendants += cell_quality.unplaced
                     accumulated_error.clipped += cell_quality.clipped
                     if accumulated_error.worse(limit_quality):
                         raise ErrorLimitExceededError()
@@ -252,10 +258,9 @@ class ColumnPacker:
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
                     quality_table[col].append(cell_quality)
-                except ItemDoesNotExistError:
-                    # Just ignore this
-                    # TODO: should have cells merge nicely
+                else:
                     quality_table[col].append(None)
+
                 left += cell_extent.width + col_gap
             # Update the top for the next row
             top = bottom + row_gap

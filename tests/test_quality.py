@@ -190,7 +190,8 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertAlmostEqual(4.0, q.image_shrinkage, places=2)
         self.assertEqual(6 * 7, q.bad_breaks)
         self.assertEqual(6 * 1 + 5 * 5, q.good_breaks)
-        self.assertEqual(3 * 3 + 7 + 3, q.unplaced)
+        self.assertEqual(3, q.unplaced)
+        self.assertEqual(3 * 3 + 7, q.unplaced_descendants)
         self.assertEqual(6 * 2 + 5 * 3, q.clipped)
         self.assertEqual(20.0, q.height_dev)
 

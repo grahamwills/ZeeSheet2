@@ -12,7 +12,7 @@ from generate.pdf import PDF
 from structure import Block, style
 from structure.model import ContainerOptions, Run, Item
 from . import build_run, content
-from .content import PlacedContent, PlacedGroupContent, ItemDoesNotExistError, PlacedRectContent, make_image
+from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image
 from .packer import ColumnPacker
 
 LOGGER = configured_logger(__name__)
@@ -80,8 +80,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
 
     if not block.children and not image:
         if not title:
-            warnings.warn('Block defined without title, image or content. It will be ignored.')
-            raise ItemDoesNotExistError()
+            warnings.warn('Block defined without title, image or content')
+            return None
         else:
             return title
 
@@ -159,18 +159,15 @@ class BlockColumnPacker(ColumnPacker):
         # All block items share common margins
         return self.content_style.box.padding
 
+    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
+        return item_index in self.item_map
+
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
-        try:
-            item = self.item_map[idx]
-            return copy(build_run.place_run(item, extent, self.content_style, self.pdf))
-        except KeyError:
-            raise ItemDoesNotExistError()
+        item = self.item_map[idx]
+        return copy(build_run.place_run(item, extent, self.content_style, self.pdf))
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
-        try:
-            return self.span_map[idx]
-        except KeyError:
-            raise ItemDoesNotExistError()
+        return self.span_map[idx]
 
 
 def tiny_block() -> Block:
