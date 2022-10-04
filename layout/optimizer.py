@@ -38,13 +38,9 @@ class TableWidthOptimizer:
         except Error as ex:
             LOGGER.fine(f"{widths}: Error is '{ex}'")
             return 2e10
-        score = self.placed_to_score(placed)
+        score = placed.quality.minor_score()
         LOGGER.fine(f"{widths}: Score is '{score}'")
         return score
-
-    def placed_to_score(self, placed: PlacedGroupContent):
-        # TODO: Double counted breaks?
-        return 1e6 * placed.quality.bad_breaks + placed.quality.minor_score()
 
     def run(self) -> Optional[PlacedGroupContent]:
         x0 = np.asarray([0.5] * (self.k - 1))
@@ -64,7 +60,7 @@ class TableWidthOptimizer:
         else:
             widths = self.params_to_widths(solution.x)
             placed = self.make_table(widths)
-            f = self.placed_to_score(placed)
+            f = placed.quality.minor_score()
 
             LOGGER.debug("Solved using nelder-mead in %1.2fs with %d evaluations: %s -> %s ->  %1.3f",
                          duration, solution.nfev, solution.x, widths, f)
