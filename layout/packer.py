@@ -101,7 +101,7 @@ class ColumnPacker:
             results.append(column_widths)
         return results
 
-    def place_in_defined_columns(self, widths: List[float], counts: List[int]) -> PlacedGroupContent:
+    def place_in_defined_columns(self, spans: List[Tuple[float, float]], counts: List[int]) -> PlacedGroupContent:
 
         # Translate counts to indices
         indices = []
@@ -110,17 +110,10 @@ class ColumnPacker:
             indices.append((prev, prev + c))
             prev += c
 
-        # Translate widths to column left-right pairs
-        spans = []
-        prev = self.bounds.left
-        for w in widths:
-            spans.append((prev, prev + w))
-            prev += w
-
         previous_margin = 0
         columns = []
         for c in range(0, self.k):
-            fit, previous_margin, overflow = self.place_in_single_column(indices[c], spans[c], previous_margin)
+            fit, previous_margin, overflow = self._place_in_single_column(indices[c], spans[c], previous_margin)
             columns.append(fit)
 
             if overflow:
@@ -145,7 +138,7 @@ class ColumnPacker:
         self.report(widths, counts, items)
         return items
 
-    def place_in_single_column(self, ids, span, previous_margin_right):
+    def _place_in_single_column(self, ids, span, previous_margin_right):
         height = self.bounds.height
         space_is_full = False
         fit = ColumnFit()
@@ -297,6 +290,14 @@ class ColumnPacker:
 
         # Naively try all combinations
         for widths in width_choices:
+
+            # Translate widths to column left-right pairs
+            spans = []
+            prev = self.bounds.left
+            for w in widths:
+                spans.append((prev, prev + w))
+                prev += w
+
             known_limits = [defaultdict(lambda: 99999) for i in range(self.k)]
             for counts in count_choices:
                 # Do we know this is a bad combo?
@@ -309,7 +310,7 @@ class ColumnPacker:
                     continue
 
                 try:
-                    trial = self.place_in_defined_columns(widths, counts)
+                    trial = self.place_in_defined_columns(spans, counts)
                     LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
