@@ -98,12 +98,10 @@ def to_complete(s: Style, base: Dict[str, Style]) -> Style:
 
 
 def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
-    parent_style_name = s.parent
-    if parent_style_name is None and s.name != 'default' and s.name != '#default':
-        parent_style_name = 'default'
-    if parent_style_name:
+    # Do not try and follow up the tree from the root!
+    if s.parent != style.StyleDefaults.default.parent:
         try:
-            parent = base[parent_style_name]
+            parent = base[s.parent]
         except KeyError:
             # Check inheritance parents exist
             warnings.warn(f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}. "

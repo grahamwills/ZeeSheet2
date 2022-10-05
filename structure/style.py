@@ -306,6 +306,11 @@ class Style:
         self.box.add_to_definition(parts)
         return ' '.join(parts)
 
+    def __copy__(self) -> Style:
+        result = Style(self.name)
+        set_using_definition(result, self.to_definition())
+        return result
+
     def __hash__(self):
         return id(self)
 
@@ -358,8 +363,7 @@ class StyleDefaults:
 
     # noinspection PyTypeChecker
     default = Style(
-        'default',
-        None,
+        'default', '#',
         TextStyle('auto', 1.0, 'left', 0.0),
         FontStyle('Helvetica', 12.0, 'Regular'),
         BoxStyle(
@@ -367,19 +371,22 @@ class StyleDefaults:
             1.0, 'auto', 1.0,
             Spacing.balanced(0), Spacing.balanced(2)))
 
-    title = Style('default-title').set('font-size', '14').set('font-face', 'bold').set('padding', '0')
-    block = Style('default-block').set('margin', '12')
-    section = Style('default-section').set('margin', '0').set('padding', '0') \
+    title = Style('default-title', 'default').set('font-size', '14').set('font-face', 'bold').set('padding', '0')
+    block = Style('default-block', 'default').set('margin', '12')
+    section = Style('default-section', 'default').set('margin', '0').set('padding', '0') \
         .set('border', 'none').set('background', 'none')
-    image = Style('default-image').set('inherit', 'default-block').set('border', 'none').set('background', 'none')
-    sheet = Style('default-sheet').set('padding', '0.25in').set('margin', '0') \
+    image = Style('default-image', 'default-block').set('inherit', 'default-block') \
         .set('border', 'none').set('background', 'none')
-    hidden = Style('hidden-4-internals').set('margin', '0').set('padding', '0') \
+    sheet = Style('default-sheet', 'default').set('padding', '0.25in').set('margin', '0') \
+        .set('border', 'none').set('background', 'none')
+    hidden = Style('hidden-4-internals', 'default').set('margin', '0').set('padding', '0') \
         .set('font-size', '1').set('border', 'none')
 
     @classmethod
     def all(cls):
-        return {s.name: s for s in [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block, StyleDefaults.title, StyleDefaults.section]}
+        return {s.name: s for s in [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block,
+                                    StyleDefaults.title, StyleDefaults.section, StyleDefaults.image,
+                                    StyleDefaults.hidden]}
 
     @classmethod
     def set_auto_text_box_border(cls, style: Style):
