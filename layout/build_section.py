@@ -72,7 +72,7 @@ class SectionPacker(ColumnPacker):
     def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
         q = placed.quality
         text = 'Best Placement' if final else 'Trial Placement'
-        LOGGER.debug(f"{text}: "
+        LOGGER.error(f"{text}: "
                      f"counts=[{common.to_str(counts, 0)}]: "
                      f"widths=[{common.to_str(widths, 0)}], "
                      f"quality={q.unplaced}|{q.unplaced_descendants}"

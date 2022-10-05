@@ -101,7 +101,7 @@ class ColumnPacker:
             results.append(column_widths)
         return results
 
-    def place_in_defined_columns(self, spans: List[Tuple[float, float]], counts: List[int]) -> PlacedGroupContent:
+    def _place_in_columns(self, spans: List[Tuple[float, float]], counts: List[int]) -> PlacedGroupContent:
 
         # Translate counts to indices
         indices = []
@@ -135,7 +135,6 @@ class ColumnPacker:
         unplaced_count = self.n - len(all_items)
         q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
         items = PlacedGroupContent.from_items(all_items, q, extent=ext)
-        self.report(widths, counts, items)
         return items
 
     def _place_in_single_column(self, ids, span, previous_margin_right):
@@ -310,7 +309,8 @@ class ColumnPacker:
                     continue
 
                 try:
-                    trial = self.place_in_defined_columns(spans, counts)
+                    trial = self._place_in_columns(spans, counts)
+                    self.report(widths, counts, trial)
                     LOGGER.fine(f"{counts} {widths}: {trial.quality}")
                     if trial.better(best):
                         best = trial
