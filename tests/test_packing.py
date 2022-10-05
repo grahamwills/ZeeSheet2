@@ -110,7 +110,7 @@ class PackingTest(unittest.TestCase):
     #     # self.assertEqual(Rect(0, 204, 0, 64), group.bounds)
 
     def test_combinations(self):
-        cp = TestPacker(Rect(0, 400, 0, 500), item_count=8, column_count=3, granularity=50)
+        cp = TestPacker(Rect(0, 400, 0, 500), item_count=8, column_count=3, granularity=50, max_width_combos=100)
         cc = ' '.join(str(c) for c in cp.column_count_possibilities())
         cw = ' '.join(str([int(v) for v in c]) for c in cp.column_width_possibilities())
         self.assertEqual('[2, 3, 3] [3, 2, 3] [3, 3, 2] [2, 2, 4] [2, 4, 2] [4, 2, 2] [1, 3, 4] [3, 1, 4] '

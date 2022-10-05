@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Optional, Tuple, Union, List
 
+import common
 import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
 from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
@@ -22,7 +24,8 @@ class ColumnOverfullError(RuntimeError):
 
 @dataclass
 class ColumnFit:
-    height: int = 0
+    height: float = 0
+    right_margin: float = 0
     items: List[PlacedContent] = field(default_factory=lambda: [])
 
     def __str__(self):
@@ -30,15 +33,12 @@ class ColumnFit:
 
 
 class ColumnPacker:
-    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int = None):
+    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int, max_width_combos: int):
         self.n = item_count
         self.k = column_count
         self.bounds = bounds
-
-        if granularity:
-            self.granularity = granularity
-        else:
-            self.granularity = 10 + round(2.5 * bounds.width ** 0.5, -1)
+        self.granularity = granularity
+        self.max_width_combos = max_width_combos
         self.average_spacing = self._average_spacing()
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
@@ -61,6 +61,22 @@ class ColumnPacker:
         if defined is not None:
             return [defined]
         return items_in_bins_combinations(self.n, self.k, limit=limit)
+
+    @staticmethod
+    def _quality_scores(quality):
+        if quality == 'low':
+            granularity = 50
+            max_width_combos = 10
+        elif quality == 'high':
+            granularity = 10
+            max_width_combos = 100
+        elif quality == 'extreme':
+            granularity = 5
+            max_width_combos = 300
+        else:
+            granularity = 25
+            max_width_combos = 30
+        return granularity, max_width_combos
 
     def _average_spacing(self) -> Spacing:
         n = self.n
@@ -101,49 +117,77 @@ class ColumnPacker:
             results.append(column_widths)
         return results
 
-    def _place_in_columns(self, spans: List[Tuple[float, float]], counts: List[int]) -> PlacedGroupContent:
+    def _place_in_sized_columns(self, widths: list[float]) -> tuple[PlacedGroupContent, list[int]]:
 
-        # Translate counts to indices
-        indices = []
-        prev = 0
-        for c in counts:
-            indices.append((prev, prev + c))
-            prev += c
+        # Strategy: Fill the columns from left to right, then try moving to even out column heights
+        # Start with as many as possible in the first column, then one in each other
+        counts = [1] * self.k
+        counts[0] = self.n - (self.k - 1)
 
-        previous_margin = 0
-        columns = []
+        previous_margin = 0  # Margin required by previous column
+        previous_right = self.bounds.left
+        allocated = 0
+        fits = []
+
         for c in range(0, self.k):
-            fit, previous_margin, overflow = self._place_in_single_column(indices[c], spans[c], previous_margin)
-            columns.append(fit)
-
-            if overflow:
+            count = counts[c]
+            width = widths[c]
+            indices = (allocated, allocated + count)
+            span = (previous_right, previous_right + width)
+            fit, overflow = self._place_in_single_column(indices, span, previous_margin)
+            previous_margin = fit.right_margin
+            fitted = len(fit.items)
+            if fitted == 0:
+                # Nothing went into this column -- which we cannot tolerate
+                raise ExtentTooSmallError()
+            if fitted < count:
+                # Not everything fitted
                 if c < self.k - 1:
-                    # We ran out of space in a middle column; this is a bad count allocation
-                    raise ColumnOverfullError(c, len(fit.items))
-                else:
-                    # We did not have enough room in the final columns -- extra items will
-                    # need to go to the next page
-                    break
+                    # Push the unfitted ones from this column into the next column
+                    counts[c + 1] += (count - fitted)
+                    counts[c] = fitted
+            allocated += fitted
+            previous_right += width
+            fits.append(fit)
 
-        columns = self.post_placement_modifications(columns)
+        result = self.fits_to_content(fits)
 
-        height = max(fit.height for fit in columns)
+        # Try moving from the tallest column
+        while True:
+            height, idx = max(([fit.height, c] for c, fit in enumerate(fits)))
+
+            trial_result, trial_counts = self._shuffle_down(idx, fits, widths, counts, result)
+            if trial_result:
+                LOGGER.fine("Improvement {} -> {}: {} -> {}", counts, trial_counts,
+                            result.quality, trial_result.quality)
+                result, counts = trial_result, trial_counts
+            else:
+                # No improvement
+                break
+
+        fits = self.post_placement_modifications(fits)
+        result = self.fits_to_content(fits)
+        self.report(widths, counts, result)
+
+        return result, counts
+
+    def fits_to_content(self, fits):
+        height = max(fit.height for fit in fits)
         ext = Extent(self.bounds.width, height)
-        all_items = [placed for fit in columns for placed in fit.items]
-        cell_qualities = [[cell.quality for cell in column.items] for column in columns]
-        heights = [column.height for column in columns]
+        all_items = [placed for fit in fits for placed in fit.items]
+        cell_qualities = [[cell.quality for cell in column.items] for column in fits]
+        heights = [column.height for column in fits]
         unplaced_count = self.n - len(all_items)
         q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
-        items = PlacedGroupContent.from_items(all_items, q, extent=ext)
-        return items
+        return PlacedGroupContent.from_items(all_items, q, extent=ext)
 
-    def _place_in_single_column(self, ids, span, previous_margin_right):
+    @lru_cache
+    def _place_in_single_column(self, ids: tuple[int, int], span: tuple[float, float], previous_margin_right: float):
         height = self.bounds.height
         space_is_full = False
-        fit = ColumnFit()
+        fit = ColumnFit(right_margin=previous_margin_right)
         y = self.bounds.top
         previous_margin_bottom = 0
-        next_margin_right = previous_margin_right
         for i in range(ids[0], ids[1]):
             if y >= height:
                 space_is_full = True
@@ -168,13 +212,13 @@ class ColumnPacker:
             placed.location = r.top_left
             y = placed.bounds.bottom + margins.bottom
             previous_margin_bottom = margins.bottom
-            next_margin_right = max(next_margin_right, margins.right)
+            fit.right_margin = max(fit.right_margin, margins.right)
             fit.items.append(placed)
             if placed.quality.unplaced:
                 space_is_full = True
                 break
         fit.height = y
-        return fit, next_margin_right, space_is_full
+        return fit, space_is_full
 
     def place_table(self, width_allocations: List[float] = None) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
@@ -182,12 +226,10 @@ class ColumnPacker:
         # For tables, the margins must be the same; we use the averages, but all margins should be the same
         width_choices = self.column_width_possibilities(width_allocations, need_gaps=True)
 
-        if len(width_choices) == 0:
-            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
         if len(width_choices) > 1:
-            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using {len(width_choices)} width options")
+            LOGGER.info("Fitting {}\u2a2f{} table using {} width options", self.n, self.k, len(width_choices))
         else:
-            LOGGER.fine(f"Fitting {self.n}\u2a2f{self.k} table using widths={width_choices[0]}")
+            LOGGER.info("Fitting {}\u2a2f{} table using widths={}", self.n, self.k, common.to_str(width_choices[0], 0))
 
         best = None
         best_widths = None
@@ -261,70 +303,41 @@ class ColumnPacker:
         placed_children.location = bounds.top_left
         return placed_children
 
-    def place_in_columns(self, count_allocations: List[int] = None, width_allocations: List[float] = None,
-                         limit: int = 5000) -> PlacedGroupContent:
-        count_limit = limit
+    def place_in_columns(self, width_allocations: List[float] = None) -> PlacedGroupContent:
         granularity = self.granularity
 
+        # Ensure we do not have too many width options
         while True:
-            count_choices = self.column_count_possibilities(count_allocations, limit=count_limit)
             width_choices = self.column_width_possibilities(width_allocations, granularity=granularity)
-            n_count = len(count_choices)
             n_width = len(width_choices)
-            if n_count * n_width <= limit:
-                break
-            if n_count > 3 * n_width:
-                count_limit = min(count_limit, n_count) * 2 // 3
-                LOGGER.debug(f"Too many combinations ({n_count} x {n_width}), reducing count limit to {count_limit}")
-            else:
+            if n_width > self.max_width_combos:
                 granularity *= 1.5
-                LOGGER.debug(
-                    f"Too many combinations ({n_count} x {n_width}), increasing widths granularity to {granularity}")
-
-        LOGGER.info(f"Placing {self.n} items in {self.k} columns using {len(width_choices)} width options "
-                    f"and {len(count_choices)} count options")
+                LOGGER.debug("Too many width possibilities ({}), increasing  granularity to {}", n_width, granularity)
+            else:
+                break
+        LOGGER.info("Placing {} items in {} columns using {} width options", self.n, self.k, n_width)
 
         best = None
         best_combo = None
 
         # Naively try all combinations
         for widths in width_choices:
+            try:
+                trial, counts = self._place_in_sized_columns(widths)
+                LOGGER.fine(f"{counts} {widths}: {trial.quality}")
+                if trial.better(best):
+                    best = trial
+                    best_combo = widths, counts
+            except ColumnOverfullError as ex:
+                # Just ignore failures
+                pass
+            except ExtentTooSmallError:
+                # Just ignore failures
+                pass
 
-            # Translate widths to column left-right pairs
-            spans = []
-            prev = self.bounds.left
-            for w in widths:
-                spans.append((prev, prev + w))
-                prev += w
-
-            known_limits = [defaultdict(lambda: 99999) for i in range(self.k)]
-            for counts in count_choices:
-                # Do we know this is a bad combo?
-                ok = True
-                for i, c in enumerate(counts):
-                    start = sum(counts[:i])
-                    if c > known_limits[i][start]:
-                        ok = False
-                if not ok:
-                    continue
-
-                try:
-                    trial = self._place_in_columns(spans, counts)
-                    self.report(widths, counts, trial)
-                    LOGGER.fine(f"{counts} {widths}: {trial.quality}")
-                    if trial.better(best):
-                        best = trial
-                        best_combo = widths, counts
-                except ColumnOverfullError as ex:
-                    start = sum(counts[:ex.column])
-                    end = ex.max_items
-                    known_limits[ex.column][start] = end
-                except ExtentTooSmallError:
-                    # Just ignore failures
-                    pass
         if not best:
             raise ExtentTooSmallError()
-        self.report(best_combo[0], best_combo[1], best, True)
+        self.report(best_combo[0], best_combo[1], best, final=True)
         return best
 
     def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
@@ -334,3 +347,67 @@ class ColumnPacker:
     def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
         # Do nothing by default
         pass
+
+    def _shuffle_down(self, idx: int, fits: list[ColumnFit], widths: list[float], counts: list[int],
+                      best: PlacedGroupContent) -> tuple[PlacedGroupContent or None, list[int] or None]:
+        results = None, None
+
+        if counts[idx] < 2:
+            return results
+
+        trial_counts = copy(counts)
+        trial_fits = copy(fits)
+
+        # Set the running markers for the columns
+        previous_margin = 0 if idx == 0 else fits[idx - 1].right_margin
+        previous_right = self.bounds.left + sum(widths[:idx])
+        allocated = sum(counts[:idx])
+
+        # TODO: We could probably just remove the placed item from the fit column,
+        # of in ColumnFit() keep track of each item placed so we could unwind the first column and not re-place it
+        # but caching may be just as good
+
+        for target in range(idx, self.k - 1):
+            # Move one item
+            trial_counts[target] -= 1
+            trial_counts[target + 1] += 1
+            # Refit the first column
+            try:
+                indices = (allocated, allocated + trial_counts[target])
+                span = (previous_right, previous_right + widths[target])
+                fit1, overflow1 = self._place_in_single_column(indices, span, previous_margin)
+                if overflow1:
+                    LOGGER.error('This is weird. Placing fewer items caused overflow')
+                    return results
+
+            except (ExtentTooSmallError, ColumnOverfullError):
+                LOGGER.error('This is weird. Placing fewer items caused an exception.')
+                return results
+
+            # Update running counts to be past the target column
+            previous_margin = fit1.right_margin
+            previous_right += widths[target]
+            allocated += trial_counts[target]
+
+            # Refit the next column
+            try:
+                indices = (allocated, allocated + trial_counts[target + 1])
+                span = (previous_right, previous_right + widths[target + 1])
+                fit2, overflow2 = self._place_in_single_column(indices, span, previous_margin)
+                if overflow2:
+                    # We could not shuffle any further, so we are done
+                    return results
+            except (ExtentTooSmallError, ColumnOverfullError):
+                # We could not shuffle any further, so we are done
+                return results
+
+            # Evaluate it
+            trial_fits[target] = fit1
+            trial_fits[target + 1] = fit2
+            trial = self.fits_to_content(trial_fits)
+            if trial.better(best):
+                best = trial
+                results = trial, copy(trial_counts)
+
+        # Finished shuffling
+        return results

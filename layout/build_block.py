@@ -61,7 +61,7 @@ def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf:
         title.location = Point(0, 0)
 
 
-def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]:
+def place_block(block: Block, size: Extent, quality:str, pdf: PDF) -> Optional[PlacedContent]:
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.style(block.options.style, 'default-block')
@@ -89,7 +89,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     # Inset for padding and border
     item_bounds = outer - title_spacing
     if block.children:
-        placed_children = place_block_children(block, item_bounds, pdf)
+        placed_children = place_block_children(block, item_bounds, quality, pdf)
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
@@ -129,9 +129,9 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
 
 
 @lru_cache
-def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
+def place_block_children(block: Block, item_bounds: Rect, quality:str, pdf, ) -> Optional[PlacedGroupContent]:
     if block.children:
-        packer = BlockColumnPacker(item_bounds, block, pdf)
+        packer = BlockColumnPacker(item_bounds, block, pdf, quality=quality)
         return packer.place_table()
     else:
         return None
@@ -141,11 +141,13 @@ class BlockColumnPacker(ColumnPacker):
     item_map: dict[Tuple[int, int], Run]
     span_map: dict[Tuple[int, int], int]
 
-    def __init__(self, bounds: Rect, block: Block, pdf: PDF):
+    def __init__(self, bounds: Rect, block: Block, pdf: PDF, quality:str):
+        granularity, max_width_combos = self._quality_scores(quality)
+
         column_count = max(len(item.children) for item in block.children)
         self.pdf = pdf
         self.content_style = pdf.style(block.options.style)
-        super().__init__(bounds, len(block.children), column_count)
+        super().__init__(bounds, len(block.children), column_count, granularity=granularity, max_width_combos=max_width_combos)
 
         self.item_map = {}
         self.span_map = {}

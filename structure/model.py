@@ -32,6 +32,7 @@ class SheetOptions:
     image_width: str = None
     image_height: str = None
     image_anchor: str = None
+    quality: str = 'Medium'
     debug: bool = False
 
 

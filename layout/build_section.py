@@ -11,7 +11,7 @@ from structure import StructureUnit, Section
 LOGGER = common.configured_logger(__name__)
 
 
-def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedGroupContent:
+def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> PlacedGroupContent:
     section_style = pdf.style(section.options.style, 'default-section')
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
@@ -21,7 +21,7 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedGroupCont
     while len(blocks) < section.options.columns:
         blocks = blocks + [build_block.tiny_block()]
 
-    sp = SectionPacker(content_bounds, blocks, section.options.columns, pdf, granularity=25)
+    sp = SectionPacker(content_bounds, blocks, section.options.columns, pdf, quality=quality)
     content = sp.place_in_columns()
 
     # Make the frame
@@ -36,13 +36,15 @@ def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedGroupCont
 
 class SectionPacker(ColumnPacker):
 
-    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, granularity: int = 20):
+    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, quality: str):
         self.items = items
         self.pdf = pdf
-        super().__init__(bounds, len(items), column_count, granularity=granularity)
+        self.quality = quality
+        granularity, max_widths = self._quality_scores(quality)
+        super().__init__(bounds, len(items), column_count, granularity=granularity, max_width_combos=max_widths)
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
-        return build_block.place_block(self.items[item_index], extent, self.pdf)
+        return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
         style_name = self.items[item_index].options.style
@@ -72,8 +74,5 @@ class SectionPacker(ColumnPacker):
     def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
         q = placed.quality
         text = 'Best Placement' if final else 'Trial Placement'
-        LOGGER.error(f"{text}: "
-                     f"counts=[{common.to_str(counts, 0)}]: "
-                     f"widths=[{common.to_str(widths, 0)}], "
-                     f"quality={q.unplaced}|{q.unplaced_descendants}"
-                     f"|{common.to_str(q.minor_score())}")
+        LOGGER.debug("{}: counts={}, widths={}, quality={:g}/{:g}/{:g}",
+                     text, counts, common.to_str(widths, 0), q.unplaced, q.unplaced_descendants, q.minor_score())

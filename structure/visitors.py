@@ -96,6 +96,13 @@ def _set_option(options, owner, k, v):
         options.width = units.toLength(v)
     elif k == 'height':
         options.height = units.toLength(v)
+    elif k == 'quality':
+        choices = ('low', 'medium', 'high', 'extreme')
+        if v.lower() in choices:
+            options.quality = v.lower()
+        else:
+            message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
+            raise RuntimeError(message)
     elif k == 'title':
         if v.lower() in ('none', 'simple'):
             options.title = v.lower()

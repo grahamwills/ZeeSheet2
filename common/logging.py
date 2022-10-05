@@ -6,18 +6,12 @@ from pathlib import Path
 import yaml
 
 _logging_initialized = False
-FINE = 8
 
 
+# noinspection PyUnresolvedReferences
 def _initialize_logging():
-    logging.FINE = FINE
-    logging.addLevelName(FINE, "FINE")
-
-    def fine(self, message, *args, **kws):
-        if self.isEnabledFor(FINE):
-            self._log(FINE, message, args, **kws)
-
-    logging.Logger.fine = fine
+    logging.FINE = 8
+    logging.addLevelName(logging.FINE, "FINE")
 
     path = Path(__file__).parent.parent.joinpath('logging.yaml')
     if os.path.exists(path):
@@ -38,12 +32,37 @@ def _initialize_logging():
         print('Failed to load configuration file. Using default configs')
 
 
+class BraceString(str):
+    def __mod__(self, other):
+        try:
+            return self.format(*other)
+        except Exception as ex:
+            pass
+
+    def __str__(self):
+        return self
+
+
+# noinspection PyUnresolvedReferences
+class EnhancedLoggingAdapter(logging.LoggerAdapter):
+
+    def __init__(self, logger, extra=None):
+        super(EnhancedLoggingAdapter, self).__init__(logger, extra)
+
+    def process(self, msg, kwargs):
+        return BraceString(msg), kwargs
+
+    def fine(self, message, *args, **kws):
+        if self.isEnabledFor(logging.FINE):
+            self._log(logging.FINE, message, args, **kws)
+
+
 def configured_logger(name: str):
     global _logging_initialized
     if not _logging_initialized:
         _initialize_logging()
         _logging_initialized = True
-    return logging.getLogger(name)
+    return EnhancedLoggingAdapter(logging.getLogger(name))
 
 
 def message_general(message: str, text: str, ancestors: str, line: int = None) -> str:

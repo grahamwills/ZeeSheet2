@@ -19,28 +19,28 @@ class SheetPacker(SectionPacker):
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         section = self.items[item_index]
-        return build_section.place_section(section, extent, self.pdf)
+        return build_section.place_section(section, extent, self.pdf, self.quality)
 
 
 def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     sections = sheet.children
     results = []
-    last_unplaced = (-1,-1)
+    last_unplaced = (-1, -1)
     while sections:
         content = create_page(sheet, sections, pdf)
         results.append(content)
         unplaced_sections = content.quality.unplaced
         unplaced_blocks = content.quality.unplaced_descendants
 
-        # Guard against filure to place anything
+        # Guard against failure to place anything
         unplaced = (unplaced_sections, unplaced_blocks)
         if unplaced == last_unplaced:
-            raise RuntimeError('Could not palce an item even with an empty page')
+            raise RuntimeError('Could not place an item even with an empty page')
         last_unplaced = unplaced
         sections_for_next_page = []
         if unplaced_blocks:
             # Need to include blocks from the last section that were not placed
-            last_section = copy(sections[-unplaced_sections-1])
+            last_section = copy(sections[-unplaced_sections - 1])
             last_section.children = last_section.children[-unplaced_blocks:]
             sections_for_next_page.append(last_section)
         if unplaced_sections:
@@ -57,7 +57,7 @@ def create_page(sheet, sections, pdf):
     page = Rect(0, extent.width, 0, extent.height)
     content_bounds = sheet_style.box.inset_within_padding(page)
     # Make the content
-    sp = SheetPacker(content_bounds, sections, sheet.options.columns, pdf)
+    sp = SheetPacker(content_bounds, sections, sheet.options.columns, pdf, sheet.options.quality)
     content = sp.place_in_columns()
     content.extent = extent
     # Make the frame
