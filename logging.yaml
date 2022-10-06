@@ -46,11 +46,11 @@ loggers:
 
   layout:
     level: DEBUG
-    handlers: [ important, file ]
+    handlers: [ all, file ]
     propagate: no
 
   generate:
-    level: DEBUG
+    level: ERROR
     handlers: [ important, file ]
     propagate: no
 

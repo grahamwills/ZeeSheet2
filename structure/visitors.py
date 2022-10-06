@@ -135,7 +135,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def get_sheet(self) -> Sheet:
         # Fix up pieces we added, but ended up unused
-        self.sheet.tidy()
+        self.sheet.tidy([])
         return self.sheet
 
     # noinspection PyTypeChecker
@@ -412,3 +412,6 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
+
+
+

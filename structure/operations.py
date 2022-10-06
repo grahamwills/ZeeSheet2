@@ -5,7 +5,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives, Directive
 
 from . import model, style
-from .model import SheetOptions, Section, Block, ContainerOptions, Item
+from .model import SheetOptions, Section, Block, ContainerOptions, Item, StructureUnit
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'

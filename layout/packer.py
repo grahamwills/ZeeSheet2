@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Union, List
 
 import common
 import layout
-from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations
+from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations, items_in_bins_counts
 from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
 from layout.optimizer import TableWidthOptimizer
 
@@ -33,7 +33,9 @@ class ColumnFit:
 
 
 class ColumnPacker:
-    def __init__(self, bounds: Rect, item_count: int, column_count: int, granularity: int, max_width_combos: int):
+    def __init__(self, debug_name: str, bounds: Rect, item_count: int, column_count: int, granularity: int,
+                 max_width_combos: int):
+        self.debug_name = debug_name
         self.n = item_count
         self.k = column_count
         self.bounds = bounds
@@ -65,8 +67,8 @@ class ColumnPacker:
     @staticmethod
     def _quality_scores(quality):
         if quality == 'low':
-            granularity = 50
-            max_width_combos = 10
+            granularity = 30
+            max_width_combos = 8
         elif quality == 'high':
             granularity = 10
             max_width_combos = 100
@@ -74,8 +76,8 @@ class ColumnPacker:
             granularity = 5
             max_width_combos = 300
         else:
-            granularity = 25
-            max_width_combos = 30
+            granularity = 10
+            max_width_combos = 24
         return granularity, max_width_combos
 
     def _average_spacing(self) -> Spacing:
@@ -89,7 +91,7 @@ class ColumnPacker:
     def column_width_possibilities(self,
                                    defined: List[float] = None,
                                    need_gaps: bool = False,
-                                   granularity: float = None) -> List[List[float]]:
+                                   granularity: float = None) -> List[List[float]] or None:
         # If need_gaps is true, we need to reduce available space by gaps around and between cells
         if defined is not None:
             return [defined]
@@ -107,14 +109,25 @@ class ColumnPacker:
         if segment_count < self.k:
             raise ExtentTooSmallError('Too few segments to place into columns')
 
-        segment_allocations = items_in_bins_combinations(segment_count, self.k)
+        if items_in_bins_counts(segment_count, self.k) > self.max_width_combos:
+            return None
+
+        segment_allocations = items_in_bins_combinations(segment_count, self.k, 10000)
         results = []
+
+        # If not going to be aded, add even division of available sapce
+        if segment_count % self.k:
+            results.append([available_space/self.k]*self.k)
+
         for i, seg_alloc in enumerate(segment_allocations):
             column_widths = [s * granularity for s in seg_alloc]
             # Add in the additional part for the extra granularity
             additional = available_space - sum(column_widths)
             column_widths[i % self.k] += additional
             results.append(column_widths)
+
+
+
         return results
 
     def _place_in_sized_columns(self, widths: list[float]) -> tuple[PlacedGroupContent, list[int]]:
@@ -150,6 +163,7 @@ class ColumnPacker:
             previous_right += width
             fits.append(fit)
 
+        fits = self.post_placement_modifications(fits)
         result = self.fits_to_content(fits)
 
         # Try moving from the tallest column
@@ -158,15 +172,13 @@ class ColumnPacker:
 
             trial_result, trial_counts = self._shuffle_down(idx, fits, widths, counts, result)
             if trial_result:
-                LOGGER.fine("Improvement {} -> {}: {} -> {}", counts, trial_counts,
-                            result.quality, trial_result.quality)
+                LOGGER.debug("[{}]      ... Shuffle improvement {} -> {}: {} -> {}", self.debug_name, counts, trial_counts,
+                             result.quality, trial_result.quality)
                 result, counts = trial_result, trial_counts
             else:
                 # No improvement
                 break
 
-        fits = self.post_placement_modifications(fits)
-        result = self.fits_to_content(fits)
         self.report(widths, counts, result)
 
         return result, counts
@@ -224,12 +236,20 @@ class ColumnPacker:
         """ Expect to have the table structure methods defined and use them for placement """
 
         # For tables, the margins must be the same; we use the averages, but all margins should be the same
-        width_choices = self.column_width_possibilities(width_allocations, need_gaps=True)
+        granularity = self.granularity
+        while True:
+            width_choices = self.column_width_possibilities(width_allocations, need_gaps=True, granularity=granularity)
+            if width_choices:
+                break
+            else:
+                granularity *= 1.5
 
         if len(width_choices) > 1:
-            LOGGER.info("Fitting {}\u2a2f{} table using {} width options", self.n, self.k, len(width_choices))
+            LOGGER.debug("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
+                         len(width_choices))
         else:
-            LOGGER.info("Fitting {}\u2a2f{} table using widths={}", self.n, self.k, common.to_str(width_choices[0], 0))
+            LOGGER.debug("[{}] Fitting {}\u2a2f{} table using widths={}", self.debug_name, self.n, self.k,
+                         common.to_str(width_choices[0], 0))
 
         best = None
         best_widths = None
@@ -309,25 +329,28 @@ class ColumnPacker:
         # Ensure we do not have too many width options
         while True:
             width_choices = self.column_width_possibilities(width_allocations, granularity=granularity)
-            n_width = len(width_choices)
-            if n_width > self.max_width_combos:
+            if not width_choices:
                 granularity *= 1.5
-                LOGGER.debug("Too many width possibilities ({}), increasing  granularity to {}", n_width, granularity)
+                LOGGER.debug("[{}] Too many width possibilities, increasing  granularity to {}",
+                             self.debug_name, granularity)
             else:
                 break
-        LOGGER.info("Placing {} items in {} columns using {} width options", self.n, self.k, n_width)
+        LOGGER.info("[{}] Placing {} items in {} columns using {} width options",
+                    self.debug_name, self.n, self.k, len(width_choices))
 
         best = None
         best_combo = None
 
-        # Naively try all combinations
         for widths in width_choices:
             try:
                 trial, counts = self._place_in_sized_columns(widths)
-                LOGGER.fine(f"{counts} {widths}: {trial.quality}")
+
                 if trial.better(best):
                     best = trial
                     best_combo = widths, counts
+                    LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
+                                self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
+                                best.quality.unplaced, best.quality.minor_score())
             except ColumnOverfullError as ex:
                 # Just ignore failures
                 pass
@@ -338,6 +361,10 @@ class ColumnPacker:
         if not best:
             raise ExtentTooSmallError()
         self.report(best_combo[0], best_combo[1], best, final=True)
+        LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
+                    self.debug_name, common.to_str(best_combo[0],0), best_combo[1],
+                    best.quality.unplaced, best.quality.minor_score())
+
         return best
 
     def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
@@ -404,6 +431,7 @@ class ColumnPacker:
             # Evaluate it
             trial_fits[target] = fit1
             trial_fits[target + 1] = fit2
+            trial_fits = self.post_placement_modifications(trial_fits)
             trial = self.fits_to_content(trial_fits)
             if trial.better(best):
                 best = trial

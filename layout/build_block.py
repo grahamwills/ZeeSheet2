@@ -5,6 +5,7 @@ from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 
+import common
 import layout.quality
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
@@ -147,7 +148,8 @@ class BlockColumnPacker(ColumnPacker):
         column_count = max(len(item.children) for item in block.children)
         self.pdf = pdf
         self.content_style = pdf.style(block.options.style)
-        super().__init__(bounds, len(block.children), column_count, granularity=granularity, max_width_combos=max_width_combos)
+        super().__init__(common.name_of(block), bounds, len(block.children), column_count,
+                         granularity=granularity, max_width_combos=max_width_combos)
 
         self.item_map = {}
         self.span_map = {}

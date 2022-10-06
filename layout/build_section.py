@@ -18,10 +18,11 @@ def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> P
 
     # Ensure that we have enough children for the column requested
     blocks = section.children
-    while len(blocks) < section.options.columns:
+    k = section.options.columns
+    while len(blocks) < k:
         blocks = blocks + [build_block.tiny_block()]
 
-    sp = SectionPacker(content_bounds, blocks, section.options.columns, pdf, quality=quality)
+    sp = SectionPacker(common.name_of(section), content_bounds, blocks, k, pdf, quality=quality)
     content = sp.place_in_columns()
 
     # Make the frame
@@ -36,12 +37,14 @@ def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> P
 
 class SectionPacker(ColumnPacker):
 
-    def __init__(self, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf, quality: str):
+    def __init__(self, debug_name: str, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf,
+                 quality: str):
         self.items = items
         self.pdf = pdf
         self.quality = quality
         granularity, max_widths = self._quality_scores(quality)
-        super().__init__(bounds, len(items), column_count, granularity=granularity, max_width_combos=max_widths)
+        super().__init__(debug_name, bounds, len(items), column_count,
+                         granularity=granularity, max_width_combos=max_widths)
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)

@@ -2,6 +2,7 @@ import warnings
 from copy import copy
 from typing import Dict, Union, Tuple, Optional, Iterable
 
+import common
 import structure.style
 from common import Extent, Rect
 from generate.fonts import FontLibrary
@@ -57,7 +58,7 @@ def create_page(sheet, sections, pdf):
     page = Rect(0, extent.width, 0, extent.height)
     content_bounds = sheet_style.box.inset_within_padding(page)
     # Make the content
-    sp = SheetPacker(content_bounds, sections, sheet.options.columns, pdf, sheet.options.quality)
+    sp = SheetPacker(common.name_of(sheet), content_bounds, sections, sheet.options.columns, pdf, sheet.options.quality)
     content = sp.place_in_columns()
     content.extent = extent
     # Make the frame

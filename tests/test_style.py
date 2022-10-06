@@ -14,7 +14,7 @@ class TestStyle(TestCase):
     def test_default(self):
         # Tests a few items
         self.assertEqual(StyleDefaults.default.name, 'default')
-        self.assertEqual(StyleDefaults.default.parent, None)
+        self.assertEqual(StyleDefaults.default.parent, '#')
         self.assertEqual(StyleDefaults.default.text.align, 'left')
         self.assertEqual(StyleDefaults.default.font.family, 'Helvetica')
         self.assertEqual(StyleDefaults.default.box.opacity, 1.0)
@@ -29,7 +29,7 @@ class TestStyle(TestCase):
         self.assertRaises(ValueError, lambda: Style('1badname'))
 
     def test_to_definition_default(self):
-        self.assertEqual('text-color:auto text-opacity:1 text-align:left text-indent:0 '
+        self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 '
                          'font-family:Helvetica font-size:12 font-face:Regular '
                          'border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
