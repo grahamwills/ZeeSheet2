@@ -46,7 +46,7 @@ class ColumnPacker:
         self.average_spacing = self._average_spacing()
 
         # Forces alignments for columns (left, any middle columns, right)
-        #  < is left aligned, = is middle, > is right. Anything else is as per the default style
+        #  L is left aligned, C is centered, R is right. Anything else is as per the default style
         self.alignments = '...'
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:

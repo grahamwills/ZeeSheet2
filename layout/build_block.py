@@ -133,8 +133,8 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> Optional[PlacedGroupContent]:
     if block.children:
         debug_name = common.name_of(block)
-        packer = BlockColumnPacker(debug_name, item_bounds, block.children,
-                                   block.column_count(), block.options.style, quality, pdf)
+        packer = BlockTablePacker(debug_name, item_bounds, block.children,
+                                  block.column_count(), block.options.style, quality, pdf)
         return packer.place_table()
     else:
         return None
@@ -143,12 +143,12 @@ def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> 
 def place_block_title(block: Block, bounds: Rect, quality: str, pdf: PDF) -> Optional[PlacedGroupContent]:
     debug_name = common.name_of(block)
     k = len(block.title.children)
-    packer = BlockColumnPacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
-    packer.alignments = '.=>'
+    packer = BlockTablePacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
+    packer.alignments = '.CR'
     return packer.place_table()
 
 
-class BlockColumnPacker(ColumnPacker):
+class BlockTablePacker(ColumnPacker):
     item_map: dict[Tuple[int, int], Run]
     span_map: dict[Tuple[int, int], int]
 
@@ -182,7 +182,24 @@ class BlockColumnPacker(ColumnPacker):
 
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
         item = self.item_map[idx]
-        return copy(build_run.place_run(item, extent, self.content_style, self.pdf))
+
+        # Force alignment if required
+        align_char = self.alignments[1]
+        if idx[1] == 0:
+            align_char = self.alignments[0]
+        elif idx[1] == self.k - 1:
+            align_char = self.alignments[-1]
+        if align_char == 'L':
+            align='left'
+        elif align_char == 'R':
+            align='right'
+        elif align_char == 'C':
+            align= 'center'
+        else:
+            align = None
+
+        return build_run.place_run(item, extent, self.content_style, self.pdf, align)
+
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
         return self.span_map[idx]

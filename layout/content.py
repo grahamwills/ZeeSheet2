@@ -178,7 +178,8 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        return PlacedRunContent(self.segments, self.style, self.extent, self.quality, self.location)
+        segs = [copy(s) for s in self.segments]
+        return PlacedRunContent(segs, self.style, self.extent, self.quality, self.location)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)

@@ -1,3 +1,4 @@
+from copy import copy
 from functools import lru_cache
 from typing import Tuple, Union
 
@@ -11,19 +12,24 @@ from structure.style import Style
 
 
 @lru_cache(maxsize=10000)
-def place_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
-    bldr = RunBuilder(run, style, extent, pdf)
-    placed = bldr.build()
+def _build_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
+    return RunBuilder(run, style, extent, pdf).build()
 
-    # Apply alignment
-    if style.text.align == 'right':
+
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: str = None) -> PlacedRunContent:
+    placed = copy(_build_run(run, extent, style, pdf))
+    align = forced_align or style.text.align
+
+    if align == 'right':
         placed.offset_content(extent.width - placed.extent.width)
-    elif style.text.align == 'center':
+    elif align == 'center':
         placed.offset_content((extent.width - placed.extent.width) / 2)
 
     # After alignment, it fills the width. Any unused space is captured in the extent
     placed.extent = Extent(extent.width, placed.extent.height)
     return placed
+
+
 
 
 @lru_cache(maxsize=10000)
