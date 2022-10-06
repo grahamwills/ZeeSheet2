@@ -5,8 +5,9 @@ from unittest import TestCase
 import main
 from common import Spacing, Rect, Extent
 from generate.fonts import FontLibrary
-from main.document import make_complete_styles
-from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle
+from main.document import StyleResolver
+from structure import Sheet
+from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle, TextStyle
 
 
 class TestStyle(TestCase):
@@ -201,28 +202,32 @@ class TestStyle(TestCase):
         # If we go all the way into the padding, then back out to border -- that's the same as into the margin
         self.assertEqual(style.inset_within_margin(r), style.outset_to_border(style.inset_within_padding(r)))
 
-
     def test_find_similar_name(self):
         lib = FontLibrary()
         self.assertEqual(['Questrial'], lib.similar_names('Arial'))
 
+
 class TestMakeCompleteStyles(TestCase):
 
     def test_simple_inheritance(self):
-        input = {'default': StyleDefaults.default,
-                 'test': Style('test', 'default').set('margin', '1in')
-                 }
-        output = make_complete_styles(input)
+        input = {
+            'default': StyleDefaults.default,
+            'test': Style('test', 'default').set('margin', '1in')
+        }
+
+        sheet = Sheet()
+        sheet.styles.update(input)
+        output = StyleResolver(sheet).run()
 
         # All the default styles are added in
-        self.assertEqual(len(output), 9)
+        self.assertEqual(len(output), 11)
 
         # Default points to '#default' as parent
         self.assertEqual('#default', output['default'].parent)
         self.assertIsNot(output['default'], input['default'])
 
         # test inherits some parts, but has overrides
-        self.assertEqual(output['test'].text, input['default'].text)
+        self.assertEqual(output['test'].text, TextStyle(color='black', opacity=1.0, align='left', indent=0.0))
         self.assertEqual(output['test'].font, input['default'].font)
         self.assertEqual(output['test'].box.margin, Spacing(72, 72, 72, 72))
 
@@ -240,7 +245,7 @@ class TestMakeCompleteStyles(TestCase):
             '''
         )
         sheet = main.Document(input).sheet()
-        styles = make_complete_styles(sheet.styles)
+        styles = StyleResolver(sheet).run()
         block = sheet.children[0]
         self.assertEqual('Courier', styles[block.options.title_style].font.family)
         self.assertEqual('Courier', styles[block.options.style].font.family)
