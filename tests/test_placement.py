@@ -6,7 +6,7 @@ from generate.pdf import PDF
 from layout import ExtentTooSmallError
 from layout.build_block import place_block
 from layout.build_run import place_run
-from layout.build_sheet import make_complete_styles
+from main.document import StyleResolver
 from structure import Element, Run, Block, Item, Sheet
 from structure.style import Style, FontStyle
 
@@ -142,9 +142,10 @@ class TestBlockPlacement(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.title = Item([Run([Element('A simple title')])])
-        styles = Sheet().styles
+        sheet = Sheet()
+        styles = sheet.styles
         styles['default-block'] = Style('default-block').set('padding', '0').set('border', 'none')
-        styles = make_complete_styles(styles)
+        styles = StyleResolver(sheet).run()
 
         cls.pdf = PDF((1000, 1000), FontLibrary(), styles=styles)
 

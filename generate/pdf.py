@@ -82,7 +82,7 @@ class PDF(canvas.Canvas):
         self.font_lib = font_lib
         self.setLineJoin(1)
         self.setLineCap(1)
-        self._styles = styles
+        self.styles = styles
         self.images = images or {}
         self.debug = debug
 
@@ -215,11 +215,11 @@ class PDF(canvas.Canvas):
 
     def style(self, style_name: str, default='default'):
         try:
-            return self._styles[style_name]
+            return self.styles[style_name]
         except KeyError:
             warnings.warn(f"Style '{style_name}' was not defined, using '{default}' instead")
             try:
-                return self._styles[default]
+                return self.styles[default]
             except:
                 raise RuntimeError(f"Default style '{default}' was not found")
 

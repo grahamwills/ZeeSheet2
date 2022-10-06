@@ -9,7 +9,7 @@ from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
-from layout.content import PlacedContent, PlacedGroupContent, make_frame, ExtentTooSmallError
+from layout.content import PlacedContent, PlacedGroupContent, make_frame
 from structure import Sheet, style
 from structure.style import Style
 
@@ -68,27 +68,6 @@ def create_page(sheet, sections, pdf):
         # Just copy the quality of the content
         content = PlacedGroupContent.from_items([frame, content], content.quality)
     return content
-
-
-def make_complete_styles(source: Dict[str, Style]) -> Dict[str, Style]:
-    base = source.copy()
-    for s in [style.StyleDefaults.default, style.StyleDefaults.title, style.StyleDefaults.block,
-              style.StyleDefaults.section,
-              style.StyleDefaults.sheet, style.StyleDefaults.hidden, style.StyleDefaults.image]:
-        if s.name in base:
-            # This style has been redefined, so we need to juggle names
-            # and make the redefined version inherit from the default with a modified name
-            base['#' + s.name] = s
-            redefinition = copy(base[s.name])
-            redefinition.parent = '#' + s.name
-            base[s.name] = redefinition
-        else:
-            base[s.name] = s
-
-    results = {}
-    for k, v in base.items():
-        results[k] = to_complete(v, base)
-    return results
 
 
 def to_complete(s: Style, base: Dict[str, Style]) -> Style:

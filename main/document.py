@@ -9,8 +9,8 @@ from docutils import parsers, core, utils
 import common
 from generate.pdf import PDF
 from layout import PlacedGroupContent
-from layout.build_sheet import make_complete_styles, FONT_LIB, sheet_to_pages
-from structure import visitors, Sheet, ImageDetail, Prettify, StyleDefaults, prepare_for_visit, Style
+from layout.build_sheet import FONT_LIB, sheet_to_pages, to_complete
+from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style
 
 LOGGER = common.configured_logger(__name__)
 
@@ -55,13 +55,11 @@ class Document:
 
             LOGGER.info('Completing styles and creating pdf writer')
 
-            # Define default inheritance and use inheritance to make the values all defined
-            styles = self._set_styles_inheritance()
-            styles = make_complete_styles(styles)
+            resolver = StyleResolver(sheet)
+            styles = resolver.run()
 
-            # Change 'auto' to be actual values
-            for s in styles.values():
-                StyleDefaults.set_auto_values(s)
+            # Define default inheritance and use inheritance to make the values all defined
+
             page_size = (int(sheet.options.width), int(sheet.options.height))
             self._pdf = PDF(page_size, FONT_LIB, styles=styles, images=self.images, debug=sheet.options.debug)
         return self._pdf
@@ -89,30 +87,89 @@ class Document:
     def prettified(self, width: int = 100) -> str:
         return Prettify(self.sheet(), width).run()
 
-    # If a style does not say which style it inherits from, this code sets is
-    def _set_styles_inheritance(self) -> dict[str, Style]:
-        sheet = self.sheet()
 
-        # Create a mapping of all the usages
-        usages = defaultdict(Counter)
-        usages[sheet.options.style].update(['default-sheet'])
-        for section in sheet.children:
-            usages[section.options.style].update(['default-section'])
-            usages[section.options.title_style].update(['default-title'])
+class StyleResolver:
+    def __init__(self, sheet: Sheet):
+        self.sheet = sheet
+        self.styles = {s.name: copy(s) for s in sheet.styles.values()}
+
+    def run(self) -> dict[str, Style]:
+        default_parent = self.default_parents()
+
+        for style in self.styles.values():
+            style.parent = style.parent or default_parent[style.name]
+        self.make_unique_styles_per_block()
+        self.styles = self.make_complete_styles()
+
+        pairs = self.title_body_pairs()
+        for s in self.styles.values():
+            target = default_parent[s.name]
+            pair = None
+            pair_name = pairs[s.name]
+            if pair_name:
+                pair = self.styles[pair_name]
+            StyleDefaults.set_auto_values(s, target=target, pair=pair)
+        return self.styles
+
+    # Create a mapping of all the usages
+    def default_parents(self) -> dict[str, str]:
+        result = defaultdict(Counter)
+        result[self.sheet.options.style].update(['default-sheet'])
+        for section in self.sheet.children:
+            result[section.options.style].update(['default-section'])
+            result[section.options.title_style].update(['default-title'])
             for block in section.children:
                 if block.options.image and not block.children:
-                    usages[block.options.style].update(['default-image'])
+                    result[block.options.style].update(['default-image'])
                 else:
-                    usages[block.options.style].update(['default-block'])
-                usages[block.options.title_style].update(['default-title'])
+                    result[block.options.style].update(['default-block'])
+                result[block.options.title_style].update(['default-title'])
 
-        # Set the defaults based on the most common usage. Only if the style is defined and has no parent
-        styles = {}
-        for name in sheet.styles:
-            style = copy(sheet.styles[name])
-            styles[name] = style
-            if name in usages:
-                style.parent = style.parent or usages[name].most_common(1)[0][0]
+        # Convert to dictionary using most common usage, and put into a default dict
+        map = {k: v.most_common(1)[0][0] for k, v in result.items()}
+        return defaultdict(lambda: 'default', map)
+
+    def make_complete_styles(self, ) -> Dict[str, Style]:
+        base = self.styles.copy()
+        for s in [style.StyleDefaults.default, style.StyleDefaults.title, style.StyleDefaults.block,
+                  style.StyleDefaults.section,
+                  style.StyleDefaults.sheet, style.StyleDefaults.hidden, style.StyleDefaults.image]:
+            if s.name in base:
+                # This style has been redefined, so we need to juggle names
+                # and make the redefined version inherit from the default with a modified name
+                base['#' + s.name] = s
+                redefinition = copy(base[s.name])
+                redefinition.parent = '#' + s.name
+                base[s.name] = redefinition
             else:
-                style.parent = style.parent or 'default'
-        return styles
+                base[s.name] = s
+
+        results = {}
+        for k, v in base.items():
+            results[k] = to_complete(v, base)
+        return results
+
+    def title_body_pairs(self) -> dict[str, str]:
+        # Create a mapping of all the usages
+        pairs = defaultdict(lambda: None)
+        for section in self.sheet.children:
+            for block in section.children:
+                opt = block.options
+                if opt.style and opt.title_style:
+                    pairs[opt.style] = opt.title_style
+                    pairs[opt.title_style] = opt.style
+        return pairs
+
+    def make_unique_styles_per_block(self):
+        idx = 0
+        # Create a mapping of all the usages
+        sheet = self.sheet
+        for section in sheet.children:
+            for block in section.children:
+                idx += 1
+                style = Style(name=f"_block_{idx}", parent=block.options.style)
+                self.styles[style.name] = style
+                block.options.style = style.name
+                style = Style(name=f"_title_{idx}", parent=block.options.title_style)
+                self.styles[style.name] = style
+                block.options.title_style = style.name

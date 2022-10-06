@@ -48,7 +48,7 @@ def _modify_brightness(c: Color, value: float) -> str:
 
 def _is_grayscale(c: Color) -> bool:
     h, s, v = colorsys.rgb_to_hsv(*c.rgb())
-    return s < 0.2
+    return s < 0.01
 
 
 def text_to_spacing(text: str) -> Spacing:
@@ -402,26 +402,40 @@ class StyleDefaults:
                                     StyleDefaults.hidden]}
 
     @classmethod
-    def set_auto_text_box_border(cls, style: Style):
-        if 'title' in style.name.lower():
+    def set_auto_text_box_border(cls, style: Style, target:str, pair:Style):
+        # Try and base it on the pair first
+        if pair:
+            if 'title' in target:
+                # Set the title's pair (should be a block) and then use that to set the title box color
+                cls.set_auto_values(pair, 'block', None)
+                style.box.color = pair.box.border_color
+                cls.set_auto_text_border(style, target, pair)
+                return
+            else:
+                if pair.box.color != 'auto':
+                    style.box.border_color = pair.box.color
+                    cls.set_auto_text_box(style, target, pair)
+                    return
+
+        if 'title' in target:
             style.box.color = StyleDefaults.DEFAULT_DARK
-        elif 'block' in style.name.lower():
+        elif 'block' in target:
             style.box.color = StyleDefaults.DEFAULT_LIGHT
         else:
             style.box.color = 'none'
-        cls.set_auto_text_border(style)
+        cls.set_auto_text_border(style, target, pair)
 
     @classmethod
-    def set_auto_text_border(cls, style: Style):
+    def set_auto_text_border(cls, style: Style, target:str, pair:Style):
         bg = style.get_color(box=True)
         if _brightness(bg) > 0.5:
             style.text.color = 'black'
         else:
             style.text.color = 'white'
-        cls.set_auto_border(style)
+        cls.set_auto_border(style, target, pair)
 
     @classmethod
-    def set_auto_box_border(cls, style: Style):
+    def set_auto_box_border(cls, style, target:str, pair:Style):
         text = style.get_color()
         if _brightness(text) > 0.5:
             # Light text
@@ -435,10 +449,10 @@ class StyleDefaults:
                 style.box.color = 'white'
             else:
                 style.box.color = _modify_brightness(text, value=StyleDefaults.BRIGHT)
-        cls.set_auto_border(style)
+        cls.set_auto_border(style, target, pair)
 
     @classmethod
-    def set_auto_text_box(cls, style: Style):
+    def set_auto_text_box(cls, style: Style, target:str, pair:Style):
         border = style.get_color(border=True)
         if _brightness(border) > 0.5:
             # Light border
@@ -452,10 +466,10 @@ class StyleDefaults:
                 style.text.color = 'black'
             else:
                 style.text.color = _modify_brightness(border, value=StyleDefaults.DARK)
-        cls.set_auto_box(style)
+        cls.set_auto_box(style, target, pair)
 
     @classmethod
-    def set_auto_text(cls, style: Style):
+    def set_auto_text(cls, style: Style, target:str, pair:Style):
         bg = style.get_color(box=True)
         border = style.get_color(border=True)
         # Set the text to match the border and contrast with the background
@@ -471,7 +485,7 @@ class StyleDefaults:
                 style.text.color = _modify_brightness(border, value=StyleDefaults.BRIGHT)
 
     @classmethod
-    def set_auto_box(cls, style: Style):
+    def set_auto_box(cls, style: Style, target:str, pair:Style):
         text = style.get_color()
         border = style.get_color(border=True)
         # Set the background to match the border and contrast with the text
@@ -487,7 +501,7 @@ class StyleDefaults:
                 style.box.color = _modify_brightness(border, StyleDefaults.BRIGHT)
 
     @classmethod
-    def set_auto_border(cls, style: Style):
+    def set_auto_border(cls, style: Style, target:str, pair:Style):
         bg = style.get_color(box=True)
         if _brightness(bg) > 0.5:
             # Bright background, so make the border dark to contrast
@@ -500,7 +514,7 @@ class StyleDefaults:
             style.box.border_color = 'none'
 
     @classmethod
-    def set_auto_values(cls, style: Style):
+    def set_auto_values(cls, style: Style, target:str='unknown', pair:Style=None):
         method_extension = ''
         if style.text.color == 'auto':
             method_extension += '_text'
@@ -512,6 +526,6 @@ class StyleDefaults:
         # Call appropriate method
         if method_extension:
             method = getattr(cls, 'set_auto' + method_extension)
-            method(style)
+            method(style, target, pair)
             LOGGER.debug(f'Set auto styles for {style.name}: '
                          f'txt={style.text.color}, bg={style.box.color}, bdr={style.box.border_color}')

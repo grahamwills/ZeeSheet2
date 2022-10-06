@@ -5,7 +5,7 @@ from unittest import TestCase
 import main
 from common import Spacing, Rect, Extent
 from generate.fonts import FontLibrary
-from layout.build_sheet import make_complete_styles
+from main.document import make_complete_styles
 from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle
 
 
