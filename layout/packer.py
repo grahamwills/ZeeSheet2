@@ -45,6 +45,10 @@ class ColumnPacker:
         self.max_width_combos = max_width_combos
         self.average_spacing = self._average_spacing()
 
+        # Forces alignments for columns (left, any middle columns, right)
+        #  < is left aligned, = is middle, > is right. Anything else is as per the default style
+        self.alignments = '...'
+
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
@@ -86,7 +90,7 @@ class ColumnPacker:
             width = widths[c]
             indices = (allocated, allocated + count)
             span = (previous_right, previous_right + width)
-            fit, overflow = self._place_in_single_column(indices, span, previous_margin)
+            fit, overflow = self._place_in_one_column(indices, span, previous_margin)
             previous_margin = fit.right_margin
             fitted = len(fit.items)
             if fitted == 0:
@@ -134,7 +138,7 @@ class ColumnPacker:
         return PlacedGroupContent.from_items(all_items, q, extent=ext)
 
     @lru_cache
-    def _place_in_single_column(self, ids: tuple[int, int], span: tuple[float, float], previous_margin_right: float):
+    def _place_in_one_column(self, ids: tuple[int, int], span: tuple[float, float], previous_margin_right: float):
         height = self.bounds.height
         space_is_full = False
         fit = ColumnFit(right_margin=previous_margin_right)
@@ -157,7 +161,7 @@ class ColumnPacker:
 
             try:
                 placed = self.place_item(i, r.extent)
-            except ExtentTooSmallError as ex:
+            except ExtentTooSmallError:
                 # No room for this block
                 space_is_full = True
                 break
@@ -346,7 +350,7 @@ class ColumnPacker:
             try:
                 indices = (allocated, allocated + trial_counts[target])
                 span = (previous_right, previous_right + widths[target])
-                fit1, overflow1 = self._place_in_single_column(indices, span, previous_margin)
+                fit1, overflow1 = self._place_in_one_column(indices, span, previous_margin)
                 if overflow1:
                     LOGGER.error('This is weird. Placing fewer items caused overflow')
                     return results
@@ -364,7 +368,7 @@ class ColumnPacker:
             try:
                 indices = (allocated, allocated + trial_counts[target + 1])
                 span = (previous_right, previous_right + widths[target + 1])
-                fit2, overflow2 = self._place_in_single_column(indices, span, previous_margin)
+                fit2, overflow2 = self._place_in_one_column(indices, span, previous_margin)
                 if overflow2:
                     # We could not shuffle any further, so we are done
                     return results
@@ -386,4 +390,4 @@ class ColumnPacker:
 
     def __str__(self):
         return f"{self.debug_name}[n={self.n}, k={self.k}, bounds={round(self.bounds)}, " \
-               f"limits={self.granularity}/{self.max_width_combos}"
+               f"limits={self.max_width_combos}"

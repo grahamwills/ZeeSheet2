@@ -384,7 +384,7 @@ class StyleDefaults:
             1.0, 'auto', 1.0,
             Spacing.balanced(0), Spacing.balanced(2)))
 
-    title = Style('default-title', 'default').set('font-size', '14').set('font-face', 'bold').set('padding', '0')
+    title = Style('default-title', 'default').set('font-size', '14').set('font-face', 'bold').set('padding', '1')
     block = Style('default-block', 'default').set('margin', '12')
     section = Style('default-section', 'default').set('margin', '0').set('padding', '0') \
         .set('border', 'none').set('background', 'none')

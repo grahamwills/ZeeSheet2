@@ -22,7 +22,7 @@ MIN_BLOCK_DIMENSION = 8
 NO_SPACING = Spacing(0, 0, 0, 0)
 
 
-def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
+def make_title(block: Block, inner: Rect, quality: str, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
     if not block.title or block.options.title == 'none':
         return None, NO_SPACING
 
@@ -33,7 +33,7 @@ def make_title(block: Block, inner: Rect, pdf: PDF) -> Tuple[Optional[PlacedCont
     title_style = pdf.style(block.options.title_style, 'default-title')
 
     title_bounds = title_style.box.inset_within_padding(inner)
-    placed = copy(build_run.place_run(block.title.children[0], title_bounds.extent, title_style, pdf))
+    placed = place_block_title(block, title_bounds, quality, pdf)
     placed.location = title_bounds.top_left
 
     r1 = title_style.box.inset_within_margin(inner)
@@ -77,7 +77,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         outer = container
 
     # Create the title and insets to allow room for it
-    title, title_spacing = make_title(block, outer, pdf)
+    title, title_spacing = make_title(block, outer, quality, pdf)
 
     if not block.children and not image:
         if not title:
@@ -130,31 +130,41 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 
 
 @lru_cache
-def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf, ) -> Optional[PlacedGroupContent]:
+def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> Optional[PlacedGroupContent]:
     if block.children:
-        packer = BlockColumnPacker(item_bounds, block, pdf, quality=quality)
+        debug_name = common.name_of(block)
+        packer = BlockColumnPacker(debug_name, item_bounds, block.children,
+                                   block.column_count(), block.options.style, quality, pdf)
         return packer.place_table()
     else:
         return None
+
+
+def place_block_title(block: Block, bounds: Rect, quality: str, pdf: PDF) -> Optional[PlacedGroupContent]:
+    debug_name = common.name_of(block)
+    k = len(block.title.children)
+    packer = BlockColumnPacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
+    packer.alignments = '.=>'
+    return packer.place_table()
 
 
 class BlockColumnPacker(ColumnPacker):
     item_map: dict[Tuple[int, int], Run]
     span_map: dict[Tuple[int, int], int]
 
-    def __init__(self, bounds: Rect, block: Block, pdf: PDF, quality: str):
+    def __init__(self, debug_name: str, bounds: Rect, items: list[Item], k: int, style_name: str, quality: str,
+                 pdf: PDF):
         max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()]
 
-        column_count = max(len(item.children) for item in block.children)
+        column_count = max(len(item.children) for item in items)
         self.pdf = pdf
-        self.content_style = pdf.style(block.options.style)
-        super().__init__(common.name_of(block), bounds, len(block.children), column_count, max_width_combos)
+        self.content_style = pdf.style(style_name)
+        super().__init__(debug_name, bounds, len(items), column_count, max_width_combos)
 
         self.item_map = {}
         self.span_map = {}
 
-        k = block.column_count()
-        for r, row in enumerate(block.children):
+        for r, row in enumerate(items):
             for c, item in enumerate(row):
                 self.item_map[(r, c)] = item
                 if item == row[-1]:
