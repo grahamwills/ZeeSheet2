@@ -94,7 +94,12 @@ class Font:
         a, d = metrics.getAscentDescent(self.name, self.size)
         self.ascent = abs(a)
         self.descent = abs(d)
-        self.line_spacing = (self.ascent + self.descent) * 1.2
+
+        # Built-in fonts seem a bit tighter
+        if self.family.category == 'builtin':
+            self.line_spacing = (self.ascent + self.descent) * 1.20
+        else:
+            self.line_spacing = (self.ascent + self.descent) * 1.15
 
     @lru_cache(maxsize=10000)
     def width(self, text: str) -> float:

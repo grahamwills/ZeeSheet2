@@ -2,6 +2,7 @@ import colorsys
 import reprlib
 import warnings
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Tuple, Union, Dict, Optional
@@ -96,7 +97,13 @@ class PDF(canvas.Canvas):
         self.setLineJoin(0)
 
     def get_font(self, style: Style) -> Font:
-        return self.font_lib.get_font(style.font.family, style.font.size, style.font.face)
+        font = self.font_lib.get_font(style.font.family, style.font.size, style.font.face)
+
+        # Apply line spacing modifier if defined
+        if style.font.spacing != 1:
+            font = copy(font)
+            font.line_spacing *= style.font.spacing
+        return font
 
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
@@ -114,7 +121,7 @@ class PDF(canvas.Canvas):
 
     def _draw_checkbox(self, rx, ry, font: Font, state: bool, color: Color):
         size = font.ascent + font.descent
-        x, y = self.absolutePosition(rx, ry + size)
+        x, y = self.absolutePosition(rx, ry + font.line_spacing/2 + size/2)
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)
@@ -128,17 +135,17 @@ class PDF(canvas.Canvas):
         if font.name not in self.acroForm.formFontNames:
             if font.family.category == 'serif':
                 fname = 'Times-Roman'
-                font = self.font_lib.get_font('Times', font.size)
-                height = font.line_spacing
+                draw_font = self.font_lib.get_font('Times', font.size)
+                height = draw_font.ascent + draw_font.descent
             else:
                 fname = 'Helvetica'
-                font = self.font_lib.get_font('Helvetica', font.size)
-                height = font.ascent + font.descent
+                draw_font = self.font_lib.get_font('Helvetica', font.size)
+                height = (draw_font.ascent + draw_font.descent) / 1.2
         else:
             fname = font.name
-            height = font.line_spacing
+            height = font.ascent + font.descent
 
-        x, y = self.absolutePosition(rx, ry + height+font.descent)
+        x, y = self.absolutePosition(rx, ry + font.line_spacing/2 + height/2)
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)

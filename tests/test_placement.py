@@ -126,6 +126,16 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('c', item.children[2].to_rst())
         self.assertEqual('d', item.children[3].to_rst())
 
+    def test_font_spacing(self):
+        run = Run([self.E1])
+        s1 = Style('test1', font=FontStyle('Helvetica', 14, 'regular', 1.0))
+        s2 = Style('test2', font=FontStyle('Helvetica', 14, 'regular', 0.5))
+        p1 = place_run(run, Extent(100, 100), s1, self.pdf)
+        p2 = place_run(run, Extent(100, 100), s2, self.pdf)
+        self.assertAlmostEqual(15.54, p1.extent.height, places=2)
+        self.assertAlmostEqual(7.77, p2.extent.height, places=2)
+
+
 
 class TestBlockPlacement(unittest.TestCase):
 

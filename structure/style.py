@@ -35,7 +35,7 @@ def _check_valid_color(name: str):
 def _brightness(c: Color) -> bool:
     """ Returns true if the color is mostly lighter"""
 
-    # Assuem the background is light if we have an alpha value
+    # Assume the background is light if we have an alpha value
     base = (0.299 * c.red ** 2 + 0.587 * c.green ** 2 + 0.114 * c.blue ** 2) ** 0.5
     return base * c.alpha + (1 - c.alpha)
 
@@ -65,6 +65,13 @@ def text_to_spacing(text: str) -> Spacing:
     raise ValueError('Lengths must be a single item, 2 items or all four')
 
 
+def text_to_fraction(text: str) -> float:
+    if text.endswith('%'):
+        return text_to_fraction(text[:-1]) / 100
+    else:
+        return float(text)
+
+
 def validate_value(key: str, value: str, possibles: Iterable[str]):
     if value.lower() not in possibles:
         p = ', '.join(possibles)
@@ -76,6 +83,7 @@ class FontStyle:
     family: str = None
     size: float = None
     face: str = None
+    spacing: float = None
 
     def set(self, key: str, value):
         FACES = ('normal', 'regular', 'bold', 'italic', 'bolditalic')
@@ -85,6 +93,8 @@ class FontStyle:
             self.size = float(value)
         elif value is None and key.lower() in FACES:
             self.face = key.lower()
+        elif key == 'spacing':
+            self.spacing = text_to_fraction(value)
         elif key in ['style', 'face']:
             # Too many face options to validate
             self.face = value
@@ -98,6 +108,9 @@ class FontStyle:
             parts.append(f'font-size:{num2str(self.size)}')
         if self.face is not None:
             parts.append(f'font-face:{self.face}')
+        if self.spacing is not None:
+            s = common.to_str(self.spacing * 100, 1)
+            parts.append(f'font-spacing:{s}%')
 
     @property
     def is_bold(self):
@@ -365,7 +378,7 @@ class StyleDefaults:
     default = Style(
         'default', '#',
         TextStyle('auto', 1.0, 'left', 0.0),
-        FontStyle('Helvetica', 12.0, 'Regular'),
+        FontStyle('Helvetica', 12.0, 'Regular', 1.0),
         BoxStyle(
             'auto', 1.0,
             1.0, 'auto', 1.0,
