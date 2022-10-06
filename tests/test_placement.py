@@ -17,7 +17,7 @@ def _make_item(txt: str) -> Item:
     return item
 
 
-STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular'))
+STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0))
 
 
 class TestRunPlacement(unittest.TestCase):
@@ -57,7 +57,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_run_aligned_right(self):
         run = Run([self.E1, self.E2, self.E3])
-        style = Style('test', font=FontStyle('Helvetica', 14, 'regular')).set('align', 'right')
+        style = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1)).set('align', 'right')
         placed = place_run(run, Extent(300, 100), style, self.pdf)
         self.assertEqual(3, len(placed.segments))
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)

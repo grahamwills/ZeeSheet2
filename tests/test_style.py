@@ -31,7 +31,7 @@ class TestStyle(TestCase):
     def test_to_definition_default(self):
         self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 '
                          'font-family:Helvetica font-size:12 font-face:Regular '
-                         'border:auto border-opacity:1 border-width:1 '
+                         'font-spacing:100% border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
                          'margin:0 padding:2', StyleDefaults.default.to_definition())
 
