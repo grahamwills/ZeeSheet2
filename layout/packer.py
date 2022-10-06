@@ -59,11 +59,6 @@ class ColumnPacker:
         """ The number of columns spanned by this item. Defaults to 1 """
         raise NotImplementedError('This method must be defined by an inheriting class')
 
-    def column_count_possibilities(self, defined: list[int, ...] = None, limit: int = 100) -> list[list[int, ...]]:
-        if defined is not None:
-            return [defined]
-        return items_in_bins_combinations(self.n, self.k, limit=limit)
-
     @staticmethod
     def _quality_scores(quality):
         if quality == 'low':
@@ -344,7 +339,6 @@ class ColumnPacker:
         for widths in width_choices:
             try:
                 trial, counts = self._place_in_sized_columns(widths)
-
                 if trial.better(best):
                     best = trial
                     best_combo = widths, counts
@@ -359,6 +353,7 @@ class ColumnPacker:
                 pass
 
         if not best:
+            LOGGER.warn("[{}] No placement with widths {}", self.debug_name, common.to_str(width_choices,0))
             raise ExtentTooSmallError()
         self.report(best_combo[0], best_combo[1], best, final=True)
         LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
@@ -439,3 +434,7 @@ class ColumnPacker:
 
         # Finished shuffling
         return results
+
+    def __str__(self):
+        return f"{self.debug_name}[n={self.n}, k={self.k}, bounds={round(self.bounds)}, " \
+               f"limits={self.granularity}/{self.max_width_combos}"

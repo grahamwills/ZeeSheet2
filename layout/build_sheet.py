@@ -9,7 +9,7 @@ from generate.fonts import FontLibrary
 from generate.pdf import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
-from layout.content import PlacedContent, PlacedGroupContent, make_frame
+from layout.content import PlacedContent, PlacedGroupContent, make_frame, ExtentTooSmallError
 from structure import Sheet, style
 from structure.style import Style
 

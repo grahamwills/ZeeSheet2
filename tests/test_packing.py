@@ -53,13 +53,13 @@ class PackingTest(unittest.TestCase):
 
 
     def test_combinations(self):
-        cp = TestPacker('test', Rect(0, 400, 0, 500), item_count=8, column_count=3, granularity=50, max_width_combos=100)
-        cc = ' '.join(str(c) for c in cp.column_count_possibilities())
-        cw = ' '.join(str([int(v) for v in c]) for c in cp.column_width_possibilities())
-        self.assertEqual('[2, 3, 3] [3, 2, 3] [3, 3, 2] [2, 2, 4] [2, 4, 2] [4, 2, 2] [1, 3, 4] [3, 1, 4] '
-                         '[3, 4, 1] [4, 3, 1] [1, 4, 3] [4, 1, 3] [1, 2, 5] [1, 5, 2] [2, 1, 5] [2, 5, 1] '
-                         '[5, 1, 2] [5, 2, 1] [1, 1, 6] [1, 6, 1] [6, 1, 1]', cc)
-        self.assertEqual('[100, 150, 150] [150, 100, 150] [150, 150, 100] [100, 100, 200] [100, 200, 100] '
-                         '[200, 100, 100] [50, 150, 200] [150, 50, 200] [150, 200, 50] [200, 150, 50] [50, 200, 150] '
-                         '[200, 50, 150] [50, 100, 250] [50, 250, 100] [100, 50, 250] [100, 250, 50] [250, 50, 100] '
-                         '[250, 100, 50] [50, 50, 300] [50, 300, 50] [300, 50, 50]', cw)
+        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, granularity=25, max_width_combos=100)
+        widths = cp.column_width_possibilities()
+        self.assertEqual([100, 100, 100], widths[0])
+        self.assertEqual([75, 100, 125], widths[1])
+        self.assertEqual(55, len(widths))
+
+    def test_combinations_exceeds_limit(self):
+        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, granularity=25, max_width_combos=10)
+        widths = cp.column_width_possibilities()
+        self.assertEqual(None, widths)

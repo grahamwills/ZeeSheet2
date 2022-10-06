@@ -8,6 +8,7 @@ from typing import List, Optional, ClassVar, Dict
 from PIL.Image import Image
 from reportlab.lib.units import inch
 
+import common
 from structure.style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
@@ -151,13 +152,13 @@ class StructureUnit:
     def __bool__(self) -> bool:
         return bool(self.children) or (self._titled() and bool(self.title))
 
-    def tidy(self, index:list[int]) -> None:
+    def tidy(self, index: list[int]) -> None:
         raise NotImplementedError('Must be implemented by descendents')
 
-    def _tidy_children(self, index:list[int], keep_empty: bool = False):
+    def _tidy_children(self, index: list[int], keep_empty: bool = False):
         """ Tidy children, and optionally throw away children with no content"""
         for i, s in enumerate(self.children):
-            s.tidy(index + [i+1])
+            s.tidy(index + [i + 1])
         if not keep_empty:
             self.children = [s for s in self.children if s]
 
@@ -223,8 +224,8 @@ class Run(StructureUnit):
 
         return ''.join(results)
 
-    def tidy(self, index:list[int]) -> None:
-        self.name = 'Run\u00a7'+ '.'.join(str(x) for x in index)
+    def tidy(self, index: list[int]) -> None:
+        self.name = 'Run\u00a7' + '.'.join(str(x) for x in index)
 
     def strip(self):
         # Remove leading and trailing blanks
@@ -270,8 +271,8 @@ class Item(StructureUnit):
                     if s:
                         self.add_to_content(Element(s, element.modifier))
 
-    def tidy(self, index:list) -> None:
-        self.name = 'Item\u00a7'+ '.'.join(str(x) for x in index)
+    def tidy(self, index: list) -> None:
+        self.name = 'Item\u00a7' + '.'.join(str(x) for x in index)
         # replace children with a new list, breaking runs into cells to do so
 
         old = self.children
@@ -298,8 +299,8 @@ class Block(StructureUnit):
         """ Maximum number of runs in each block item """
         return max(len(item.children) for item in self.children) if self.children else 0
 
-    def tidy(self, index:list) -> None:
-        self.name = 'Block\u00a7'+ '.'.join(str(x) for x in index)
+    def tidy(self, index: list) -> None:
+        self.name = 'Block\u00a7' + '.'.join(str(x) for x in index)
         self.title.tidy(index + ['title'])
         self._tidy_children(index)
 
@@ -316,8 +317,8 @@ class Section(StructureUnit):
     children: List[Block] = field(default_factory=lambda: [Block()])
     options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='none', style='default-section'))
 
-    def tidy(self, index:list[int]) -> None:
-        self.name = 'Section\u00a7'+ '.'.join(str(x) for x in index)
+    def tidy(self, index: list[int]) -> None:
+        self.name = 'Section\u00a7' + '.'.join(str(x) for x in index)
         self._tidy_children(index)
 
 
@@ -328,6 +329,6 @@ class Sheet(StructureUnit):
     styles: Dict[str, Style] = field(default_factory=lambda: {})
     options: SheetOptions = field(default_factory=lambda: SheetOptions())
 
-    def tidy(self, index:list) -> None:
+    def tidy(self, index: list) -> None:
+        self.name = 'Sheet'
         self._tidy_children(index)
-

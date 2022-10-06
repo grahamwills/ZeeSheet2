@@ -13,7 +13,7 @@ from structure.style import Style, FontStyle
 
 def _make_item(txt: str) -> Item:
     item = Item([Run([Element(txt, None)])])
-    item.tidy()
+    item.tidy(['test'])
     return item
 
 
@@ -118,7 +118,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_split_item_into_cells(self):
         item = _make_item('a | b         \t| c | d ')
-        item.tidy()
+        item.tidy(['test'])
         self.assertEqual(4, len(item.children))
         self.assertEqual('a', item.children[0].to_rst())
         self.assertEqual('b', item.children[1].to_rst())

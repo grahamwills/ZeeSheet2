@@ -35,7 +35,7 @@ class TableWidthOptimizer:
             return 2e10
         try:
             placed = self.make_table(widths)
-        except Error as ex:
+        except Exception as ex:
             LOGGER.fine(f"{widths}: Error is '{ex}'")
             return 1e10
         score = placed.quality.minor_score()
@@ -54,7 +54,7 @@ class TableWidthOptimizer:
         duration = time.perf_counter() - start
 
         if hasattr(solution, 'success') and not solution.success:
-            LOGGER.info("Failed using nelder-mead in %1.2fs after %d evaluations: %s", duration,
+            LOGGER.info("Failed using nelder-mead in {:g}s after {} evaluations: {:g}", duration,
                         solution.nfev, solution.message)
             return None
         else:
@@ -62,7 +62,7 @@ class TableWidthOptimizer:
             placed = self.make_table(widths)
             f = placed.quality.minor_score()
 
-            LOGGER.debug("Solved using nelder-mead in %1.2fs with %d evaluations: %s -> %s ->  %1.3f",
+            LOGGER.debug("Solved using nelder-mead in {:g}s with {} evaluations: {:g} -> {:g} ->  {:g}",
                          duration, solution.nfev, solution.x, widths, f)
             return placed
 
