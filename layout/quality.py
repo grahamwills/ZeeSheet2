@@ -150,7 +150,7 @@ class PlacementQuality(Generic[T]):
 
 def for_wrapping(target: T, excess_width: float, bad_breaks: int, good_breaks: int) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
-    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width ** 2,
+    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width*excess_width,
                             bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 

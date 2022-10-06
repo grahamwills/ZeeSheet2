@@ -53,7 +53,7 @@ class FontFamily:
             if 'Medium' in self.faces:
                 return 'Medium'
             if 'Light' in self.faces:
-                    return 'Light'
+                return 'Light'
             else:
                 raise RuntimeError(f"Family '{self.name}' did not contain a regular font")
         if key == 'bold':
@@ -86,6 +86,7 @@ class Font:
     size: float
     ascent: float = None
     descent: float = None
+    line_spacing: float = None
     _font: pdfmetrics.Font = None
 
     def __post_init__(self):
@@ -93,16 +94,12 @@ class Font:
         a, d = metrics.getAscentDescent(self.name, self.size)
         self.ascent = abs(a)
         self.descent = abs(d)
+        self.line_spacing = (self.ascent + self.descent) * 1.2
 
     @lru_cache(maxsize=10000)
     def width(self, text: str) -> float:
         """Measures the width of the text"""
         return self._font.stringWidth(text, self.size)
-
-    @property
-    def line_spacing(self):
-        """The distance between two lines"""
-        return (self.ascent + self.descent) * 1.2
 
     @property
     def top_to_baseline(self):
@@ -173,7 +170,7 @@ class FontLibrary():
 
             :param family_name: The name of the family, e.g 'Montserrat'
             :param size: The font size
-            :param face: Face variant of the font, e.g. regular, bold, thin, italic, etc.
+            :param face_name: Face variant of the font, e.g. regular, bold, thin, italic, etc.
 
             If the font has not been registered, then it is automatically registered
         """
