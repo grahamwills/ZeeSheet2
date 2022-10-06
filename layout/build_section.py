@@ -42,9 +42,8 @@ class SectionPacker(ColumnPacker):
         self.items = items
         self.pdf = pdf
         self.quality = quality
-        granularity, max_widths = self._quality_scores(quality)
-        super().__init__(debug_name, bounds, len(items), column_count,
-                         granularity=granularity, max_width_combos=max_widths)
+        max_combos = self.QUALITY_TO_COMBOS[quality.lower()]
+        super().__init__(debug_name, bounds, len(items), column_count, max_combos)
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)

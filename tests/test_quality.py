@@ -1,7 +1,7 @@
 import unittest
 
 import layout.quality as quality
-from common import Extent, Point, Rect
+from common import Extent, Rect, Point
 from generate.pdf import TextSegment, CheckboxSegment
 from layout import PlacedImageContent, PlacedRectContent, PlacedRunContent, PlacedGroupContent
 from structure import ImageDetail
@@ -13,7 +13,7 @@ STYLE = Style('foo')
 BOUNDS = Rect(2, 3, 3, 4)
 
 IMAGE = ImageDetail(2, None, 100, 200)
-SEGMENTS = [TextSegment('hello', POINT, None), CheckboxSegment(True, POINT, None)]
+SEGMENTS = [TextSegment('hello', 2, 3, 12, None), CheckboxSegment(True, 15, 3, 10, None)]
 
 IM_DESIRED = Extent(100, 200)
 
@@ -204,14 +204,14 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         half_image = quality.for_image('name', 'normal', IM_DESIRED, Rect(0, 50, 0, 200), Rect(0, 50, 0, 200))
 
         # Just checking that perfect really is
-        self.assertEqual(0, quality.for_table('g', [[perfect_image],[ perfect_text]], 3).minor_score())
+        self.assertEqual(0, quality.for_table('g', [[perfect_image], [perfect_text]], 3).minor_score())
 
-        a = quality.for_table('g', [[perfect_image],[no_break_10_excess]], 3)
-        b = quality.for_table('g', [[slightly_shrunk_image],[ perfect_text]], 3)
-        c = quality.for_table('g', [[slightly_shrunk_image],[ no_break_20_excess]], 3)
-        d = quality.for_table('g', [[perfect_image],[bad_break_no_excess]], 3)
-        e = quality.for_table('g', [[half_image],[ perfect_text]], 3)
-        f = quality.for_table('g', [[bad_break_no_excess],[ bad_break_no_excess]], 3)
+        a = quality.for_table('g', [[perfect_image], [no_break_10_excess]], 3)
+        b = quality.for_table('g', [[slightly_shrunk_image], [perfect_text]], 3)
+        c = quality.for_table('g', [[slightly_shrunk_image], [no_break_20_excess]], 3)
+        d = quality.for_table('g', [[perfect_image], [bad_break_no_excess]], 3)
+        e = quality.for_table('g', [[half_image], [perfect_text]], 3)
+        f = quality.for_table('g', [[bad_break_no_excess], [bad_break_no_excess]], 3)
 
         self.assertTrue(a.better(b))
         self.assertTrue(b.better(c))

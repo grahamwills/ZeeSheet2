@@ -62,7 +62,7 @@ def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf:
         title.location = Point(0, 0)
 
 
-def place_block(block: Block, size: Extent, quality:str, pdf: PDF) -> Optional[PlacedContent]:
+def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[PlacedContent]:
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.style(block.options.style, 'default-block')
@@ -130,7 +130,7 @@ def place_block(block: Block, size: Extent, quality:str, pdf: PDF) -> Optional[P
 
 
 @lru_cache
-def place_block_children(block: Block, item_bounds: Rect, quality:str, pdf, ) -> Optional[PlacedGroupContent]:
+def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf, ) -> Optional[PlacedGroupContent]:
     if block.children:
         packer = BlockColumnPacker(item_bounds, block, pdf, quality=quality)
         return packer.place_table()
@@ -142,14 +142,13 @@ class BlockColumnPacker(ColumnPacker):
     item_map: dict[Tuple[int, int], Run]
     span_map: dict[Tuple[int, int], int]
 
-    def __init__(self, bounds: Rect, block: Block, pdf: PDF, quality:str):
-        granularity, max_width_combos = self._quality_scores(quality)
+    def __init__(self, bounds: Rect, block: Block, pdf: PDF, quality: str):
+        max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()]
 
         column_count = max(len(item.children) for item in block.children)
         self.pdf = pdf
         self.content_style = pdf.style(block.options.style)
-        super().__init__(common.name_of(block), bounds, len(block.children), column_count,
-                         granularity=granularity, max_width_combos=max_width_combos)
+        super().__init__(common.name_of(block), bounds, len(block.children), column_count, max_width_combos)
 
         self.item_map = {}
         self.span_map = {}

@@ -53,13 +53,15 @@ class PackingTest(unittest.TestCase):
 
 
     def test_combinations(self):
-        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, granularity=25, max_width_combos=100)
-        widths = cp.column_width_possibilities()
+        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, max_width_combos=100)
+        widths = cp.choose_widths(need_gaps=False)
         self.assertEqual([100, 100, 100], widths[0])
-        self.assertEqual([75, 100, 125], widths[1])
-        self.assertEqual(55, len(widths))
+        self.assertEqual([80, 100, 120], widths[1])
+        self.assertEqual(91, len(widths))
 
     def test_combinations_exceeds_limit(self):
-        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, granularity=25, max_width_combos=10)
-        widths = cp.column_width_possibilities()
-        self.assertEqual(None, widths)
+        cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, max_width_combos=10)
+        widths = cp.choose_widths(need_gaps=False)
+        self.assertEqual([120, 90, 90], widths[0])
+        self.assertEqual([45, 120, 135], widths[1])
+        self.assertEqual(10, len(widths))

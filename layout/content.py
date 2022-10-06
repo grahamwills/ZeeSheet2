@@ -169,9 +169,8 @@ class PlacedRunContent(PlacedContent):
         pdf.draw_text(self.style, self.segments)
 
     def offset_content(self, dx: float):
-        off = Point(dx, 0)
         for s in self.segments:
-            s.offset = s.offset + off
+            s.x += dx
 
     def __str__(self):
         base = super().__str__()
@@ -311,7 +310,7 @@ def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
 
 
 def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height: float,
-               anchor: str, force_to_top:bool) -> PlacedImageContent:
+               anchor: str, force_to_top: bool) -> PlacedImageContent:
     # Ensure width and height are defined
     aspect = image.height / image.width
     if not width and not height:
@@ -330,7 +329,7 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
         content.location = Point(content.location.x, 0)
         content.extent = image_bounds.extent
     else:
-        content.extent=bounds.extent
+        content.extent = bounds.extent
     return content
 
 
@@ -339,4 +338,3 @@ class ExtentTooSmallError(RuntimeError):
 
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
-

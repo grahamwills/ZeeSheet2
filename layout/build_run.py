@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Tuple, Union
 
 import layout.quality
-from common import Extent, Point
+from common import Extent
 from generate.fonts import Font
 from generate.pdf import TextSegment, CheckboxSegment, PDF, TextFieldSegment
 from layout.content import PlacedRunContent, ExtentTooSmallError
@@ -111,11 +111,12 @@ class RunBuilder:
 
         # Keep same line spacing regardless of font changes
         line_spacing = self.font.line_spacing
+        if line_spacing > height:
+            raise ExtentTooSmallError()
 
-        bad_breaks = good_breaks = 0
+        bad_breaks = breaks = 0
 
-        right = 0
-        at = Point(0, 0)  # Where to place the next item
+        x = y = 0
 
         textfield_on_this_line = None
         for element in self.elements:
@@ -126,78 +127,71 @@ class RunBuilder:
                 font = font.modify(element.modifier)
 
             while text:
-
-                # If it does not fit vertically, raise an exception
-                if at.y + line_spacing > height:
-                    raise ExtentTooSmallError()
-
                 if modifier == 'checkbox':
                     # Try to place checkbox on the line
-                    checkbox_width = (font.ascent + font.descent) * 1.1
-                    if at.x + checkbox_width <= width:
-                        segments.append(CheckboxSegment(text == 'X', at, font))
-                        at = Point(at.x + checkbox_width, at.y)
-                        right = max(right, at.x)
+                    w = (font.ascent + font.descent) * 1.1
+                    if x + w <= width:
+                        segments.append(CheckboxSegment(text == 'X', x, y, w, font))
+                        x += w
                         text = None
                 elif modifier == 'textfield':
                     # Textfield has a minimum size based on content, plus a bit for the border
                     # When initially placing, we use the minimum size
-                    text_width = min(font.width(text) + 4, 20)
-                    if at.x + text_width <= width:
+                    w = min(font.width(text) + 4, 20)
+                    if x + w <= width:
                         textfield_on_this_line = len(segments)
-                        segments.append(TextFieldSegment(text, at, text_width, font))
-                        at = Point(at.x + text_width, at.y)
-                        right = max(right, at.x)
+                        segments.append(TextFieldSegment(text, x, y, w, font))
+                        x += w
                         text = None
                 else:
                     # Place as much text as possible on this line
-                    text_width = font.width(text)
-                    if at.x + text_width <= width:
+                    w = font.width(text)
+                    if x + w <= width:
                         # Happy path; it all fits
-                        segments.append(TextSegment(text, at, font))
-                        at = Point(at.x + text_width, at.y)
-                        right = max(right, at.x)
+                        segments.append(TextSegment(text, x, y, w, font))
+                        x += w
                         text = None
                     else:
                         # Need to split the line
-                        p, text_width, is_bad = split_text(text, font, width - at.x, text_width, at.x > 0)
+                        p, w, is_bad = split_text(text, font, width - x, w, x > 0)
                         if p > 0:
-                            segments.append(TextSegment(text[:p], at, font))
-                            at = Point(at.x + text_width, at.y)
-                            right = max(right, at.x)
+                            segments.append(TextSegment(text[:p], x, y, w, font))
+                            x += w
                             text = text[p:]
                             if is_bad:
                                 bad_breaks += 1
 
                 if text:
-                    if at.x == 0:
+                    if x == 0 or y + line_spacing > height:
                         # We were unable to place it and had the whole space to place into
+                        # Or the text cannot fit into the next line
                         raise ExtentTooSmallError()
-                    else:
-                        # First handle any textfields on this line, expanding to fill line
-                        if textfield_on_this_line is not None:
-                            self.expand_field_size(segments, textfield_on_this_line, width - x)
-                            right = width
+
+                    # Handle any textfields on this line, expanding to fill line
+                    if textfield_on_this_line is not None:
+                        self.expand_field_size(segments, textfield_on_this_line, width - x)
                         textfield_on_this_line = None
 
-                        # Start a new line
-                        at = Point(0, at.y + line_spacing)
-                        text = text.lstrip() # No leading spaces on new lines
-                        good_breaks += 1
+                    # Start a new line
+                    x = 0
+                    y += line_spacing
+                    text = text.lstrip()  # No leading spaces on new lines
+
+                    breaks += 1
 
         # Handle any textfields on this line, expanding to fill line
         if textfield_on_this_line is not None:
-            self.expand_field_size(segments, textfield_on_this_line, width - at.x)
-            right = width
+            self.expand_field_size(segments, textfield_on_this_line, width - x)
 
-        bottom = at.y + line_spacing
-
+        bottom = y + line_spacing
+        right = max(s.x + s.width for s in segments)
         outer = Extent(right, bottom)
 
-        good_breaks -= bad_breaks  # They have been double-counted
-        excess = self.extent.width - at.x
+        # Only count excess for the last lines; not using 'right' which would be for all lines
+        excess = self.extent.width - x
 
-        quality = layout.quality.for_wrapping(self.run, excess, bad_breaks, good_breaks)
+        # The good breaks equals all the breaks minus the bad ones
+        quality = layout.quality.for_wrapping(self.run, excess, bad_breaks, breaks - bad_breaks)
         content = PlacedRunContent(segments, self.style, outer, quality)
         return content
 
@@ -205,7 +199,7 @@ class RunBuilder:
                           index: int, dx: float):
         segments[index].width += dx
         for s in segments[index + 1:]:
-            s.offset = Point(s.offset.x + dx, s.offset.y)
+            s.x += dx
 
 
 def tiny_run() -> Run:

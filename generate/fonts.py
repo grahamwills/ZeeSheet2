@@ -118,7 +118,8 @@ class Font:
         return f"{self.name}:{self.size}({self.family}, {self.face})"
 
     def __hash__(self):
-        return hash((self.name, self.size))
+        # A slight speed improvement over the default
+        return hash(self.name) + 13 * int(100 * self.size)
 
 
 def read_font_info() -> List[FontFamily]:
@@ -214,7 +215,7 @@ class FontLibrary():
                 new_face = 'ExtraBold'
         if modifier == 'emphasis':
             if font.face == 'Regular' or font.face == 'Medium':
-                new_face = 'italic'
+                new_face = 'Italic'
             if font.face == 'Bold':
                 new_face = 'BoldItalic'
         if not new_face:

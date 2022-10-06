@@ -26,11 +26,13 @@ _WHITE = colors.Color(1, 1, 1)
 @dataclass
 class TextSegment:
     text: str
-    offset: Point
+    x: float
+    y: float
+    width: float
     font: Font
 
     def __str__(self):
-        return reprlib.repr(self.text) + '@' + str(self.offset)
+        return reprlib.repr(self.text)  + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
         return self.text
@@ -39,11 +41,13 @@ class TextSegment:
 @dataclass
 class CheckboxSegment:
     state: bool
-    offset: Point
+    x: float
+    y: float
+    width: float
     font: Font
 
     def __str__(self):
-        return checkbox_character(self.state) + '@' + str(self.offset)
+        return checkbox_character(self.state) + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
         return checkbox_character(self.state)
@@ -52,12 +56,13 @@ class CheckboxSegment:
 @dataclass
 class TextFieldSegment:
     value: str
-    offset: Point
+    x: float
+    y: float
     width: float
     font: Font
 
     def __str__(self):
-        return 'TEXTFIELD' + str(self.offset)
+        return 'TEXTFIELD'  + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
         return '[[ ' + self.value + ' ]]'
@@ -162,18 +167,18 @@ class PDF(canvas.Canvas):
             if seg.font != current_font:
                 current_font = seg.font
                 text.setFont(current_font.name, current_font.size, current_font.line_spacing)
-            if seg.offset:
-                text.moveCursor(seg.offset.x - off.x, seg.offset.y - off.y)
-                off = seg.offset
+            if seg.x or seg.y:
+                text.moveCursor(seg.x - off.x, seg.y - off.y)
+                off = Point(seg.x, seg.y)
             if isinstance(seg, TextSegment):
                 # It is text, so just output it
                 text.textOut(seg.text)
             elif isinstance(seg, CheckboxSegment):
                 # Check Box
-                self._draw_checkbox(seg.offset.x, seg.offset.y, current_font, seg.state, text_color)
+                self._draw_checkbox(seg.x, seg.y, current_font, seg.state, text_color)
             else:
                 # Text field
-                self._draw_textfield(seg.value.strip(), seg.offset.x, seg.offset.y, seg.width, current_font, text_color)
+                self._draw_textfield(seg.value.strip(), seg.x, seg.y, seg.width, current_font, text_color)
 
         self.drawText(text)
 

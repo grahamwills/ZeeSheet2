@@ -41,7 +41,8 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(1, len(placed.segments))
         s1 = placed.segments[0]
         self.assertEqual('hello to this ', s1.text)
-        self.assertEqual(Point(0, 0), s1.offset)
+        self.assertEqual(0, s1.x)
+        self.assertEqual(0, s1.y)
         self.assertEqual("excess=25", placed.quality.str_parts())
 
     def test_multiple_plenty_of_space(self):
@@ -49,7 +50,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(139, 0)', locs)
         self.assertEqual("excess=23", placed.quality.str_parts())
@@ -59,7 +60,7 @@ class TestRunPlacement(unittest.TestCase):
         style = Style('test', font=FontStyle('Helvetica', 14, 'regular')).set('align', 'right')
         placed = place_run(run, Extent(300, 100), style, self.pdf)
         self.assertEqual(3, len(placed.segments))
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('(123, 0)|(198, 0)|(263, 0)', locs)
 
     def test_bold_font(self):
@@ -67,7 +68,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('hello to this |brave new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(143, 0)', locs)
         self.assertEqual("excess=19", placed.quality.str_parts())
@@ -77,7 +78,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(120, 100), STYLE, self.pdf)
         self.assertEqual(4, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('hello to this |brave|new| world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(0, 16)|(26, 16)', locs)
         self.assertEqual("excess=57, breaks=0•1", placed.quality.str_parts())
@@ -87,7 +88,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(50, 100), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
@@ -97,7 +98,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(45, 100), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('superc|alifragi|listicex|pialido|cious', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=12, breaks=4•0", placed.quality.str_parts())
@@ -107,7 +108,7 @@ class TestRunPlacement(unittest.TestCase):
         placed = place_run(run, Extent(50, 80), STYLE, self.pdf)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
-        locs = '|'.join(str(round(s.offset)) for s in placed.segments)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
@@ -168,7 +169,7 @@ class TestBlockPlacement(unittest.TestCase):
 
         # Contents on the grid
         self.assertEqual(Point(0, 0), round(placed.child(1).child(0).location))
-        self.assertEqual(Point(148, 0), round(placed.child(1).child(1).location))
+        self.assertEqual(Point(150, 0), round(placed.child(1).child(1).location))
         self.assertEqual(Point(0, 13), round(placed.child(1).child(2).location))
-        self.assertEqual(Point(148, 13), round(placed.child(1).child(3).location))
+        self.assertEqual(Point(150, 13), round(placed.child(1).child(3).location))
         self.assertEqual(Point(0, 27), round(placed.child(1).child(4).location))
