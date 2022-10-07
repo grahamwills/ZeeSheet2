@@ -285,16 +285,15 @@ def make_frame(bounds: Rect, style: Style,
     box = make_frame_box(bounds, style)
     if options.image:
         im = pdf.get_image(options.image)
-        image = make_image(im, bounds, options.image_mode, options.image_width,
-                           options.image_height, options.image_anchor, force_to_top=False)
-        if box:
-            return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
-        else:
-            return image
-    elif box:
-        return box
-    else:
-        return None
+        if im:
+            image = make_image(im, bounds, options.image_mode, options.image_width,
+                               options.image_height, options.image_anchor, force_to_top=False)
+            if box:
+                return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
+            else:
+                return image
+
+    return box
 
 
 def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:

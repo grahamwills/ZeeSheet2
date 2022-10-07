@@ -3,7 +3,6 @@ from copy import copy
 from typing import Dict, Union, Tuple, Optional, Iterable
 
 import common
-import structure.style
 from common import Extent, Rect
 from generate.fonts import FontLibrary
 from generate.pdf import PDF
@@ -68,24 +67,3 @@ def create_page(sheet, sections, pdf):
         # Just copy the quality of the content
         content = PlacedGroupContent.from_items([frame, content], content.quality)
     return content
-
-
-def to_complete(s: Style, base: Dict[str, Style]) -> Style:
-    result = Style(s.name)
-    for ancestor in ancestors_descending(base, s):
-        structure.style.set_using_definition(result, ancestor.to_definition())
-    return result
-
-
-def ancestors_descending(base: Dict[str, Style], s: Style) -> Iterable[Style]:
-    # Do not try and follow up the tree from the root!
-    if s.parent != style.StyleDefaults.default.parent:
-        try:
-            parent = base[s.parent]
-        except KeyError:
-            # Check inheritance parents exist
-            warnings.warn(f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}. "
-                          f"Using 'default' as the parent instead")
-            parent = base['default']
-        yield from ancestors_descending(base, parent)
-    yield s

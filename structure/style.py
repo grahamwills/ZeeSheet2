@@ -396,20 +396,17 @@ class StyleDefaults:
         .set('font-size', '1').set('border', 'none')
 
     @classmethod
-    def all(cls):
-        return {s.name: s for s in [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block,
-                                    StyleDefaults.title, StyleDefaults.section, StyleDefaults.image,
-                                    StyleDefaults.hidden]}
+    def all(cls) -> list[Style]:
+        return [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block, StyleDefaults.title,
+                StyleDefaults.section, StyleDefaults.image, StyleDefaults.hidden]
 
     @classmethod
-    def set_auto_text_box_border(cls, style: Style, target:str, pair:Style):
+    def set_auto_text_box_border(cls, style: Style, target: str, pair: Style):
         # Try and base it on the pair first
         if pair:
             if 'title' in target:
-                # Set the title's pair (should be a block) and then use that to set the title box color
-                cls.set_auto_values(pair, 'block', None)
-                style.box.color = pair.box.border_color
-                cls.set_auto_text_border(style, target, pair)
+                style.box.border_color = 'none'
+                cls.set_auto_text_box(style, target, pair)
                 return
             else:
                 if pair.box.color != 'auto':
@@ -426,7 +423,7 @@ class StyleDefaults:
         cls.set_auto_text_border(style, target, pair)
 
     @classmethod
-    def set_auto_text_border(cls, style: Style, target:str, pair:Style):
+    def set_auto_text_border(cls, style: Style, target: str, pair: Style):
         bg = style.get_color(box=True)
         if _brightness(bg) > 0.5:
             style.text.color = 'black'
@@ -435,7 +432,7 @@ class StyleDefaults:
         cls.set_auto_border(style, target, pair)
 
     @classmethod
-    def set_auto_box_border(cls, style, target:str, pair:Style):
+    def set_auto_box_border(cls, style, target: str, pair: Style):
         text = style.get_color()
         if _brightness(text) > 0.5:
             # Light text
@@ -452,7 +449,25 @@ class StyleDefaults:
         cls.set_auto_border(style, target, pair)
 
     @classmethod
-    def set_auto_text_box(cls, style: Style, target:str, pair:Style):
+    def set_auto_text_box(cls, style: Style, target: str, pair: Style):
+        if pair:
+            if 'title' in target:
+                # Set the title's pair (should be a block) and then use that to set the title box color
+                cls.set_auto_values(pair, 'block', None)
+                if pair.box.border_color == 'none':
+                    pair_bg = pair.get_color(box=True)
+                    style.box.color = _modify_brightness(pair_bg, value=StyleDefaults.DARK)
+                else:
+                    style.box.color = pair.box.border_color
+                cls.set_auto_text(style, target, pair)
+                return
+            else:
+                if pair.box.color != 'auto':
+                    pair_bg = pair.get_color(box=True)
+                    style.box.color = _modify_brightness(pair_bg, value=StyleDefaults.BRIGHT)
+                    cls.set_auto_text(style, target, pair)
+                    return
+
         border = style.get_color(border=True)
         if _brightness(border) > 0.5:
             # Light border
@@ -469,23 +484,16 @@ class StyleDefaults:
         cls.set_auto_box(style, target, pair)
 
     @classmethod
-    def set_auto_text(cls, style: Style, target:str, pair:Style):
+    def set_auto_text(cls, style: Style, target: str, pair: Style):
         bg = style.get_color(box=True)
-        border = style.get_color(border=True)
-        # Set the text to match the border and contrast with the background
+        # Set the text to contrast with the background
         if _brightness(bg) > 0.5:
-            if _is_grayscale(border):
-                style.text.color = 'black'
-            else:
-                style.text.color = _modify_brightness(border, value=StyleDefaults.DARK)
+            style.text.color = 'black'
         else:
-            if _is_grayscale(border):
-                style.text.color = 'white'
-            else:
-                style.text.color = _modify_brightness(border, value=StyleDefaults.BRIGHT)
+            style.text.color = 'white'
 
     @classmethod
-    def set_auto_box(cls, style: Style, target:str, pair:Style):
+    def set_auto_box(cls, style: Style, target: str, pair: Style):
         text = style.get_color()
         border = style.get_color(border=True)
         # Set the background to match the border and contrast with the text
@@ -501,7 +509,10 @@ class StyleDefaults:
                 style.box.color = _modify_brightness(border, StyleDefaults.BRIGHT)
 
     @classmethod
-    def set_auto_border(cls, style: Style, target:str, pair:Style):
+    def set_auto_border(cls, style: Style, target: str, pair: Style):
+        if style.box.color == 'none':
+            style.box.border_color = 'none'
+            return
         bg = style.get_color(box=True)
         if _brightness(bg) > 0.5:
             # Bright background, so make the border dark to contrast
@@ -514,7 +525,7 @@ class StyleDefaults:
             style.box.border_color = 'none'
 
     @classmethod
-    def set_auto_values(cls, style: Style, target:str='unknown', pair:Style=None):
+    def set_auto_values(cls, style: Style, target: str = 'default', pair: Style = None):
         method_extension = ''
         if style.text.color == 'auto':
             method_extension += '_text'

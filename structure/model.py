@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import List, Optional, ClassVar, Dict
+from typing import List, Optional, ClassVar, Dict, Generator
 
 from PIL.Image import Image
 from reportlab.lib.units import inch
@@ -332,3 +332,7 @@ class Sheet(StructureUnit):
     def tidy(self, index: list) -> None:
         self.name = 'Sheet'
         self._tidy_children(index)
+
+    def blocks(self)-> Generator[Block, None, None]:
+        for s in self.children:
+            yield from s.children

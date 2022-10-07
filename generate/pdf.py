@@ -136,14 +136,14 @@ class PDF(canvas.Canvas):
             if font.family.category == 'serif':
                 fname = 'Times-Roman'
                 draw_font = self.font_lib.get_font('Times', font.size)
-                height = draw_font.ascent + draw_font.descent
+                height = draw_font.line_spacing
             else:
                 fname = 'Helvetica'
                 draw_font = self.font_lib.get_font('Helvetica', font.size)
-                height = (draw_font.ascent + draw_font.descent) / 1.2
+                height = draw_font.line_spacing
         else:
             fname = font.name
-            height = font.ascent + font.descent
+            height = font.line_spacing
 
         x, y = self.absolutePosition(rx, ry + font.line_spacing/2 + height/2)
         y = self._pagesize[1] - y
@@ -206,6 +206,7 @@ class PDF(canvas.Canvas):
         except KeyError:
             warnings.warn(f"Image with index '{image_name}' was requested, but has not been defined for this sheet. "
                           "Use the Sheet Details button to upload images")
+            return None
 
     def draw_image(self, image: Image, bounds: Rect):
         # Invert to fix the coordinate system which has already been inverted
