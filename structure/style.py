@@ -42,6 +42,8 @@ def _brightness(c: Color) -> bool:
 
 def _modify_brightness(c: Color, value: float) -> str:
     h, l, s = colorsys.rgb_to_hls(*c.rgb())
+    if s > 0.1:
+        s = 1.0
     r, g, b = (round(i * 255) for i in colorsys.hls_to_rgb(h, value, s))
     return f'#{r:02x}{g:02x}{b:02x}'
 
@@ -371,7 +373,7 @@ class StyleDefaults:
     DEFAULT_DARK = '#0074B7'
     DEFAULT_LIGHT = '#BFD7ED'
 
-    DARK = 0.2
+    DARK = 0.25
     BRIGHT = 1 - DARK
 
     # noinspection PyTypeChecker
@@ -467,6 +469,16 @@ class StyleDefaults:
                     style.box.color = _modify_brightness(pair_bg, value=StyleDefaults.BRIGHT)
                     cls.set_auto_text(style, target, pair)
                     return
+
+        if style.box.border_color == 'none':
+            if 'block' in target:
+                style.box.color = StyleDefaults.DEFAULT_LIGHT
+            elif 'title' in target:
+                style.box.color = StyleDefaults.DEFAULT_DARK
+            else:
+                style.box.color = 'none'
+            cls.set_auto_text(style, target, pair)
+            return
 
         border = style.get_color(border=True)
         if _brightness(border) > 0.5:
