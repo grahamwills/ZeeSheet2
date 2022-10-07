@@ -63,6 +63,13 @@ def _set_option(options, owner, k, v):
         options.style = v
     elif k == 'title-style':
         options.title_style = v
+    elif k == 'method' and owner == 'block':
+        choices = ('table', 'attributes')
+        if v.lower() in choices:
+            options.method = v.lower()
+        else:
+            message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
+            raise RuntimeError(message)
     elif k == 'columns' and owner != 'block':
         i = int(v)
         if 1 <= i <= 8:
@@ -134,7 +141,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         self.block_options = self.current_block.options
 
     def get_sheet(self) -> Sheet:
-        # Fix up pieces we added, but ended up unused
+        # Remove unnecessary bits, set names, set options needed but unset
         self.sheet.tidy([])
         return self.sheet
 
@@ -321,6 +328,9 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             _apply_option_definitions(node.name, definitions, self.section_options)
             self._make_new_section()
         elif node.name == 'block':
+            if 'method' in definitions and definitions['method'] != self.block_options.method:
+                # When we switch method, throw away all the remembered values of options and just go to defaults
+                self.block_options = Block().options
             _apply_option_definitions(node.name, definitions, self.block_options)
             self._make_new_block()
         else:
@@ -412,6 +422,3 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
-
-
-

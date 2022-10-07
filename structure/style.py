@@ -364,43 +364,54 @@ def len2str(x: float) -> str:
     return num2str(x)
 
 
-# TODO: IDEA:  Set colors to auto and have them set automatically based on the other information
+def process_definitions(name, parents, attrs):
+    # Use the definitions to create a set of styles
+    created = []
+    for line in attrs['DEFINITIONS'].split('\n'):
+        if not line.strip():
+            continue
+        parts = line.split('=')
+        if len(parts) == 2:
+            name = parts[0].strip()
+            if name == 'default':
+                created.append(Style(name))
+            else:
+                created.append(Style('default-' + name))
+            attrs[name] = created[-1]
+
+        set_using_definition(created[-1], parts[-1].strip())
+
+    # Add the new styles to the attrs, and create new attrs to hold collections
+    attrs['ALL'] = tuple(created)
+    attrs['ALL_NAMES'] = tuple(s.name for s in created)
+
+    return type(name, parents, attrs)
 
 
-class StyleDefaults:
+class StyleDefaults(metaclass=process_definitions):
     """ Default Values """
 
-    DEFAULT_DARK = '#0074B7'
+    DEFAULT_DARK = '#004166'
     DEFAULT_LIGHT = '#BFD7ED'
 
     DARK = 0.25
     BRIGHT = 1 - DARK
 
-    # noinspection PyTypeChecker
-    default = Style(
-        'default', '#',
-        TextStyle('auto', 1.0, 'left', 0.0),
-        FontStyle('Helvetica', 12.0, 'Regular', 1.0),
-        BoxStyle(
-            'auto', 1.0,
-            1.0, 'auto', 1.0,
-            Spacing.balanced(0), Spacing.balanced(2)))
-
-    title = Style('default-title', 'default').set('font-size', '14').set('font-face', 'bold').set('padding', '1')
-    block = Style('default-block', 'default').set('margin', '12')
-    section = Style('default-section', 'default').set('margin', '0').set('padding', '0') \
-        .set('border', 'none').set('background', 'none')
-    image = Style('default-image', 'default-block').set('inherit', 'default-block') \
-        .set('border', 'none').set('background', 'none')
-    sheet = Style('default-sheet', 'default').set('padding', '0.25in').set('margin', '0') \
-        .set('border', 'none').set('background', 'none')
-    hidden = Style('hidden-4-internals', 'default').set('margin', '0').set('padding', '0') \
-        .set('font-size', '1').set('border', 'none')
-
-    @classmethod
-    def all(cls) -> list[Style]:
-        return [StyleDefaults.default, StyleDefaults.sheet, StyleDefaults.block, StyleDefaults.title,
-                StyleDefaults.section, StyleDefaults.image, StyleDefaults.hidden]
+    DEFINITIONS = '''
+        default =   inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 
+                    font:Helvetica font-size:12 font-face:Regular font-spacing:100%
+                    box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
+                    box-margin:0 box-padding:2
+        title =     inherit:default font-size:14 font-face:bold padding:1
+        block =     inherit:default margin:12
+        section =   inherit:default margin:0 padding:0 border:none background:none
+        image =     inherit:default-block inherit:default-block border:none background:none
+        sheet =     inherit:default padding:0.25in margin:0 border:none background:none
+        hidden =    inherit:default margin:0 padding:0 font-size:1 border:none 
+        
+        attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' align:center
+        attributes-title =  inherit:default-title font-size:22 margin:2 padding:6 text-color:yellow align:center
+    '''
 
     @classmethod
     def set_auto_text_box_border(cls, style: Style, target: str, pair: Style):

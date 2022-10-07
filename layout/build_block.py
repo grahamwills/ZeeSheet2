@@ -15,6 +15,7 @@ from structure.model import ContainerOptions, Run, Item
 from . import build_run, content
 from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image
 from .packer import ColumnPacker
+from .special import AttributeTableBuilder
 
 LOGGER = configured_logger(__name__)
 
@@ -67,6 +68,10 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 
     main_style = pdf.style(block.options.style, 'default-block')
     container = Rect(0, size.width, 0, size.height)
+
+    if block.options.method == 'attributes':
+        builder = AttributeTableBuilder(block, size, pdf)
+        return builder.build()
 
     image = pdf.get_image(block.options.image)
 

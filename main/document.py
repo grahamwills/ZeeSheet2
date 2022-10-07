@@ -158,7 +158,7 @@ class StyleResolver:
                 parent = self.styles[s.parent]
             except KeyError:
                 warnings.warn(
-                    f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}. "
+                    f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}). "
                     f"Using 'default' as the parent instead")
                 parent = self.styles['default']
             yield from self.ancestors_descending(parent)
@@ -181,7 +181,7 @@ class StyleResolver:
         self.usages[style.name] = self.usages[style_name]
 
     def add_default_styles(self):
-        for style in StyleDefaults.all():
+        for style in StyleDefaults.ALL:
             try:
                 existing = self.styles[style.name]
                 # This style has been redefined, so we need to juggle names

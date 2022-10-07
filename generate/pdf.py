@@ -5,7 +5,7 @@ from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Tuple, Union, Dict, Optional
+from typing import List, Tuple, Union, Dict, Optional, Iterable
 
 from PIL.Image import Image
 from reportlab.lib import colors
@@ -16,7 +16,7 @@ from reportlab.pdfgen import canvas
 from common import Rect, Point
 from common import configured_logger
 from generate.fonts import Font, FontLibrary
-from structure.model import checkbox_character, ImageDetail, SheetOptions
+from structure.model import checkbox_character, ImageDetail
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -33,7 +33,7 @@ class TextSegment:
     font: Font
 
     def __str__(self):
-        return reprlib.repr(self.text)  + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
+        return reprlib.repr(self.text) + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
         return self.text
@@ -63,11 +63,10 @@ class TextFieldSegment:
     font: Font
 
     def __str__(self):
-        return 'TEXTFIELD'  + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
+        return 'TEXTFIELD' + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
         return '[[ ' + self.value + ' ]]'
-
 
 class PDF(canvas.Canvas):
 
@@ -105,6 +104,41 @@ class PDF(canvas.Canvas):
             font.line_spacing *= style.font.spacing
         return font
 
+    def draw_path(self, coords:Iterable[tuple[float]], style:Style):
+        LOGGER.debug("Drawing path")
+        p = self.beginPath()
+        need_move = True
+        for c in coords:
+            m = len(c)
+            if m == 0:
+                p.close()
+                need_move = True
+            elif m == 2:
+                if need_move:
+                    p.moveTo(*c)
+                    need_move = False
+                else:
+                    p.lineTo(*c)
+            elif m == 6:
+                p.curveTo(*c)
+            else:
+                raise RuntimeError('Bad path specification')
+        if not need_move:
+            p.close()
+
+        stroke_color = style.get_color(border=True)
+        stroke_width = style.box.width
+        self.setStrokeColor(stroke_color)
+        self.setLineWidth(stroke_width)
+        stroked = stroke_width > 0 and stroke_color.alpha > 0
+
+        fill_color = style.get_color(box=True)
+        self.setFillColor(fill_color)
+        filled = fill_color.alpha > 0
+        if stroked or filled:
+            self.drawPath(p, fill=filled, stroke=stroked)
+
+
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
         style = base_style.box
@@ -121,7 +155,7 @@ class PDF(canvas.Canvas):
 
     def _draw_checkbox(self, rx, ry, font: Font, state: bool, color: Color):
         size = font.ascent + font.descent
-        x, y = self.absolutePosition(rx, ry + font.line_spacing/2 + size/2)
+        x, y = self.absolutePosition(rx, ry + font.line_spacing / 2 + size / 2)
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)
@@ -145,7 +179,7 @@ class PDF(canvas.Canvas):
             fname = font.name
             height = font.line_spacing
 
-        x, y = self.absolutePosition(rx, ry + font.line_spacing/2 + height/2)
+        x, y = self.absolutePosition(rx, ry + font.line_spacing / 2 + height / 2)
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)
@@ -174,9 +208,8 @@ class PDF(canvas.Canvas):
             if seg.font != current_font:
                 current_font = seg.font
                 text.setFont(current_font.name, current_font.size, current_font.line_spacing)
-            if seg.x or seg.y:
-                text.moveCursor(seg.x - off.x, seg.y - off.y)
-                off = Point(seg.x, seg.y)
+            text.moveCursor(seg.x - off.x, seg.y - off.y)
+            off = Point(seg.x, seg.y)
             if isinstance(seg, TextSegment):
                 # It is text, so just output it
                 text.textOut(seg.text)

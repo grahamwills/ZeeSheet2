@@ -155,7 +155,7 @@ class TestBlockPlacement(unittest.TestCase):
         placed = place_block(block, Extent(200, 100), 'medium', self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))
-        self.assertEqual(Point(2, 2), group[1].location)
+        self.assertEqual(Point(1, 1), group[1].location)
 
     def test_table(self):
         # Title with 5 cells defined by 3 items
@@ -170,13 +170,13 @@ class TestBlockPlacement(unittest.TestCase):
         self.assertEqual(3, len(group))
 
         # Background
-        self.assertEqual(Rect(0, 300, 0, 61), round(group[0].bounds))
+        self.assertEqual(Rect(0, 300, 0, 59), round(group[0].bounds))
 
         # Main content
-        self.assertEqual(Rect(0, 300, 22, 61), round(group[1].bounds))
+        self.assertEqual(Rect(0, 300, 20, 59), round(group[1].bounds))
 
         # Title content
-        self.assertEqual(Rect(0, 300, 0, 22), round(group[2].bounds))
+        self.assertEqual(Rect(0, 300, 0, 20), round(group[2].bounds))
 
         # Contents on the grid
         self.assertEqual(Point(0, 0), round(placed.child(1).child(0).location))

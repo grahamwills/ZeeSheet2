@@ -207,6 +207,27 @@ class PlacedRectContent(PlacedContent):
 
 
 @dataclass
+class PlacedPathContent(PlacedContent):
+    DEBUG_STYLE = None
+    path: list[tuple[float, ...]]
+    style: Style  # Style for this item
+
+    def __init__(self, path: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
+        super().__init__(bounds.extent, quality, bounds.top_left)
+        self.path = path
+        self.style = style
+
+    def _draw(self, pdf: PDF):
+        pdf.draw_path(self.path, self.style)
+
+    def __copy__(self):
+        return PlacedPathContent(self.path, self.bounds, self.style, self.quality)
+
+    def name(self):
+        return 'Rect' + common.name_of(tuple(self.bounds))
+
+
+@dataclass
 class PlacedImageContent(PlacedContent):
     DEBUG_STYLE = ('#FBCB0A', 0.75, 0, 3, (1, 10))
     image: ImageDetail

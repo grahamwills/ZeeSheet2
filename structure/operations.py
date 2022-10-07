@@ -125,7 +125,7 @@ class Prettify:
 
     def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions, forced: bool):
         self._append_options(owner, options, default,
-                             "columns title style title_style image image_mode image_width image_height image_anchor",
+                             "method columns title style title_style image image_mode image_width image_height image_anchor",
                              forced)
 
     def append_item_rst(self, item: model.Item, prefix: str):

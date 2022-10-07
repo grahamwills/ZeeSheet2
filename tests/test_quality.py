@@ -118,10 +118,10 @@ class TestQualityComparisonForNonGroups(unittest.TestCase):
     def test_breaks_versus_excess_space(self):
         no_break_5_pixels = quality.for_wrapping('t', 5, 0, 0)
         one_break_0_pixels = quality.for_wrapping('t', 0, 0, 1)
-        no_break_20_pixels = quality.for_wrapping('t', 20, 0, 0)
+        no_break_100_pixels = quality.for_wrapping('t', 100, 0, 0)
 
         self.assertTrue(no_break_5_pixels.better(one_break_0_pixels))
-        self.assertTrue(one_break_0_pixels.better(no_break_20_pixels))
+        self.assertTrue(one_break_0_pixels.better(no_break_100_pixels))
 
     def test_images(self):
         a = quality.for_image('name', 'normal', Extent(100, 200), Rect(0, 100, 0, 100), Rect(0, 1000, 0, 2000))

@@ -8,10 +8,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple, List
 
+from reportlab.graphics.charts.textlabels import _text2Path
 from reportlab.pdfbase import pdfmetrics as metrics, pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 
 import common
+from common import Rect
 from common.textual import NGram
 
 LOGGER = common.configured_logger(__name__)
@@ -105,6 +107,19 @@ class Font:
     def width(self, text: str) -> float:
         """Measures the width of the text"""
         return self._font.stringWidth(text, self.size)
+
+    def bbox(self, *texts: str) -> Rect:
+        """
+            Measures the bounding box of the drawn results.
+
+            Rect returned is relative to the baseline, and is inverted, so
+            bottom is the max height above the baseline and top is the max height below the baseline
+        """
+        sizes = []
+        for t in texts:
+            r = _text2Path(t, fontName=self.name, fontSize=self.size).getBounds()
+            sizes.append(Rect(r[0], r[2], r[1], r[3]))
+        return Rect.union(sizes)
 
     @property
     def top_to_baseline(self):

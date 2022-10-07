@@ -8,7 +8,6 @@ from typing import List, Optional, ClassVar, Dict, Generator
 from PIL.Image import Image
 from reportlab.lib.units import inch
 
-import common
 from structure.style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
@@ -40,9 +39,10 @@ class SheetOptions:
 @dataclass
 class ContainerOptions:
     title: str
-    style: str
+    style: str = None
+    method: str = 'table'
     columns: int = 1
-    title_style: str = 'default-title'
+    title_style: str = None
     image: int = 0
     image_mode: str = 'normal'
     image_width: float = None
@@ -127,6 +127,9 @@ class Element:
                             if f3:
                                 results.append(cls._from_text(f3))
             return results
+
+    def as_simple_text(self):
+        return self.value
 
 
 # noinspection PyUnresolvedReferences,PyAttributeOutsideInit
@@ -224,6 +227,9 @@ class Run(StructureUnit):
 
         return ''.join(results)
 
+    def as_simple_text(self):
+        return ''.join(e.as_simple_text() for e in self.children)
+
     def tidy(self, index: list[int]) -> None:
         self.name = 'Run\u00a7' + '.'.join(str(x) for x in index)
 
@@ -293,7 +299,7 @@ class Block(StructureUnit):
     FMT = FormatPieces('\u276e', ' ', '\u276f')
     title: Item = field(default_factory=lambda: Item())
     children: List[Item] = field(default_factory=lambda: [Item()])
-    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='simple', style='default-block'))
+    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='simple'))
 
     def column_count(self) -> int:
         """ Maximum number of runs in each block item """
@@ -301,6 +307,17 @@ class Block(StructureUnit):
 
     def tidy(self, index: list) -> None:
         self.name = 'Block\u00a7' + '.'.join(str(x) for x in index)
+
+        if not self.options.style:
+            if self.options.method.startswith('attr'):
+                self.options.style = 'default-attributes'
+            else:
+                self.options.style = 'default-block'
+        if not self.options.title_style:
+            if self.options.method.startswith('attr'):
+                self.options.title_style = 'default-attributes-title'
+            else:
+                self.options.title_style = 'default-title'
         self.title.tidy(index + ['title'])
         self._tidy_children(index)
 
@@ -315,7 +332,8 @@ class Block(StructureUnit):
 class Section(StructureUnit):
     FMT = FormatPieces('', ' ', '')
     children: List[Block] = field(default_factory=lambda: [Block()])
-    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='none', style='default-section'))
+    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(
+        title='none', style='default-section', title_style='default-title'))
 
     def tidy(self, index: list[int]) -> None:
         self.name = 'Section\u00a7' + '.'.join(str(x) for x in index)
@@ -333,6 +351,6 @@ class Sheet(StructureUnit):
         self.name = 'Sheet'
         self._tidy_children(index)
 
-    def blocks(self)-> Generator[Block, None, None]:
+    def blocks(self) -> Generator[Block, None, None]:
         for s in self.children:
             yield from s.children

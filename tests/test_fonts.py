@@ -2,6 +2,7 @@ import unittest
 import warnings
 import zipfile
 
+from common import Rect
 from generate import fonts
 from generate.fonts import FontLibrary
 
@@ -11,6 +12,16 @@ class TestFonts(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.LIBRARY = FontLibrary()
+
+    def test_bbox(self):
+        font = self.LIBRARY.get_font('Helvetica', 100)
+        self.assertEqual(Rect(4, 52, -1, 53), round(font.bbox('o')))
+        self.assertEqual(Rect(4, 108, -1, 53), round(font.bbox('oo')))
+        self.assertEqual(Rect(7, 16, 0, 72), round(font.bbox('i')))
+        self.assertEqual(Rect(3, 30, 22, 30), round(font.bbox('-')))
+        self.assertEqual(Rect(8, 76, 0, 72), round(font.bbox('M')))
+        self.assertEqual(Rect(2, 49, -21, 52), round(font.bbox('y')))
+        self.assertEqual(Rect(8, 188, -21, 72), round(font.bbox('May')))
 
     def test_builtin_fonts(self):
         info = self.LIBRARY.get_font('Courier', 14)
