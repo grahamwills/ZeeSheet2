@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import colorsys
+import re
 from dataclasses import dataclass, field
 from typing import List, Iterable, Optional, Union
 from warnings import warn
@@ -259,7 +260,7 @@ class Style:
     box: BoxStyle = field(default_factory=BoxStyle)
 
     def __post_init__(self):
-        if not self.name.replace('-', '_').isidentifier():
+        if not re.match('^[A-Za-z_][A-Za-z0-9_\\-\\.§]*$', self.name):
             raise ValueError(f'Style name must be a valid identifier, but was {self.name}')
 
     def set(self, name: str, value: Optional[str]) -> Style:

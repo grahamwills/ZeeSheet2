@@ -12,7 +12,7 @@ import structure
 from generate.pdf import PDF
 from layout import PlacedGroupContent
 from layout.build_sheet import FONT_LIB, sheet_to_pages
-from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style
+from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style, Block
 
 LOGGER = common.configured_logger(__name__)
 
@@ -96,10 +96,16 @@ class StyleResolver:
         self.styles = {s.name: copy(s) for s in sheet.styles.values()}
         self.usages = defaultdict(Counter)
         self.idx = 0
+        self.undefined = set()
 
     def run(self) -> dict[str, Style]:
         # Match styles up to their most common usages in the sheet (blocks, titles, images, etc.)
         self.collect_usages()
+
+        if len(self.undefined) == 1:
+            warnings.warn(f"Style {list(self.undefined)[0]}. Using a default instead of it")
+        if len(self.undefined) > 1:
+            warnings.warn(f"Styles {', '.join(self.undefined)}. Using defautls instead of them")
 
         # Set the parents to the most common usage, if the parent has not been defined
         for style in self.styles.values():
@@ -110,13 +116,13 @@ class StyleResolver:
         # These styles are added to the total list of styles and are properly parented by construction
         for section in self.sheet.children:
             for block in section.children:
-                self.replace_style(block.options, 'style')
-                self.replace_style(block.options, 'title_style')
+                self.replace_style(block, 'style')
+                self.replace_style(block, 'title_style')
 
         # Add styles for default, default-title, etc.
         self.add_default_styles()
 
-        # Fill in all missign style options using the hierarchy
+        # Fill in all missing style options using the hierarchy
         for k, v in list(self.styles.items()):
             self.styles[k] = self.to_complete(v)
 
@@ -131,16 +137,23 @@ class StyleResolver:
 
     # Create a mapping of all the usages
     def collect_usages(self):
-        usages = self.usages
-        usages[self.sheet.options.style].update(['default-sheet'])
+        self._validate_and_update_usages(self.sheet.options,'style', 'default-sheet')
         for section in self.sheet.children:
-            usages[section.options.style].update(['default-section'])
+            self._validate_and_update_usages(section.options, 'style', 'default-section')
             for block in section.children:
+                default = Block.default_options(block.options.method)
                 if block.options.image and not block.children:
-                    usages[block.options.style].update(['default-image'])
+                    self._validate_and_update_usages(block.options, 'style', 'default-image')
                 else:
-                    usages[block.options.style].update(['default-block'])
-                usages[block.options.title_style].update(['default-title'])
+                    self._validate_and_update_usages(block.options, 'style', default.style)
+                self._validate_and_update_usages(block.options, 'title_style', default.title_style)
+
+    def _validate_and_update_usages(self, owner, attribute, default):
+        style = getattr(owner, attribute)
+        self.usages[style].update([default])
+        # if style not in self.styles:
+        #     setattr(owner, attribute, default)
+        #     self.undefined.add(style)
 
     def default_parent(self, style_name):
         if style_name in self.usages:
@@ -157,7 +170,7 @@ class StyleResolver:
                 parent = self.styles[s.parent]
             except KeyError:
                 warnings.warn(
-                    f"Style '{s.name} is defined as inheriting from a parent that does not exist ({s.parent}). "
+                    f"Style '{s.name}' is defined as inheriting from a parent that has not been defined ({s.parent}). "
                     f"Using 'default' as the parent instead")
                 parent = self.styles['default']
             yield from self.ancestors_descending(parent)
@@ -169,13 +182,13 @@ class StyleResolver:
             structure.style.set_using_definition(result, ancestor.to_definition())
         return result
 
-    def replace_style(self, owner, attribute):
+    def replace_style(self, block: Block, attribute: str):
         self.idx += 1
-        style_name = getattr(owner, attribute)
-        style = Style(name=f"_block_{attribute}_{self.idx}", parent=style_name)
-        setattr(owner, attribute, style.name)
+        style_name = getattr(block.options, attribute)
+        style = Style(name=f"_{common.name_of(block)}_{attribute}", parent=style_name)
+        setattr(block.options, attribute, style.name)
 
-        # Store the style and it's usage (which is the same as the style it was derived from)
+        # Store the style and its usage (which is the same as the style it was derived from)
         self.styles[style.name] = style
         self.usages[style.name] = self.usages[style_name]
 
@@ -196,11 +209,9 @@ class StyleResolver:
     # noinspection PyTypeChecker
     def make_paired_styles(self) -> dict[str, Style]:
         # Bidirectional pairs of styles that are used together
-        pairs = defaultdict(lambda :None)
+        pairs = defaultdict(lambda: None)
         for block in self.sheet.blocks():
             opt = block.options
             pairs[opt.style] = self.styles[opt.title_style]
             pairs[opt.title_style] = self.styles[opt.style]
         return pairs
-
-
