@@ -220,7 +220,7 @@ class TestMakeCompleteStyles(TestCase):
         output = StyleResolver(sheet).run()
 
         # All the default styles are added in
-        self.assertEqual(len(output), 11)
+        self.assertEqual(len(output), 2 + len(StyleDefaults.ALL))
 
         # Default points to '#default' as parent
         self.assertEqual('#default', output['default'].parent)
@@ -246,7 +246,7 @@ class TestMakeCompleteStyles(TestCase):
         )
         sheet = main.Document(input).sheet()
         styles = StyleResolver(sheet).run()
-        block = sheet.children[0]
+        block = sheet.children[0][0]
         self.assertEqual('Courier', styles[block.options.title_style].font.family)
         self.assertEqual('Courier', styles[block.options.style].font.family)
 

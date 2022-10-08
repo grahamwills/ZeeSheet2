@@ -11,7 +11,7 @@ from common import Extent, Point, Spacing, Rect
 from common import configured_logger
 from generate.pdf import PDF
 from structure import Block, style
-from structure.model import ContainerOptions, Run, Item
+from structure.model import BlockOptions, Run, Item
 from . import build_run, content
 from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image
 from .packer import ColumnPacker
@@ -215,6 +215,6 @@ class BlockTablePacker(ColumnPacker):
 
 def tiny_block() -> Block:
     """ Makes a small block to be added to a section when there are too few of them """
-    options = ContainerOptions('none', style.StyleDefaults.hidden.name)
+    options = BlockOptions(title='none', style=style.StyleDefaults.hidden.name)
     item = Item([build_run.tiny_run()])
     return Block(Item(), [item], options)

@@ -17,7 +17,7 @@ from generate.pdf import TextSegment, PDF
 from layout import path_effects
 from layout.quality import PlacementQuality
 from structure import ImageDetail
-from structure.model import SheetOptions, ContainerOptions
+from structure.model import SheetOptions, SectionOptions, CommonOptions
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -324,7 +324,7 @@ class PlacedImageContent(PlacedContent):
 
 
 def make_frame(bounds: Rect, style: Style,
-               options: Union[ContainerOptions, SheetOptions], pdf: PDF) -> Optional[PlacedContent]:
+               options: CommonOptions, pdf: PDF) -> Optional[PlacedContent]:
     box = make_frame_box(bounds, style)
     if options.image:
         im = pdf.get_image(options.image)

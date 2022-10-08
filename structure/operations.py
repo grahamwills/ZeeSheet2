@@ -1,11 +1,12 @@
+import dataclasses
 import re
-from typing import List, Union
+from typing import List
 
 from docutils import nodes
 from docutils.parsers.rst import directives, Directive
 
 from . import model, style
-from .model import SheetOptions, Section, Block, ContainerOptions, Item
+from .model import SheetOptions, Section, Block, Item, CommonOptions
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -92,14 +93,11 @@ class Prettify:
     def append(self, txt: str) -> None:
         self.lines.append(txt)
 
-    def _append_options(self,
-                        owner: str,
-                        options: Union[SheetOptions, ContainerOptions],
-                        default,
-                        attributes: str, forced: bool):
+    def _append_options(self, owner: str, options: CommonOptions, default: CommonOptions, forced: bool):
         owner_plus = owner + '::'
         parts = [f".. {owner_plus:9}"]
-        for k in attributes.split():
+        for field in dataclasses.fields(options):
+            k = field.name
             v = getattr(options, k)
             if v != getattr(default, k):  # Only output attributes which are not the default
                 k = k.replace('_', '-')
@@ -120,13 +118,10 @@ class Prettify:
             self.ensure_blank()
 
     def append_sheet_options(self, options: SheetOptions):
-        self._append_options('sheet', options, SheetOptions(),
-                             "width height style image image_mode image_width image_height image_anchor debug", False)
+        self._append_options('sheet', options, SheetOptions(), False)
 
-    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions, forced: bool):
-        self._append_options(owner, options, default,
-                             "method columns title style title_style image image_mode image_width image_height image_anchor",
-                             forced)
+    def append_container_options(self, owner: str, options: CommonOptions, default: CommonOptions, forced: bool):
+        self._append_options(owner, options, default, forced)
 
     def append_item_rst(self, item: model.Item, prefix: str):
         if not item.children:
@@ -207,8 +202,7 @@ class Prettify:
 
     def append_image_block(self, block):
         # We just use the block options, but reformat for the image directive
-        self._append_options('image', block.options, self.current_block_options,
-                             "image image_mode image_width image_height image_anchor", True)
+        self._append_options('image', block.options, self.current_block_options, True)
         txt = self.lines[-2].replace('image=', 'index=').replace('image-', '')
         self.lines[-2] = txt
 
@@ -281,7 +275,7 @@ class Prettify2:
 
         # Output the options if they are not the default
         if self.sheet.options != SheetOptions():
-            self.append_sheet_options(self.sheet.options)
+            self.append_options('sheet', self.sheet.options, SheetOptions())
 
         # Add lines for each section
         for s in self.sheet.children:
@@ -305,7 +299,7 @@ class Prettify2:
             self.ensure_blank()
         if section.options != self.current_section_options:
             # We do not require this if we have a title or we are the first section
-            self.append_container_options('section', section.options, self.current_section_options)
+            self.append_options('section', section.options, self.current_section_options)
         if section.children:
             self.ensure_blank()
             for b in section.children:
@@ -320,7 +314,7 @@ class Prettify2:
             self.ensure_blank()
             self.append('#')
         if block.options != self.current_block_options:
-            self.append_container_options('block', block.options, self.current_block_options)
+            self.append_options('block', block.options, self.current_block_options)
         if block.options.image > 0:
             # Image first
             self.append_image_block(block)
@@ -331,20 +325,11 @@ class Prettify2:
     def add_blank_lines(self):
         pass
 
-    def append_sheet_options(self, options: SheetOptions):
-        self.append_options('sheet', options, SheetOptions(),
-                            "width height style image image_mode image_width image_height image_anchor debug")
-
-    def append_container_options(self, owner: str, options: ContainerOptions, default: ContainerOptions):
-        self.append_options(owner, options, default,
-                            "columns title style title_style image image_mode image_width image_height image_anchor")
-
-    def append_options(self, owner: str, options: Union[SheetOptions, ContainerOptions],
-                       default, attributes: str):
-
+    def append_options(self, owner: str, options: CommonOptions, default: CommonOptions):
         head = f".. {owner}"
         parts = [f"{head:11}"]
-        for k in attributes.split():
+        for field in dataclasses.fields(options):
+            k = field.name
             v = getattr(options, k)
             if v != getattr(default, k):  # Only output attributes which are not the default
                 k = k.replace('_', '-')

@@ -2,7 +2,7 @@ import textwrap
 import unittest
 
 import main
-from structure.model import ContainerOptions
+from structure.model import BlockOptions
 from structure.operations import prepare_for_visit
 from . import util
 
@@ -14,7 +14,7 @@ class PrettifyTests(unittest.TestCase):
         cls.items = util.test_data()
 
     def test_container_options_str(self):
-        c = ContainerOptions('T', 'S')
+        c = BlockOptions(title='T', style='S')
         self.assertEqual("ContainerOptions(title='T', style='S', method='table', "
                          "columns=1, title_style='default-title', "
                          "image=0, image_mode='normal', image_width=None, "

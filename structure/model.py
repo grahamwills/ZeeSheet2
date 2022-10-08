@@ -22,32 +22,37 @@ def checkbox_character(state) -> str:
 
 
 @dataclass
-class SheetOptions:
-    style: str = 'default-sheet'
-    width: float = 8.5 * inch
-    height: float = 11 * inch
-    columns: int = 1
+class CommonOptions:
+    style: str = None
     image: int = 0
     image_mode: str = 'normal'
     image_width: str = None
     image_height: str = None
     image_anchor: str = None
-    quality: str = 'Medium'
-    debug: bool = False
 
 
 @dataclass
-class ContainerOptions:
-    title: str = None
-    style: str = None
-    method: str = 'table'
+class SheetOptions(CommonOptions):
+    width: float = 8.5 * inch
+    height: float = 11 * inch
     columns: int = 1
+    quality: str = 'Medium'
+    debug: bool = False
+
+    def __post_init__(self):
+        self.style = 'default-sheet'
+
+
+@dataclass
+class SectionOptions(CommonOptions):
+    columns: int = 1
+
+
+@dataclass
+class BlockOptions(CommonOptions):
+    method: str = 'table'
+    title: str = None
     title_style: str = None
-    image: int = 0
-    image_mode: str = 'normal'
-    image_width: float = None
-    image_height: float = None
-    image_anchor: str = None
 
 
 @dataclass
@@ -299,17 +304,17 @@ class Block(StructureUnit):
     FMT = FormatPieces('\u276e', ' ', '\u276f')
     title: Item = field(default_factory=lambda: Item())
     children: List[Item] = field(default_factory=lambda: [Item()])
-    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(method='table'))
+    options: BlockOptions = field(default_factory=lambda: BlockOptions(method='table'))
 
     @classmethod
     def default_options(cls, method: str):
         """ The choice of method determines the remainder of the defaults """
         if method.startswith('att'):
-            return ContainerOptions(title='none', method=method,
-                                    style='default-attributes', title_style='default-attributes-title')
+            return BlockOptions(title='none', method=method,
+                                style='default-attributes', title_style='default-attributes-title')
         else:
-            return ContainerOptions(title='simple', method=method,
-                                    style='default-block', title_style='default-title')
+            return BlockOptions(title='simple', method=method,
+                                style='default-block', title_style='default-title')
 
     def column_count(self) -> int:
         """ Maximum number of runs in each block item """
@@ -340,8 +345,7 @@ class Block(StructureUnit):
 class Section(StructureUnit):
     FMT = FormatPieces('', ' ', '')
     children: List[Block] = field(default_factory=lambda: [Block()])
-    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(
-        title='none', style='default-section', title_style='default-title'))
+    options: SectionOptions = field(default_factory=lambda: SectionOptions(style='default-section'))
 
     def tidy(self, index: list[int]) -> None:
         self.name = 'Section\u00a7' + '.'.join(str(x) for x in index)

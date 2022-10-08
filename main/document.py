@@ -135,7 +135,6 @@ class StyleResolver:
         usages[self.sheet.options.style].update(['default-sheet'])
         for section in self.sheet.children:
             usages[section.options.style].update(['default-section'])
-            usages[section.options.title_style].update(['default-title'])
             for block in section.children:
                 if block.options.image and not block.children:
                     usages[block.options.style].update(['default-image'])
