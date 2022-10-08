@@ -5,7 +5,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives, Directive
 
 from . import model, style
-from .model import SheetOptions, Section, Block, ContainerOptions, Item, StructureUnit
+from .model import SheetOptions, Section, Block, ContainerOptions, Item
 
 ERROR_DIRECTIVE = '.. ERROR::'
 WARNING_DIRECTIVE = '.. WARNING::'
@@ -62,7 +62,7 @@ class Prettify:
 
         self.current_sheet_options = SheetOptions()
         self.current_section_options = Section().options
-        self.current_block_options = Block().options
+        self.current_block_options = Block.default_options('table')
 
     def run(self) -> str:
         self.lines = []
@@ -151,6 +151,10 @@ class Prettify:
         if not block.title or block.options != self.current_block_options:
             # If we are the first block in our section, we do not need to force it
             forced = not block.title and not is_first
+            # A new method resets the defaults
+            if block.options.method != self.current_block_options.method:
+                self.current_block_options = Block.default_options(block.options.method)
+                self.current_block_options.method = '???????'
             self.append_container_options('block', block.options, self.current_block_options, forced)
             self.current_block_options = block.options
 

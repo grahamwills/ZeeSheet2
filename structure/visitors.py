@@ -403,13 +403,13 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         return self.process_stack[-1]
 
     def _make_new_section(self) -> None:
-        # If the current section is undefined, we just use that
+        # If the current section is undefined, we just use that, otherwise need new one
         if self.current_section:
             section = Section(options=copy(self.section_options))
             self.sheet.children.append(section)
 
     def _make_new_block(self) -> None:
-        # If the current block is undefined,we do not need a new one
+        # If the current block is undefined, we just use that, otherwise need new one
         if self.current_block:
             block = Block(options=copy(self.block_options))
             self.current_section.children.append(block)

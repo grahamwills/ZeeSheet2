@@ -121,7 +121,7 @@ class PDF(canvas.Canvas):
                 else:
                     p.lineTo(*c)
             elif m == 6:
-                p.curveTo(*c)
+                    p.curveTo(*c)
             else:
                 raise RuntimeError('Bad path specification')
         if not need_move:

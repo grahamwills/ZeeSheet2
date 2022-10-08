@@ -38,7 +38,7 @@ class SheetOptions:
 
 @dataclass
 class ContainerOptions:
-    title: str
+    title: str = None
     style: str = None
     method: str = 'table'
     columns: int = 1
@@ -299,7 +299,17 @@ class Block(StructureUnit):
     FMT = FormatPieces('\u276e', ' ', '\u276f')
     title: Item = field(default_factory=lambda: Item())
     children: List[Item] = field(default_factory=lambda: [Item()])
-    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(title='simple'))
+    options: ContainerOptions = field(default_factory=lambda: ContainerOptions(method='table'))
+
+    @classmethod
+    def default_options(cls, method: str):
+        """ The choice of method determines the remainder of the defaults """
+        if method.startswith('att'):
+            return ContainerOptions(title='none', method=method,
+                                    style='default-attributes', title_style='default-attributes-title')
+        else:
+            return ContainerOptions(title='simple', method=method,
+                                    style='default-block', title_style='default-title')
 
     def column_count(self) -> int:
         """ Maximum number of runs in each block item """
@@ -308,16 +318,14 @@ class Block(StructureUnit):
     def tidy(self, index: list) -> None:
         self.name = 'Block\u00a7' + '.'.join(str(x) for x in index)
 
+        defaults = Block.default_options(self.options.method)
         if not self.options.style:
-            if self.options.method.startswith('attr'):
-                self.options.style = 'default-attributes'
-            else:
-                self.options.style = 'default-block'
+            self.options.style = defaults.style
         if not self.options.title_style:
-            if self.options.method.startswith('attr'):
-                self.options.title_style = 'default-attributes-title'
-            else:
-                self.options.title_style = 'default-title'
+            self.options.title_style = defaults.title_style
+        if not self.options.title:
+            self.options.title = defaults.title
+
         self.title.tidy(index + ['title'])
         self._tidy_children(index)
 
