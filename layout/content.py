@@ -14,6 +14,7 @@ import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
+from layout import path_effects
 from layout.quality import PlacementQuality
 from structure import ImageDetail
 from structure.model import SheetOptions, ContainerOptions
@@ -227,19 +228,22 @@ class PlacedRectContent(PlacedContent):
 @dataclass
 class PlacedPathContent(PlacedContent):
     DEBUG_STYLE = None
-    path: list[tuple[float, ...]]
+    coords: list[tuple[float, ...]]
     style: Style  # Style for this item
 
-    def __init__(self, path: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
+    def __init__(self, coords: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
-        self.path = path
+        if style.box.rounded:
+            self.coords = path_effects.round_edges(coords, style.box.rounded)
+        else:
+            self.coords = coords
         self.style = style
 
     def _draw(self, pdf: PDF):
-        pdf.draw_path(self.path, self.style)
+        pdf.draw_path(self.coords, self.style)
 
     def __copy__(self):
-        return PlacedPathContent(self.path, self.bounds, self.style, self.quality)
+        return PlacedPathContent(self.coords, self.bounds, self.style, self.quality)
 
     def name(self):
         return 'Rect' + common.name_of(tuple(self.bounds))
