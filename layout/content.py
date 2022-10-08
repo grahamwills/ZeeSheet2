@@ -6,6 +6,7 @@ from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
+from reportlab.graphics.shapes import Path
 from reportlab.lib.colors import toColor
 
 import common
@@ -54,6 +55,9 @@ class PlacedContent(abc.ABC):
         return other is None or self.quality.better(other.quality)
 
     def _draw(self, pdf: PDF):
+        raise NotImplementedError('Must be defined in subclass')
+
+    def toPath(self, pdf:PDF) -> Path:
         raise NotImplementedError('Must be defined in subclass')
 
     def __str__(self):
@@ -107,10 +111,12 @@ class PlacedContent(abc.ABC):
             pdf.restoreState()
 
 
+
 class PlacedGroupContent(PlacedContent):
     DEBUG_STYLE = ('#C70A80', 0.25, 0.1, 3, None)
 
     items: List[PlacedContent] = None
+    clip_item: PlacedContent = None
 
     def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
                  location: Point = ZERO):
@@ -129,6 +135,8 @@ class PlacedGroupContent(PlacedContent):
         return PlacedGroupContent(items, extent, quality, ZERO)
 
     def _draw(self, pdf: PDF):
+        if self.clip_item:
+            pdf.clipPath(self.clip_item.toPath(pdf), 0, 0)
         for p in self.items:
             p.draw(pdf)
 
@@ -198,6 +206,16 @@ class PlacedRectContent(PlacedContent):
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
+
+    def toPath(self, pdf:PDF) -> Path:
+        p = pdf.beginPath()
+        r = self.bounds
+        if self.style.box.rounded:
+            radius = min(self.style.box.rounded, r.width / 2, r.height / 2)
+            p.roundRect(r.left, r.top, r.width, r.height, radius)
+        else:
+            p.rect(r.left, r.top, r.width, r.height)
+        return p
 
     def __copy__(self):
         return PlacedRectContent(self.bounds, self.style, self.quality)

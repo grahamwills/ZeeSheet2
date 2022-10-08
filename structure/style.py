@@ -176,6 +176,7 @@ class BoxStyle:
     border_opacity: float = None
     margin: Spacing = None
     padding: Spacing = None
+    rounded: float = None
 
     def set(self, key: str, value):
         if key.startswith('box'):
@@ -197,6 +198,8 @@ class BoxStyle:
             self.padding = text_to_spacing(value)
         elif key in ['width', 'size', 'linewidth', 'borderwidth', 'borderlinewidth']:
             self.width = units.toLength(value)
+        elif key in ['rounded', 'round', 'rounding', 'corner', 'corners']:
+            self.rounded = units.toLength(value)
         else:
             raise AttributeError(key)
 
@@ -211,6 +214,8 @@ class BoxStyle:
             parts.append(f'background:{self.color}')
         if self.opacity is not None:
             parts.append(f'background-opacity:{num2str(self.opacity)}')
+        if self.rounded is not None:
+            parts.append(f'rounded:{len2str(self.rounded)}')
         if self.margin is not None:
             parts.append(f'margin:{spacing_to_text(self.margin)}')
         if self.padding is not None:
@@ -403,7 +408,7 @@ class StyleDefaults(metaclass=process_definitions):
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2
         title =     inherit:default font-size:14 font-face:bold padding:1
-        block =     inherit:default margin:12
+        block =     inherit:default margin:10 rounded:3
         section =   inherit:default margin:0 padding:0 border:none background:none
         image =     inherit:default-block inherit:default-block border:none background:none
         sheet =     inherit:default padding:0.25in margin:0 border:none background:none

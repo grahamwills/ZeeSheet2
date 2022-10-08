@@ -4,7 +4,7 @@ import layout
 from common import Extent, Rect, Spacing
 from generate.fonts import Font
 from generate.pdf import PDF, TextSegment
-from layout import PlacedPathContent, PlacedGroupContent, PlacedRunContent
+from layout import PlacedPathContent, PlacedGroupContent, PlacedRunContent, ExtentTooSmallError
 from structure import Block
 
 
@@ -50,6 +50,12 @@ class AttributeTableBuilder:
         xa = e_width + e_pad.horizontal
         xb = xa + c_width + c_pad.horizontal
 
+        if xb > self.extent.width:
+            raise ExtentTooSmallError()
+
+        excess = self.extent.width - xb
+        xb = self.extent.width
+
         # The bulb height is ha; the center height is hb
         ha = e_height + e_pad.vertical + max(0, e_dy)
         hb = c_height + c_pad.vertical + max(0, c_dy)
@@ -79,7 +85,6 @@ class AttributeTableBuilder:
             top += max(ha, hb) + v_gap
 
         bounds = Rect(0, self.extent.width, 0, top)
-        excess = bounds.width - xb
 
         q_decoration = layout.quality.for_decoration(self.block)
         placed_attributes = PlacedRunContent(attributes, self.style, bounds.extent, q_decoration, bounds.top_left)

@@ -68,6 +68,7 @@ class TextFieldSegment:
     def to_text(self):
         return '[[ ' + self.value + ' ]]'
 
+
 class PDF(canvas.Canvas):
 
     def __init__(self,
@@ -104,7 +105,7 @@ class PDF(canvas.Canvas):
             font.line_spacing *= style.font.spacing
         return font
 
-    def draw_path(self, coords:Iterable[tuple[float]], style:Style):
+    def draw_path(self, coords: Iterable[tuple[float]], style: Style):
         LOGGER.debug("Drawing path")
         p = self.beginPath()
         need_move = True
@@ -138,7 +139,6 @@ class PDF(canvas.Canvas):
         if stroked or filled:
             self.drawPath(p, fill=filled, stroke=stroked)
 
-
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
         style = base_style.box
@@ -150,7 +150,12 @@ class PDF(canvas.Canvas):
         fill_color = base_style.get_color(box=True)
         self.setFillColor(fill_color)
         filled = fill_color.alpha > 0
-        if stroked or filled:
+        if not stroked and not filled:
+            return
+        if base_style.box.rounded:
+            radius = min(base_style.box.rounded, r.width / 2, r.height / 2)
+            self.roundRect(r.left, r.top, r.width, r.height, radius, fill=filled, stroke=stroked)
+        else:
             self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
     def _draw_checkbox(self, rx, ry, font: Font, state: bool, color: Color):
