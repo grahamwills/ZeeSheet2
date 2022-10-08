@@ -4,7 +4,7 @@ import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from reportlab.graphics.shapes import Path
 from reportlab.lib.colors import toColor
@@ -17,7 +17,7 @@ from generate.pdf import TextSegment, PDF
 from layout import path_effects
 from layout.quality import PlacementQuality
 from structure import ImageDetail
-from structure.model import SheetOptions, SectionOptions, CommonOptions
+from structure.model import CommonOptions
 from structure.style import Style
 
 LOGGER = configured_logger(__name__)
@@ -58,7 +58,7 @@ class PlacedContent(abc.ABC):
     def _draw(self, pdf: PDF):
         raise NotImplementedError('Must be defined in subclass')
 
-    def toPath(self, pdf:PDF) -> Path:
+    def toPath(self, pdf: PDF) -> Path:
         raise NotImplementedError('Must be defined in subclass')
 
     def __str__(self):
@@ -110,7 +110,6 @@ class PlacedContent(abc.ABC):
                 pdf.setDash(dash)
             pdf.rect(0, 0, self.extent.width, self.extent.height, fill=1, stroke=1)
             pdf.restoreState()
-
 
 
 class PlacedGroupContent(PlacedContent):
@@ -208,7 +207,7 @@ class PlacedRectContent(PlacedContent):
         # We have already been offset by the top left
         pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
-    def toPath(self, pdf:PDF) -> Path:
+    def toPath(self, pdf: PDF) -> Path:
         p = pdf.beginPath()
         r = self.bounds
         if self.style.box.rounded:

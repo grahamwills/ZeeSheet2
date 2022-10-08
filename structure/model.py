@@ -26,8 +26,8 @@ class CommonOptions:
     style: str = None
     image: int = 0
     image_mode: str = 'normal'
-    image_width: str = None
-    image_height: str = None
+    image_width: float = None
+    image_height: float = None
     image_anchor: str = None
 
 
