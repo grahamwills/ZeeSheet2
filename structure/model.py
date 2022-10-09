@@ -8,7 +8,7 @@ from typing import List, Optional, ClassVar, Dict, Generator
 from PIL.Image import Image
 from reportlab.lib.units import inch
 
-from structure.style import Style
+from .style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
 Problem = namedtuple('Problem', 'lineNo is_error message')

@@ -13,6 +13,7 @@ from reportlab.lib.colors import Color
 import common
 from common import Spacing, Rect, Extent
 from common.logging import message_unknown_attribute, message_bad_value, configured_logger
+from .path_effects import Effect, Effects
 
 LOGGER = configured_logger(__name__)
 
@@ -201,7 +202,9 @@ class BoxStyle:
         elif key in ['width', 'size', 'linewidth', 'borderwidth', 'borderlinewidth']:
             self.width = units.toLength(value)
         elif key == 'effect':
-            self.effect = value.lower()
+            value = value.lower()
+            validate_value(key, value, Effects.ALL.keys())
+            self.effect = value
         elif key == 'effectsize':
             self.effect_size = units.toLength(value)
         else:
@@ -322,6 +325,15 @@ class Style:
             return c
         else:
             return Color(c.red, c.green, c.blue, c.alpha * opacity)
+
+    def get_effect(self) -> Effect:
+        size = self.box.effect_size
+        if size <= 0:
+            return Effects.NONE
+        base = Effects.ALL[self.box.effect]
+        if base != Effects.NONE:
+            base = base.sized(size)
+        return base
 
     def to_definition(self):
         parts = []

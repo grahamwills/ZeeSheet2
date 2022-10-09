@@ -14,11 +14,10 @@ import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from generate.pdf import TextSegment, PDF
-from layout import path_effects
 from layout.quality import PlacementQuality
 from structure import ImageDetail
 from structure.model import CommonOptions
-from structure.style import Style
+from structure.style import Style, BoxStyle
 
 LOGGER = configured_logger(__name__)
 
@@ -52,13 +51,13 @@ class PlacedContent(abc.ABC):
                     self.location.y,
                     self.location.y + self.extent.height)
 
+    def as_path(self) -> Path:
+        raise NotImplementedError('Must be defined in subclass')
+
     def better(self, other: type(PlacedContent)):
         return other is None or self.quality.better(other.quality)
 
     def _draw(self, pdf: PDF):
-        raise NotImplementedError('Must be defined in subclass')
-
-    def toPath(self, pdf: PDF) -> Path:
         raise NotImplementedError('Must be defined in subclass')
 
     def __str__(self):
@@ -135,10 +134,23 @@ class PlacedGroupContent(PlacedContent):
         return PlacedGroupContent(items, extent, quality, ZERO)
 
     def _draw(self, pdf: PDF):
-        if self.clip_item:
-            pdf.clipPath(self.clip_item.toPath(pdf), 0, 0)
+        clip = self.clip_item
+        if clip:
+            pdf.saveState()
+            pdf.clipPath(clip.as_path(), 0, 0)
+            box:BoxStyle = clip.style.box
+            original_border = box.border_color
+            box.border_color = 'none'
+
         for p in self.items:
             p.draw(pdf)
+        if clip:
+            pdf.restoreState()
+            box.border_color = original_border
+            original_fill = box.color
+            box.color = 'none'
+            clip.draw(pdf)
+            box.color = original_fill
 
     def __str__(self):
         base = super().__str__()
@@ -198,42 +210,25 @@ class PlacedRectContent(PlacedContent):
     DEBUG_STYLE = None
 
     style: Style  # Style for this item
-    _effects_applied: list[tuple] = None
+    _asPath: Path = None
 
     def __init__(self, bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.style = style
 
-    def with_effects(self) -> list[tuple]:
-        if not self._effects_applied:
-            box_style = self.style.box
-            if box_style.effect == 'rough':
-                seed = hash(self.bounds)
-                coords = self.bounds.corners() + [tuple()]
-                self._effects_applied = path_effects.roughen_edges(coords, box_style.effect_size, seed)
-        return self._effects_applied
+    def as_path(self) -> Path:
+        if not self._asPath:
+            effect = self.style.get_effect()
+            cords = self.bounds.corners() + [tuple()]
+            self._asPath = effect.apply(cords, hash(self.bounds))
+        return self._asPath
 
     def _draw(self, pdf: PDF):
-        # We have already been offset by the top left
-        c = self.with_effects()
-        if c:
-            pdf.draw_path(toPath(c, pdf), self.style)
+        effect = self.style.get_effect()
+        if effect.needs_path_conversion:
+            pdf.draw_path(self.as_path(), self.style)
         else:
             pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
-
-    def toPath(self, pdf: PDF) -> Path:
-        c = self.with_effects()
-        if c:
-            return toPath(c, pdf)
-        else:
-            p = pdf.beginPath()
-            r = self.bounds
-            if self.style.box.effect == 'rounded':
-                radius = min(self.style.box.effect_size, r.width / 2, r.height / 2)
-                p.roundRect(r.left, r.top, r.width, r.height, radius)
-            else:
-                p.rect(r.left, r.top, r.width, r.height)
-            return p
 
     def __copy__(self):
         return PlacedRectContent(self.bounds, self.style, self.quality)
@@ -248,32 +243,21 @@ class PlacedPathContent(PlacedContent):
 
     coords: list[tuple]
     style: Style  # Style for this item
-    _effects_applied: list[tuple] = None
+    _asPath: Path = None
 
     def __init__(self, coords: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.coords = coords
         self.style = style
 
-    def with_effects(self) -> list[tuple]:
-        if not self._effects_applied:
-            coords = self.coords
-            box_style = self.style.box
-            if box_style.effect == 'rounded':
-                self._effects_applied = path_effects.round_edges(coords, box_style.effect_size)
-            elif box_style.effect == 'rough':
-                seed = hash(self.bounds)
-                self._effects_applied = path_effects.roughen_edges(coords, box_style.effect_size, seed)
-            else:
-                self._effects_applied = coords
-        return self._effects_applied
-
-    def toPath(self, pdf: PDF) -> Path:
-        return toPath(self.with_effects(), pdf)
+    def as_path(self) -> Path:
+        if not self._asPath:
+            effect = self.style.get_effect()
+            self._asPath = effect.apply(self.coords, hash(self.bounds))
+        return self._asPath
 
     def _draw(self, pdf: PDF):
-        coords = self.with_effects()
-        pdf.draw_path(toPath(coords, pdf), self.style)
+        pdf.draw_path(self.as_path(), self.style)
 
     def __copy__(self):
         return PlacedPathContent(self.coords, self.bounds, self.style, self.quality)

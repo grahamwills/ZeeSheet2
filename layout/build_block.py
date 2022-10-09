@@ -22,7 +22,8 @@ MIN_BLOCK_DIMENSION = 8
 NO_SPACING = Spacing(0, 0, 0, 0)
 
 
-def make_title(block: Block, inner: Rect, quality: str, extra_space:float, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
+def make_title(block: Block, inner: Rect, quality: str, extra_space: float, pdf: PDF) -> Tuple[
+    Optional[PlacedContent], Spacing]:
     if not block.title or block.options.title == 'none':
         return None, NO_SPACING
 
@@ -71,6 +72,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.style(block.options.style, 'default-block')
+    effect = main_style.get_effect()
     container = Rect(0, size.width, 0, size.height)
 
     if block.options.method == 'attributes':
@@ -85,9 +87,14 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     else:
         outer = container
 
-    # Create the title and insets to allow room for it
-    extra_space = main_style.box.effect_size if main_style.box.effect != 'none' else 0
-    title, title_spacing = make_title(block, outer, quality, extra_space, pdf)
+    # We may need extra space around the frame for the effect to flow into
+    extra_space = effect.padding()
+    if extra_space > 0:
+        # Half the padding lies inside the frame
+        outer = outer.pad(-extra_space/2)
+
+    # Create the title. Pass in the extra padding space needed with extra to ensure we cover the clip area
+    title, title_spacing = make_title(block, outer, quality, extra_space*2, pdf)
 
     if not block.children and not image:
         if not title:
@@ -104,9 +111,9 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
-        if main_style.box.effect != 'none':
+        if extra_space > 0:
             # We need to expand the image to fill into the effects space
-            item_bounds += Spacing.balanced(main_style.box.effect_size)
+            item_bounds = item_bounds.pad(extra_space)
         placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
                                      opt.image_anchor, force_to_top=True)
 
@@ -118,6 +125,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         total_height = max(total_height, title.bounds.bottom)
     if main_style.box.has_border():
         total_height += main_style.box.width
+    total_height += extra_space
     frame_bounds = Rect(0, size.width, 0, total_height)
 
     if block.children:
@@ -134,13 +142,12 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     block_quality = layout.quality.for_columns(block, [total_height], [cell_qualities], 0)
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
-    if not result.clip_item and main_style.box.effect != 'none':
+    if not result.clip_item:
         result.clip_item = PlacedRectContent(frame_bounds, main_style, layout.quality.for_decoration(block))
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:
         result.hidden = True
-
 
     return result
 
@@ -206,16 +213,15 @@ class BlockTablePacker(ColumnPacker):
         elif idx[1] == self.k - 1:
             align_char = self.alignments[-1]
         if align_char == 'L':
-            align='left'
+            align = 'left'
         elif align_char == 'R':
-            align='right'
+            align = 'right'
         elif align_char == 'C':
-            align= 'center'
+            align = 'center'
         else:
             align = None
 
         return build_run.place_run(item, extent, self.content_style, self.pdf, align)
-
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
         return self.span_map[idx]
