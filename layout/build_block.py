@@ -111,9 +111,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
-        if extra_space > 0:
-            # We need to expand the image to fill into the effects space
-            item_bounds = item_bounds.pad(extra_space)
+        item_bounds = item_bounds.pad(extra_space)
         placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
                                      opt.image_anchor, force_to_top=True)
 
@@ -125,7 +123,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         total_height = max(total_height, title.bounds.bottom)
     if main_style.box.has_border():
         total_height += main_style.box.width
-    total_height += extra_space
+    total_height += extra_space/2
     frame_bounds = Rect(0, size.width, 0, total_height)
 
     if block.children:
@@ -143,7 +141,9 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
     if not result.clip_item:
-        result.clip_item = PlacedRectContent(frame_bounds, main_style, layout.quality.for_decoration(block))
+        # I am not sure why this is needed
+        modified_bounds =frame_bounds - Spacing(0,0,0,extra_space)
+        result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration(block))
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:

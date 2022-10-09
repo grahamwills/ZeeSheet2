@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Generator
+from typing import Generator, Callable
 
 import reportlab.pdfgen.pathobject
 from reportlab.graphics.shapes import Path
@@ -31,7 +31,8 @@ class Effects:
     NONE = Effect('none', False, False)
     ROUNDED = Effect('rounded', False, False)
     ROUGH = Effect('rough', True, True)
-    ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH)}
+    COGS = Effect('cogs', True, True)
+    ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH, COGS)}
 
     @classmethod
     def make_from_coords(cls, effect: Effect, coords: list[tuple], seed: int) -> Path:
@@ -40,7 +41,9 @@ class Effects:
         elif effect.name == Effects.ROUNDED.name:
             transformed = round_edges(coords, effect.size)
         elif effect.name == Effects.ROUGH.name:
-            transformed = roughen_edges(coords, effect.size, seed)
+            transformed = apply_effect(roughen, coords, effect.size, seed)
+        elif effect.name == Effects.COGS.name:
+            transformed = apply_effect(cogs, coords, effect.size, seed)
         else:
             raise RuntimeError(f"Unknown effect '{effect.name}'")
         return toPath(transformed)
@@ -57,41 +60,58 @@ def round_edges(coords: list[tuple], radius) -> list[tuple]:
     return result
 
 
-def roughen(points: list[Point], radius: float, rand: random.Random) -> list[Point]:
-    DECAY = 0.45
-    result = []
+def cogs(points: list[Point], radius: float, _) -> list[tuple]:
     n = len(points)
-    v = 0
+
+    result = []
     for idx in range(0, n):
         p = points[(idx + n - 1) % n]
         q = points[idx]
         r = points[(idx + 1) % n]
 
-        # Find a point 's' a distance 'radius' from q and perpendicular to the line (p,r)
-        if abs(r.y - p.y) < 1e-4:
-            # If p and r have the same y value
-            s = Point(q.x, q.y + radius)
-        else:
-            slope = - (r.x - p.x) / (r.y - p.y)
-            scale = radius * (1 + slope * slope) ** 0.5
-            s = Point(q.x + 1 * scale, q.y + slope * scale)
+        p = (p + q) / 2
+        r = (q + r) / 2
 
-        v1 = 9e99
-        while abs(v1) > 1:
-            v1 = v * (1 - DECAY) + rand.gauss(0, 0.5) * DECAY
-        v = v1
+        # Create scaled perpendicular
+        t = (r - p)
+        t = Point(t.y, -t.x)
+        t /= abs(t)
 
-        # v = math.sin(2*math.pi*idx/4)
-        result.append(linear(q, s, v))
+        # Ensure cog teeth are same width even when angled
+        w = 0.25 / max(abs(t.x), abs(t.y))
+        a = p * (0.5 + w) + r * (0.5 - w)
+        b = p * (0.5 - w) + r * (0.5 + w)
+
+        t *= radius / 4
+
+        result.append(a - t)
+        result.append(a + t)
+        result.append(b + t)
+        result.append(b - t)
+
     return result
 
 
-def roughen_edges(coords: list[tuple], radius: float, seed: int) -> list[tuple]:
+def roughen(points: list[Point], radius: float, rand: random.Random) -> list[tuple]:
+    DECAY = 0.5
+    result = []
+    d = Point(0, 0)
+    for q in points:
+        while True:
+            d1 = d * (1 - DECAY) + Point(rand.gauss(0, 0.5), rand.gauss(0, 0.5)) * DECAY
+            if abs(d1.x) <= 1 and abs(d1.y) <= radius:
+                break
+        d = d1
+        result.append(q + radius * d)
+    return result
+
+
+def apply_effect(func: Callable, coords: list[tuple], radius: float, seed: int) -> list[tuple]:
     r = random.Random(seed)
     result = []
     for shape in closed_shapes(coords):
         points = flatten(shape, radius * 1.618)
-        result += roughen(points, radius, r)
+        result += func(points, radius, r)
         result += tuple()  # close indicator
     return result
 

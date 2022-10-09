@@ -138,7 +138,7 @@ class PlacedGroupContent(PlacedContent):
         if clip:
             pdf.saveState()
             pdf.clipPath(clip.as_path(), 0, 0)
-            box:BoxStyle = clip.style.box
+            box: BoxStyle = clip.style.box
             original_border = box.border_color
             box.border_color = 'none'
 
@@ -347,7 +347,7 @@ def make_frame(bounds: Rect, style: Style,
         im = pdf.get_image(options.image)
         if im:
             image = make_image(im, bounds, options.image_mode, options.image_width,
-                               options.image_height, options.image_anchor, force_to_top=False)
+                               options.image_height, options.image_anchor, force_to_top=False, )
             if box:
                 return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
             else:
@@ -386,7 +386,7 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
     if force_to_top:
         # We do this when it is the only content of a block as we don't want that extra space on top
-        content.location = Point(content.location.x, 0)
+        content.location = Point(content.location.x, bounds.top)
         content.extent = image_bounds.extent
     else:
         content.extent = bounds.extent
