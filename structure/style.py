@@ -177,7 +177,8 @@ class BoxStyle:
     border_opacity: float = None
     margin: Spacing = None
     padding: Spacing = None
-    rounded: float = None
+    effect : str = None
+    effect_size : float = None
 
     def set(self, key: str, value):
         if key.startswith('box'):
@@ -199,8 +200,10 @@ class BoxStyle:
             self.padding = text_to_spacing(value)
         elif key in ['width', 'size', 'linewidth', 'borderwidth', 'borderlinewidth']:
             self.width = units.toLength(value)
-        elif key in ['rounded', 'round', 'rounding', 'corner', 'corners']:
-            self.rounded = units.toLength(value)
+        elif key == 'effect':
+            self.effect = value.lower()
+        elif key == 'effectsize':
+            self.effect_size = units.toLength(value)
         else:
             raise AttributeError(key)
 
@@ -215,12 +218,14 @@ class BoxStyle:
             parts.append(f'background:{self.color}')
         if self.opacity is not None:
             parts.append(f'background-opacity:{num2str(self.opacity)}')
-        if self.rounded is not None:
-            parts.append(f'rounded:{len2str(self.rounded)}')
         if self.margin is not None:
             parts.append(f'margin:{spacing_to_text(self.margin)}')
         if self.padding is not None:
             parts.append(f'padding:{spacing_to_text(self.padding)}')
+        if self.effect is not None:
+            parts.append(f'effect:{self.effect}')
+        if self.effect_size is not None:
+            parts.append(f'effect-size:{len2str(self.effect_size)}')
 
     def has_border(self) -> bool:
         return self.border_color != 'none' and self.width > 0
@@ -407,15 +412,15 @@ class StyleDefaults(metaclass=process_definitions):
         default =   inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 
                     font:Helvetica font-size:12 font-face:Regular font-spacing:100%
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
-                    box-margin:0 box-padding:2
+                    box-margin:0 box-padding:2 effect:none effect-size:3
         title =     inherit:default font-size:14 font-face:bold padding:1
-        block =     inherit:default margin:10 rounded:3
+        block =     inherit:default margin:10 effect:rounded
         section =   inherit:default margin:0 padding:0 border:none background:none
         image =     inherit:default-block inherit:default-block border:none background:none
         sheet =     inherit:default padding:0.25in margin:0 border:none background:none
         hidden =    inherit:default margin:0 padding:0 font-size:1 border:none 
         
-        attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' align:center
+        attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' align:center box-effect:rounded
         attributes-title =  inherit:default-title font-size:22 margin:2 padding:6 text-color:yellow align:center
     '''
 

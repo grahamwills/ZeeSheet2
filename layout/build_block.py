@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 
@@ -23,7 +22,7 @@ MIN_BLOCK_DIMENSION = 8
 NO_SPACING = Spacing(0, 0, 0, 0)
 
 
-def make_title(block: Block, inner: Rect, quality: str, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
+def make_title(block: Block, inner: Rect, quality: str, extra_space:float, pdf: PDF) -> Tuple[Optional[PlacedContent], Spacing]:
     if not block.title or block.options.title == 'none':
         return None, NO_SPACING
 
@@ -31,6 +30,7 @@ def make_title(block: Block, inner: Rect, quality: str, pdf: PDF) -> Tuple[Optio
         # warnings.warn(f"Border style '{block.options.title}' is not yet supported, treating as 'simple'")
         pass
 
+    title_style = pdf.style(block.options.title_style, 'default-title')
     title_style = pdf.style(block.options.title_style, 'default-title')
 
     title_bounds = title_style.box.inset_within_padding(inner)
@@ -45,6 +45,11 @@ def make_title(block: Block, inner: Rect, quality: str, pdf: PDF) -> Tuple[Optio
     if title_style.box.has_border():
         # Need to reduce the plaque to draw INSIDE the border
         plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
+
+    # When we have a border effect, we need to expand the plaque to make sure it is behind it all.
+    # But not below, since the simple plaque is on the top
+    if extra_space:
+        plaque_rect_to_draw = plaque_rect_to_draw + Spacing(extra_space, extra_space, extra_space, 0)
 
     plaque_quality = layout.quality.for_decoration('title')
     plaque = PlacedRectContent(plaque_rect_to_draw, title_style, plaque_quality)
@@ -82,7 +87,8 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         outer = container
 
     # Create the title and insets to allow room for it
-    title, title_spacing = make_title(block, outer, quality, pdf)
+    extra_space = main_style.box.effect_size if main_style.box.effect != 'none' else 0
+    title, title_spacing = make_title(block, outer, quality, extra_space, pdf)
 
     if not block.children and not image:
         if not title:

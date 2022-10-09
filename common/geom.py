@@ -84,6 +84,9 @@ class Point(NamedTuple):
     x: float
     y: float
 
+    def distance(self, o: Point):
+        return ((self.x - o.x) ** 2 + (self.y - o.y) ** 2) ** 0.5
+
     def __str__(self) -> str:
         return f"({common.to_str(self.x, 2)}, {common.to_str(self.y, 2)})"
 
@@ -173,6 +176,14 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
     @property
     def top_left(self) -> Point:
         return Point(self.left, self.top)
+
+    def corners(self) -> list[Point, Point, Point, Point]:
+        return [
+            Point(self.left, self.top),
+            Point(self.right, self.top),
+            Point(self.right, self.bottom),
+            Point(self.left, self.bottom),
+        ]
 
     def pad(self, v: float) -> Rect:
         return Rect(self.left - v, self.right + v, self.top - v, self.bottom + v)

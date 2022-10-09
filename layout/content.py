@@ -4,6 +4,7 @@ import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
+from random import seed
 from typing import List, Optional
 
 from reportlab.graphics.shapes import Path
@@ -198,24 +199,42 @@ class PlacedRectContent(PlacedContent):
     DEBUG_STYLE = None
 
     style: Style  # Style for this item
+    _effects_applied: list[tuple] = None
 
     def __init__(self, bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.style = style
 
+    def with_effects(self) -> list[tuple]:
+        if not self._effects_applied:
+            box_style = self.style.box
+            if box_style.effect == 'rough':
+                seed = hash(self.bounds)
+                coords = self.bounds.corners() + [tuple()]
+                self._effects_applied = path_effects.roughen_edges(coords, box_style.effect_size, seed)
+        return self._effects_applied
+
     def _draw(self, pdf: PDF):
         # We have already been offset by the top left
-        pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
+        c = self.with_effects()
+        if c:
+            pdf.draw_path(toPath(c, pdf), self.style)
+        else:
+            pdf.draw_rect(Rect(0, self.extent.width, 0, self.extent.height), self.style)
 
     def toPath(self, pdf: PDF) -> Path:
-        p = pdf.beginPath()
-        r = self.bounds
-        if self.style.box.rounded:
-            radius = min(self.style.box.rounded, r.width / 2, r.height / 2)
-            p.roundRect(r.left, r.top, r.width, r.height, radius)
+        c = self.with_effects()
+        if c:
+            return toPath(c, pdf)
         else:
-            p.rect(r.left, r.top, r.width, r.height)
-        return p
+            p = pdf.beginPath()
+            r = self.bounds
+            if self.style.box.effect == 'rounded':
+                radius = min(self.style.box.effect_size, r.width / 2, r.height / 2)
+                p.roundRect(r.left, r.top, r.width, r.height, radius)
+            else:
+                p.rect(r.left, r.top, r.width, r.height)
+            return p
 
     def __copy__(self):
         return PlacedRectContent(self.bounds, self.style, self.quality)
@@ -227,19 +246,35 @@ class PlacedRectContent(PlacedContent):
 @dataclass
 class PlacedPathContent(PlacedContent):
     DEBUG_STYLE = None
-    coords: list[tuple[float, ...]]
+
+    coords: list[tuple]
     style: Style  # Style for this item
+    _effects_applied: list[tuple] = None
 
     def __init__(self, coords: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
-        if style.box.rounded:
-            self.coords = path_effects.round_edges(coords, style.box.rounded)
-        else:
-            self.coords = coords
+        self.coords = coords
         self.style = style
 
+    def with_effects(self) -> list[tuple]:
+        if not self._effects_applied:
+            coords = self.coords
+            box_style = self.style.box
+            if box_style.effect == 'rounded':
+                self._effects_applied = path_effects.round_edges(coords, box_style.effect_size)
+            elif box_style.effect == 'rough':
+                seed = hash(self.bounds)
+                self._effects_applied = path_effects.roughen_edges(coords, box_style.effect_size, seed)
+            else:
+                self._effects_applied = coords
+        return self._effects_applied
+
+    def toPath(self, pdf: PDF) -> Path:
+        return toPath(self.with_effects(), pdf)
+
     def _draw(self, pdf: PDF):
-        pdf.draw_path(self.coords, self.style)
+        coords = self.with_effects()
+        pdf.draw_path(toPath(coords, pdf), self.style)
 
     def __copy__(self):
         return PlacedPathContent(self.coords, self.bounds, self.style, self.quality)
@@ -373,6 +408,29 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     else:
         content.extent = bounds.extent
     return content
+
+
+def toPath(coords: list[tuple], pdf: PDF) -> Path:
+    p = pdf.beginPath()
+    need_move = True
+    for c in coords:
+        m = len(c)
+        if m == 0:
+            p.close()
+            need_move = True
+        elif m == 2:
+            if need_move:
+                p.moveTo(*c)
+                need_move = False
+            else:
+                p.lineTo(*c)
+        elif m == 6:
+            p.curveTo(*c)
+        else:
+            raise RuntimeError('Bad path specification')
+    if not need_move:
+        p.close()
+    return p
 
 
 class ExtentTooSmallError(RuntimeError):

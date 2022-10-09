@@ -8,6 +8,7 @@ from io import BytesIO
 from typing import List, Tuple, Union, Dict, Optional, Iterable
 
 from PIL.Image import Image
+from reportlab.graphics.shapes import Path
 from reportlab.lib import colors
 from reportlab.lib.colors import Color
 from reportlab.lib.utils import ImageReader
@@ -105,28 +106,8 @@ class PDF(canvas.Canvas):
             font.line_spacing *= style.font.spacing
         return font
 
-    def draw_path(self, coords: Iterable[tuple[float]], style: Style):
+    def draw_path(self, path: Path, style: Style):
         LOGGER.debug("Drawing path")
-        p = self.beginPath()
-        need_move = True
-        for c in coords:
-            m = len(c)
-            if m == 0:
-                p.close()
-                need_move = True
-            elif m == 2:
-                if need_move:
-                    p.moveTo(*c)
-                    need_move = False
-                else:
-                    p.lineTo(*c)
-            elif m == 6:
-                    p.curveTo(*c)
-            else:
-                raise RuntimeError('Bad path specification')
-        if not need_move:
-            p.close()
-
         stroke_color = style.get_color(border=True)
         stroke_width = style.box.width
         self.setStrokeColor(stroke_color)
@@ -137,7 +118,7 @@ class PDF(canvas.Canvas):
         self.setFillColor(fill_color)
         filled = fill_color.alpha > 0
         if stroked or filled:
-            self.drawPath(p, fill=filled, stroke=stroked)
+            self.drawPath(path, fill=filled, stroke=stroked)
 
     def draw_rect(self, r: Rect, base_style: Style):
         LOGGER.debug(f"Drawing {r} with style {base_style.name}")
@@ -152,8 +133,8 @@ class PDF(canvas.Canvas):
         filled = fill_color.alpha > 0
         if not stroked and not filled:
             return
-        if base_style.box.rounded:
-            radius = min(base_style.box.rounded, r.width / 2, r.height / 2)
+        if base_style.box.effect == 'rounded':
+            radius = min(base_style.box.effect_size, r.width / 2, r.height / 2)
             self.roundRect(r.left, r.top, r.width, r.height, radius, fill=filled, stroke=stroked)
         else:
             self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
