@@ -4,7 +4,6 @@ import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
-from random import seed
 from typing import List, Optional
 
 from reportlab.graphics.shapes import Path

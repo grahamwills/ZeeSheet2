@@ -31,7 +31,6 @@ def make_title(block: Block, inner: Rect, quality: str, extra_space:float, pdf: 
         pass
 
     title_style = pdf.style(block.options.title_style, 'default-title')
-    title_style = pdf.style(block.options.title_style, 'default-title')
 
     title_bounds = title_style.box.inset_within_padding(inner)
     placed = place_block_title(block, title_bounds, quality, pdf)
@@ -105,6 +104,9 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
+        if main_style.box.effect != 'none':
+            # We need to expand the image to fill into the effects space
+            item_bounds += Spacing.balanced(main_style.box.effect_size)
         placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
                                      opt.image_anchor, force_to_top=True)
 
@@ -121,19 +123,19 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     if block.children:
         frame = content.make_frame(frame_bounds, main_style, block.options, pdf)
     else:
-        # We are showing just an image, which is our children, so do not add  it here also
+        # We are showing just an image, which is our children, so do not add it here also
         frame = content.make_frame_box(frame_bounds, main_style)
 
     # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]
-    if len(items) == 1:
-        return items[0]
 
     block_extent = Extent(size.width, total_height)
     cell_qualities = [i.quality for i in items]
     block_quality = layout.quality.for_columns(block, [total_height], [cell_qualities], 0)
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
+    if not result.clip_item and main_style.box.effect != 'none':
+        result.clip_item = PlacedRectContent(frame_bounds, main_style, layout.quality.for_decoration(block))
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:
