@@ -46,7 +46,13 @@ class Document:
             settings.report_level = 99
             document = utils.new_document(text, settings)
             parser.parse(text, document)
-            main_visitor = visitors.StructureBuilder(document)
+
+            # Run scripts and collect variables to pass to the main visitor
+            script_visitor = visitors.ScriptBuilder(document)
+            document.walkabout(script_visitor)
+            variables = script_visitor.calculator.variables()
+
+            main_visitor = visitors.StructureBuilder(document, variables)
             document.walkabout(main_visitor)
             self._sheet = main_visitor.get_sheet()
         return self._sheet

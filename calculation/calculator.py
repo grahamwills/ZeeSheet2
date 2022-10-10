@@ -1,3 +1,4 @@
+import textwrap
 from typing import Union
 
 from calculation.lexer import CalcLexer
@@ -12,16 +13,15 @@ class Calculator:
         self.parser.initialize_variables(variables)
 
     def evaluate(self, text: str):
+        text = textwrap.dedent(text).strip()
         tokens = self.lexer.tokenize(text)
         self.parser.parse(tokens)
-        self.output_variables = self.parser.variables
 
     def variables(self):
-        return self.parser.variables
+        return {k: str(p) for k, p in self.parser.variables.items()}
 
-    def var(self, name:str):
+    def var(self, name: str):
         try:
             return str(self.parser.variables[name])
         except KeyError:
             return None
-

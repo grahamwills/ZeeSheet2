@@ -70,9 +70,10 @@ class ImageDetail:
 class Element:
     value: str
     modifier: Optional[str] = None
+    original: str = None  # If it has been modified, this is what the original value was
 
     def __post_init__(self):
-        assert self.value, 'Element must be created with valid content'
+        assert self.value is not None, 'Element must be created with valid content'
 
     def description(self, short: bool):
         if short:
@@ -87,18 +88,21 @@ class Element:
             return self.value
 
     def to_rst(self):
+        # If the original version was nothing, retun nothing
+        if self.original == '':
+            return ''
         if self.modifier == 'strong':
-            return '**' + self.value + '**'
+            return '**' + (self.original or self.value) + '**'
         elif self.modifier == 'emphasis':
-            return '*' + self.value + '*'
+            return '*' + (self.original or self.value) + '*'
         elif self.modifier == 'literal':
-            return '``' + self.value + '``'
+            return '``' + (self.original or self.value) + '``'
         elif self.modifier == 'checkbox':
-            return '[' + self.value + ']'
+            return self.original or '[' + self.value + ']'
         elif self.modifier == 'textfield':
-            return '[[' + self.value + ']]'
+            return self.original or '[[' + self.value + ']]'
         elif self.modifier is None:
-            return self.value
+            return self.original or self.value
         else:
             raise ValueError('Unknown Element modifier: ' + self.modifier)
 
@@ -358,6 +362,7 @@ class Sheet(StructureUnit):
     children: List[Section] = field(default_factory=lambda: [Section()])
     styles: Dict[str, Style] = field(default_factory=lambda: {})
     options: SheetOptions = field(default_factory=lambda: SheetOptions())
+    scripts: list[list[str]] = field(default_factory=list)
 
     def tidy(self, index: list) -> None:
         self.name = 'Sheet'

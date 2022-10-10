@@ -1,6 +1,5 @@
 import math
 import warnings
-from dataclasses import dataclass
 from typing import Union
 
 from sly import Parser
@@ -8,15 +7,16 @@ from sly import Parser
 from .lexer import CalcLexer
 from .var import Variable
 
+
 class Command:
     type: str
     params: list[Variable]
 
     def __init__(self, type, *args):
-        self.type=type
+        self.type = type
         self.params = list(args)
 
-    def execute(self, variables:dict):
+    def execute(self, variables: dict):
         if self.type == 'NONE':
             pass
         elif self.type == 'SET':
@@ -50,6 +50,7 @@ class CalcParser(Parser):
         ('left', ASSIGN),
         ('left', COMMA),
         ('right', WHEN, THEN),
+        ('right', ELSE),
         ('nonassoc', EQ, NE, LT, LE, GT, GE),
         ('left', PLUS, MINUS),
         ('left', TIMES, DIVIDE),
@@ -65,7 +66,6 @@ class CalcParser(Parser):
     def statement(self, p):
         p.command.execute(self.variables)
 
-
     @_('VAR ASSIGN expression')
     def command(self, p):
         return Command('SET', p.VAR, p.expression)
@@ -80,13 +80,19 @@ class CalcParser(Parser):
 
     # Decisions ####################################################
 
+    @_('WHEN expression THEN command ELSE command')
+    def command(self, p):
+        if p.expression:
+            return p.command0
+        else:
+            return p.command1
+
     @_('WHEN expression THEN command')
     def command(self, p):
         if p.expression:
             return p.command
         else:
             return Command('NONE')
-
 
     # Operators ####################################################
 
@@ -160,29 +166,48 @@ class CalcParser(Parser):
 
     # Functions ####################################################
 
-
     @_('JOIN LPAREN args RPAREN')
     def factor(self, p):
         return Variable(''.join(str(x) for x in p.args))
 
     @_('MIN LPAREN args RPAREN')
     def factor(self, p):
-        return Variable(min(x for x in p.args))
+        return min(x for x in p.args)
 
     @_('MAX LPAREN args RPAREN')
     def factor(self, p):
-        return Variable(max(x for x in p.args))
+        return max(x for x in p.args)
 
     @_('MIDDLE LPAREN args RPAREN')
     def factor(self, p):
         sequence = sorted(x for x in p.args)
         n = len(sequence)
-        return Variable(sequence[(n-1) // 2])
+        return sequence[(n - 1) // 2]
 
     @_('AVERAGE LPAREN args RPAREN')
     def factor(self, p):
         n = len(p.args)
         return Variable(sum(float(x) for x in p.args) / n)
+
+    @_('PLUSMINUS LPAREN expression RPAREN')
+    def factor(self, p):
+        # Return a qualifier like "+2', '-4' or '' for no qualifier
+        v = float(p.expression)
+        if v == 0:
+            return Variable('')
+        elif v > 0:
+            return Variable('+' + str(p.expression))
+        else:
+            return Variable(str(p.expression))
+
+    @_('VARIABLE LPAREN expression RPAREN')
+    def factor(self, p):
+        var_name = str(p.expression)
+        try:
+            return self.variables[var_name]
+        except KeyError:
+            warnings.warn(f"VARIABLE command could not find a variable named '{var_name}' on line {p.lineno}")
+            return Variable('')
 
     @_('LENGTH LPAREN expression RPAREN')
     def factor(self, p):
@@ -215,7 +240,7 @@ class CalcParser(Parser):
         try:
             return self.variables[p.VAR]
         except KeyError:
-            warnings.warn(f"Variable '{p.VAR}' was not defined when it was used. Using zero")
+            warnings.warn(f"Variable '{p.VAR}' was not defined when referenced on line {p.lineno}")
             return Variable(0)
 
     @_('NUMBER')
@@ -240,6 +265,14 @@ class CalcParser(Parser):
     def factor(self, p):
         #  the quotes
         return Variable(False)
+
+    def error(self, p):
+        if p:
+            warnings.warn(f"Syntax error while processing '{p.value}' on line {p.lineno}")
+            while True:
+                tok = next(self.tokens, None)
+                if not tok or tok.type == 'SEMICOLON':
+                    break
 
     def initialize_variables(self, variables: dict[str, Union[str, int, float]]):
         self.variables.clear()

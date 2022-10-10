@@ -4,12 +4,10 @@ from typing import List
 
 from docutils import nodes
 from docutils.parsers.rst import directives, Directive
+from docutils.statemachine import StringList
 
 from . import model, style
 from .model import SheetOptions, Section, Block, Item, CommonOptions
-
-ERROR_DIRECTIVE = '.. ERROR::'
-WARNING_DIRECTIVE = '.. WARNING::'
 
 
 # noinspection PyPep8Naming
@@ -38,13 +36,30 @@ class settings(nodes.important):
         self.options = options
 
 
+class script(nodes.important):
+    def __init__(self, name: str, content: StringList):
+        super().__init__()
+        self.name = name
+        self.content = content
+
+
 class SettingsDirectiveHandler(Directive):
     required_arguments = 0
     optional_arguments = 100
     has_content = False
 
+    # noinspection PyTypeChecker
     def run(self):
         return [settings(self.name, self.arguments)]
+
+
+class ScriptDirectiveHandler(Directive):
+    required_arguments = 0
+    optional_arguments = 0
+    has_content = True
+
+    def run(self):
+        return [script(self.name, self.content)]
 
 
 # Register our directives
@@ -52,6 +67,7 @@ directives.register_directive('styles', StylesDirectiveHandler)
 directives.register_directive('sheet', SettingsDirectiveHandler)
 directives.register_directive('section', SettingsDirectiveHandler)
 directives.register_directive('block', SettingsDirectiveHandler)
+directives.register_directive('script', ScriptDirectiveHandler)
 
 
 class Prettify:
@@ -72,6 +88,12 @@ class Prettify:
         if self.current_sheet_options != self.sheet.options:
             self.append_sheet_options(self.sheet.options)
 
+        # If we have multiple scripts, the first one goes up front
+        scripts = self.sheet.scripts
+        if len(self.sheet.scripts) > 1:
+            self.append_script(scripts[0])
+            scripts = scripts[1:]
+
         # Add lines for each section
         for s in self.sheet.children:
             self.append_section_rst(s, s == self.sheet.children[0])
@@ -87,6 +109,10 @@ class Prettify:
             for name, s in self.sheet.styles.items():
                 self.append('   ' + name)
                 self.append_wrapped(s.to_definition(), prefix='     ')
+
+        # Scripts
+        for script in scripts:
+            self.append_script(script)
 
         return '\n'.join(self.lines)
 
@@ -245,6 +271,17 @@ class Prettify:
         if len(self.lines) >= n:
             while not all(s == '' for s in self.lines[-n:]):
                 self.lines.append('')
+
+    def append_script(self, script: list[str]):
+        self.ensure_blank()
+        self.append('.. script::')
+        for s in script:
+            s = s.strip()
+            if s:
+                self.append('   ' + s)
+            else:
+                self.ensure_blank()
+        self.ensure_blank()
 
 
 def description(comp: model.StructureUnit, short: bool = False) -> str:

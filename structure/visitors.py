@@ -6,6 +6,7 @@ import docutils.nodes
 import docutils.nodes
 from reportlab.lib import units
 
+import calculation
 from common.logging import message_unknown_attribute, message_bad_value, configured_logger, message_general
 from . import style
 from .model import *
@@ -14,7 +15,7 @@ LOGGER = configured_logger(__name__)
 
 # These tags will not  be recorded
 IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference',
-               'problematic', 'settings', 'style_definitions'}
+               'problematic', 'settings', 'script', 'style_definitions'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
@@ -125,9 +126,36 @@ def _set_option(options, owner, k, v):
         raise AttributeError()
 
 
-class StructureBuilder(docutils.nodes.NodeVisitor):
+class ScriptBuilder(docutils.nodes.SparseNodeVisitor):
+
     def __init__(self, document):
         super().__init__(document)
+        self.calculator = calculation.Calculator({})
+
+    def visit_script(self, node):
+        text = '\n'.join(node.content)
+        self.calculator.evaluate(text)
+
+    def depart_script(self, node):
+        pass
+
+    def visit_settings(self, node):
+        pass
+
+    def depart_settings(self, node):
+        pass
+
+    def visit_style_definitions(self, node):
+        pass
+
+    def depart_style_definitions(self, node):
+        pass
+
+
+class StructureBuilder(docutils.nodes.NodeVisitor):
+    def __init__(self, document, variables: dict[str, str]):
+        super().__init__(document)
+        self.variables = variables
 
         # Initialize the sheet with a new empty section and block
         self.sheet = Sheet()
@@ -254,7 +282,18 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             p = self.start(node)
 
         text = node.astext().replace('\n', ' ')
-        elements = Element.text_to_elements(text, s)
+
+        text2 = self._replace_references(text)
+        elements = Element.text_to_elements(text2, s)
+        if text != text2:
+            if not elements:
+                # Put in an empty one to hold the original value
+                elements = [Element('', None)]
+            # Put the original value in the first element and set all the others to be blank
+            elements[0].original = text
+            for e in elements[1:]:
+                e.original = ''
+
         self.add_elements(elements, node, p)
 
     def visit_problematic(self, node: docutils.nodes.Node) -> None:
@@ -274,6 +313,9 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         p = self._processing(2)
         elements = Element.text_to_elements('|', None)
         self.add_elements(elements, node, p)
+
+    def visit_script(self, node):
+        self.sheet.scripts.append(list(node.content))
 
     def visit_image(self, node: docutils.nodes.image):
         """
@@ -422,3 +464,27 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
+
+    def _dereference_var(self, name: str) -> str:
+        if name[0] == '{' and name[-1] == '}':
+            key = name[1:-1]
+            try:
+                return self.variables[key]
+            except KeyError:
+                warnings.warn(f"Tried to use script variable '{key}' as text, but it was not defined")
+                return '?'
+        else:
+            # Not a variable, leave as is
+            return name
+
+    def _replace_references(self, text) -> str:
+        parts = re.split('({[a-z_][0-9a-z_]*})', text)
+        if len(parts) == 1:
+            return text
+
+        # De-reference script variables
+        modified = []
+        for part in parts:
+            if part:
+                modified.append(self._dereference_var(part))
+        return ''.join(modified)

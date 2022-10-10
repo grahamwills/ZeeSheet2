@@ -1,5 +1,6 @@
 import math
 import unittest
+import warnings
 
 from calculation import Variable, Calculator
 
@@ -23,6 +24,33 @@ class CalculatorTests(unittest.TestCase):
     def setUp(self) -> None:
         self.calc = Calculator(self.VARS)
 
+    def test_variable_function(self):
+        self.calc.evaluate('a=11; b=VARIABLE("a")**2')
+        self.assertEqual('121', self.calc.var('b'))
+
+    def test_variable_function_failure(self):
+        with warnings.catch_warnings(record=True) as warn:
+            self.calc.evaluate('a=10; b="text=" + VARIABLE("whatever")')
+        self.assertEqual('text=', self.calc.var('b'))
+        self.assertEqual(1, len(warn))
+        self.assertEqual("VARIABLE command could not find a variable named 'whatever' on line 1", str(warn[0].message))
+
+    def test_syntax_error(self):
+        with warnings.catch_warnings(record=True) as warn:
+            self.calc.evaluate("a=1\nb=2\n[=44\nc=3\nd=4")
+        self.assertEqual('2', self.calc.var('b'))
+        self.assertEqual('4', self.calc.var('d'))
+        self.assertEqual(1, len(warn))
+        self.assertEqual("Illegal character '[' at line number 3", str(warn[0].message))
+
+    def test_parse_error(self):
+        with warnings.catch_warnings(record=True) as warn:
+            self.calc.evaluate("a=1; b IF; c=a+2")
+        self.assertEqual('1', self.calc.var('a'))
+        self.assertEqual('3', self.calc.var('c'))
+        self.assertEqual(1, len(warn))
+        self.assertEqual("Syntax error while processing 'IF' on line 1", str(warn[0].message))
+
     def test_newlines(self):
         self.calc.evaluate('a =10 \n b=2 \n\n c=a+b')
         self.assertEqual('12', self.calc.var('c'))
@@ -30,9 +58,11 @@ class CalculatorTests(unittest.TestCase):
     def test_when(self):
         self.calc.evaluate('v1="bar"; WHEN a < 7 THEN v1 = "foo"')
         self.calc.evaluate('v2="bar"; WHEN a > 7 THEN v2 = "foo"')
+        self.calc.evaluate('WHEN a == 99 THEN v3 = "foo" ELSE v3 = "aha"')
 
         self.assertEqual('foo', self.calc.var('v1'))
         self.assertEqual('bar', self.calc.var('v2'))
+        self.assertEqual('aha', self.calc.var('v3'))
 
     def test_predicates(self):
         self.calc.evaluate('v1 = a < a')
@@ -138,6 +168,101 @@ class CalculatorTests(unittest.TestCase):
         self.assertEqual('41000', self.calc.var('y'))
         self.assertEqual('[X]', self.calc.var('bool1'))
         self.assertEqual('[O]', self.calc.var('bool2'))
+
+    def test_13A(self):
+        base = """
+            level=2
+            ac_bonus=0; pd_bonus=0; md_bonus=0
+            melee_stat='dex'; ranged_stat='dex'; magic_stat='cha'
+            melee_bonus=0; ranged_bonus=0; magic_bonus=0
+            str=8; con=10; dex=10; int=18; wis=12; cha=18
+            hits_per_level=6.5; recovery_dice='d8'; recoveries=8 
+            base_ac=12; base_pd=10; base_md=12
+            """
+
+        script = """ 
+            str_bonus = FLOOR((str-10)/2)
+            con_bonus = FLOOR((con-10)/2)
+            dex_bonus = FLOOR((dex-10)/2)
+            int_bonus = FLOOR((int-10)/2)
+            wis_bonus = FLOOR((wis-10)/2)
+            cha_bonus = FLOOR((cha-10)/2)
+            
+            # Bonus multipliers at level 6+ and level 8+
+            hit_multiplier = 2 + level + MAX(0, level-5) + 2*MAX(0, level-8)
+            damage_multiplier = 1 + (level>5) + (level>8)
+
+            
+            hits = FLOOR((hits_per_level + con_bonus) * hit_multiplier)
+            
+            ac = base_ac + ac_bonus + level + MIDDLE(con_bonus, dex_bonus, wis_bonus)
+            pd = base_pd + pd_bonus + level + MIDDLE(str_bonus, con_bonus, dex_bonus)
+            md = base_md + md_bonus + level + MIDDLE(int_bonus, wis_bonus, cha_bonus)
+            init_value = dex_bonus + level
+            IF init_value < 0 THEN initiative = init_value ELSE initiative = '+' + init_value
+            
+            melee = VARIABLE(melee_stat + '_bonus') + melee_bonus + level
+            ranged = VARIABLE(ranged_stat + '_bonus') + ranged_bonus + level
+            magic = VARIABLE(magic_stat + '_bonus') + magic_bonus + level
+            
+            melee_damage = ±(VARIABLE(melee_stat + '_bonus') * damage_multiplier + melee_bonus)
+            ranged_damage = ±(VARIABLE(ranged_stat + '_bonus') * damage_multiplier + ranged_bonus)
+            magic_damage = ±(VARIABLE(magic_stat + '_bonus') * damage_multiplier + magic_bonus)
+            
+            miss = level
+            
+            melee_vs_ac = JOIN('+', melee, ' vs. AC')
+            melee_vs_pd = JOIN('+', melee, ' vs. PD')
+            melee_vs_md = JOIN('+', melee, ' vs. MD')
+            ranged_vs_ac = JOIN('+', ranged, ' vs. AC')
+            ranged_vs_pd = JOIN('+', ranged, ' vs. PD')
+            ranged_vs_md = JOIN('+', ranged, ' vs. MD')
+            magic_vs_ac = JOIN('+', magic, ' vs. AC')
+            magic_vs_pd = JOIN('+', magic, ' vs. PD')
+            magic_vs_md = JOIN('+', magic, ' vs. MD')
+           
+            level_d4 = level + 'd4'
+            level_d6 = level + 'd6'
+            level_d8 = level + 'd8'
+            level_d10 = level + 'd10'
+            level_d12 = level + 'd12'
+        """
+
+        expected = {
+            'hits': 26,
+            'ac': 14,
+            'pd': 12,
+            'md': 18,
+            'initiative': '+2',
+            'level_d6': '2d6',
+            'magic_vs_md': '+6 vs. MD',
+            'melee_vs_ac': '+2 vs. AC',
+            'melee_damage': '',
+            'magic_damage': '+4',
+
+        }
+        self.calc.evaluate(base)
+        self.calc.evaluate(script)
+        for k, v in expected.items():
+            self.assertEqual(str(v), self.calc.var(k), f"Expected {v} for {k}, but was {self.calc.var(k)}")
+
+        base = base.replace('magic_bonus=0', 'magic_bonus=2').replace('level=2', 'level=10')
+        expected = {
+            'hits': int(21 * 6.5),
+            'ac': 14 + 8,
+            'pd': 12 + 8,
+            'md': 18 + 8,
+            'initiative': '+10',
+            'level_d6': '10d6',
+            'magic_vs_md': '+16 vs. MD',
+            'melee_vs_ac': '+10 vs. AC',
+            'melee_damage': '',
+            'magic_damage': '+14',
+        }
+        self.calc.evaluate(base)
+        self.calc.evaluate(script)
+        for k, v in expected.items():
+            self.assertEqual(str(v), self.calc.var(k), f"Expected {v} for {k}, but was {self.calc.var(k)}")
 
 
 class VarTests(unittest.TestCase):
