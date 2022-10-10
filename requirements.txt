@@ -8,5 +8,6 @@ reportlab
 pyyaml
 numpy
 scipy
+sly
 Pillow
 fonttools
