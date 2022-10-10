@@ -34,7 +34,7 @@ class TestStyle(TestCase):
                          'font-family:Helvetica font-size:12 font-face:Regular '
                          'font-spacing:100% border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
-                         'margin:0 padding:2', StyleDefaults.default.to_definition())
+                         'margin:0 padding:2 effect:none effect-size:3', StyleDefaults.default.to_definition())
 
     def test_to_definition_empty(self):
         self.assertEqual('inherit:default', Style('test', 'default').to_definition())
@@ -258,44 +258,44 @@ class TestAuto(TestCase):
 
         # Setting the border
         "black white auto :         black white black",
-        "black cyan auto :          black cyan #006666",
+        "black cyan auto :          black cyan #007f80",
         "white black auto :         white black none",
         "white navy auto :          white navy none",
 
         # Setting the background
         "black auto black :         black white black",
         "blue auto black :          blue white black",
-        "blue auto orange :         blue #ffdb99 orange",
+        "blue auto orange :         blue #ffd280 orange",
         "white auto black :         white black black",
         "pink auto black :          pink black black",
-        "pink auto yellow :         pink #666600 yellow",
+        "pink auto yellow :         pink #7f8000 yellow",
 
         # Setting the text
         "auto black white :         white black white",
         "auto white black :         black white black",
         "auto blue white :          white blue white",
-        "auto white blue :          #000066 white blue",
-        "auto cyan pink :           #660012 cyan pink",
+        "auto white blue :          black white blue",
+        "auto cyan pink :           black cyan pink",
 
         # Setting the border and background
         "black auto auto :          black white black",
         "white auto auto :          white black none",
-        "yellow auto auto :         yellow #666600 none",
-        "blue auto auto :           blue #9999ff #000066",
+        "yellow auto auto :         yellow #7f8000 none",
+        "blue auto auto :           blue #8080ff #000080",
 
         # Setting the text and border
         "auto white auto :          black white black",
         "auto black auto :          white black none",
-        "auto yellow auto :         black yellow #666600",
+        "auto yellow auto :         black yellow #7f8000",
         "auto blue auto :           white blue none",
 
         # Setting the text and background
         "auto auto black :          black white black",
         "auto auto white :          white black white",
-        "auto auto yellow :         #ffff99 #666600 yellow",
-        "auto auto blue :           #000066 #9999ff blue",
+        "auto auto yellow :         #ffff80 #7f8000 yellow",
+        "auto auto blue :           #000080 #8080ff blue",
 
-        "auto auto auto:            black none black"
+        "auto auto auto:            black none none"
 
     ]
 

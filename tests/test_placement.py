@@ -167,20 +167,18 @@ class TestBlockPlacement(unittest.TestCase):
         block = Block(self.title, items)
         placed = place_block(block, Extent(300, 100), 'medium', self.pdf)
         group = placed.children()
-        self.assertEqual(3, len(group))
+        self.assertEqual(2, len(group))
 
         # Background
-        self.assertEqual(Rect(0, 300, 0, 59), round(group[0].bounds))
+        self.assertEqual(Rect(0, 300, 19, 67), round(group[0].bounds))
 
         # Main content
-        self.assertEqual(Rect(0, 300, 20, 59), round(group[1].bounds))
+        self.assertEqual(Rect(0, 300, 0, 19), round(group[1].bounds))
 
-        # Title content
-        self.assertEqual(Rect(0, 300, 0, 20), round(group[2].bounds))
 
         # Contents on the grid
-        self.assertEqual(Point(0, 0), round(placed.child(1).child(0).location))
-        self.assertEqual(Point(150, 0), round(placed.child(1).child(1).location))
-        self.assertEqual(Point(0, 13), round(placed.child(1).child(2).location))
-        self.assertEqual(Point(150, 13), round(placed.child(1).child(3).location))
-        self.assertEqual(Point(0, 27), round(placed.child(1).child(4).location))
+        self.assertEqual(Point(2, 2), round(placed.child(0).child(0).location))
+        self.assertEqual(Point(148, 2), round(placed.child(0).child(1).location))
+        self.assertEqual(Point(2, 17), round(placed.child(0).child(2).location))
+        self.assertEqual(Point(148, 17), round(placed.child(0).child(3).location))
+        self.assertEqual(Point(2, 33), round(placed.child(0).child(4).location))

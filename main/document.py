@@ -191,12 +191,12 @@ class StyleResolver:
     def replace_style(self, block: Block, attribute: str):
         self.idx += 1
         style_name = getattr(block.options, attribute)
-        style = Style(name=f"_{common.name_of(block)}_{attribute}", parent=style_name)
-        setattr(block.options, attribute, style.name)
-
-        # Store the style and its usage (which is the same as the style it was derived from)
-        self.styles[style.name] = style
-        self.usages[style.name] = self.usages[style_name]
+        if style_name:
+            style = Style(name=f"_{common.name_of(block)}_{attribute}", parent=style_name)
+            setattr(block.options, attribute, style.name)
+            # Store the style and its usage (which is the same as the style it was derived from)
+            self.styles[style.name] = style
+            self.usages[style.name] = self.usages[style_name]
 
     def add_default_styles(self):
         for style in StyleDefaults.ALL:
@@ -218,6 +218,7 @@ class StyleResolver:
         pairs = defaultdict(lambda: None)
         for block in self.sheet.blocks():
             opt = block.options
-            pairs[opt.style] = self.styles[opt.title_style]
-            pairs[opt.title_style] = self.styles[opt.style]
+            if opt.style and opt.title_style:
+                pairs[opt.style] = self.styles[opt.title_style]
+                pairs[opt.title_style] = self.styles[opt.style]
         return pairs

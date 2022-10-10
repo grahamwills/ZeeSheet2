@@ -15,10 +15,9 @@ class PrettifyTests(unittest.TestCase):
 
     def test_container_options_str(self):
         c = BlockOptions(title='T', style='S')
-        self.assertEqual("ContainerOptions(title='T', style='S', method='table', "
-                         "columns=1, title_style='default-title', "
+        self.assertEqual("BlockOptions(style='S', "
                          "image=0, image_mode='normal', image_width=None, "
-                         "image_height=None, image_anchor=None)",
+                         "image_height=None, image_anchor=None, method='table', title='T', title_style=None)",
                          str(c))
 
     def test_prettify(self):

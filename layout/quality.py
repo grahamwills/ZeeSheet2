@@ -79,7 +79,7 @@ class PlacementQuality(Generic[T]):
         return self.height_dev / 10
 
     def _score_excess_space(self) -> float:
-        return self.excess_ss / 10000
+        return (self.excess_ss / 100)**0.5
 
     def _score_image(self) -> float:
         return self.image_shrinkage * 15

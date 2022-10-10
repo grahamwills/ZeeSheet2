@@ -426,7 +426,7 @@ class StyleDefaults(metaclass=process_definitions):
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2 effect:none effect-size:3
         title =     inherit:default font-size:14 font-face:bold padding:1
-        block =     inherit:default margin:10 effect:rounded
+        block =     inherit:default margin:8
         section =   inherit:default margin:0 padding:0 border:none background:none
         image =     inherit:default-block inherit:default-block border:none background:none
         sheet =     inherit:default padding:0.25in margin:0 border:none background:none

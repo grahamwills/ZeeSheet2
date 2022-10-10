@@ -343,11 +343,9 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             else:
                 # Two parts
                 definitions[key] = oo[1]
-        _apply_option_definitions('.. image::', definitions, self.current_block.options)
 
-        # Apply default image style
-        if 'style' not in definitions:
-            self.current_block.options.style = style.StyleDefaults.image.name
+        self.current_block.options = Block.default_options('image')
+        _apply_option_definitions('.. image::', definitions, self.current_block.options)
 
         # And now start a new block
         self._make_new_block()

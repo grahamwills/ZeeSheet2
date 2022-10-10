@@ -122,8 +122,13 @@ class Prettify:
     def _append_options(self, owner: str, options: CommonOptions, default: CommonOptions, forced: bool):
         owner_plus = owner + '::'
         parts = [f".. {owner_plus:9}"]
-        for field in dataclasses.fields(options):
-            k = field.name
+
+        parent_fields = [field.name for field in dataclasses.fields(CommonOptions)]
+        my_fields = [field.name for field in dataclasses.fields(options)]
+
+        ordered = [f for f in my_fields if f not in parent_fields] + parent_fields
+
+        for k in ordered:
             v = getattr(options, k)
             if v != getattr(default, k):  # Only output attributes which are not the default
                 k = k.replace('_', '-')
@@ -228,7 +233,7 @@ class Prettify:
 
     def append_image_block(self, block):
         # We just use the block options, but reformat for the image directive
-        self._append_options('image', block.options, self.current_block_options, True)
+        self._append_options('image', block.options, Block.default_options('image'), True)
         txt = self.lines[-2].replace('image=', 'index=').replace('image-', '')
         self.lines[-2] = txt
 

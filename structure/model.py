@@ -316,6 +316,8 @@ class Block(StructureUnit):
         if method.startswith('att'):
             return BlockOptions(title='none', method=method,
                                 style='default-attributes', title_style='default-attributes-title')
+        elif method.startswith('image'):
+            return BlockOptions(title='none', method=method, style='default-image')
         else:
             return BlockOptions(title='simple', method=method,
                                 style='default-block', title_style='default-title')
