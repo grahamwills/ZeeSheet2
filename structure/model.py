@@ -191,7 +191,6 @@ class Run(StructureUnit):
         if not self.children:
             return ''
 
-
         # Split plain text (no modifier elements) into words and create a list of all unsplittable units
         splitter = re.compile(r'(\S+)')
         atoms = []
