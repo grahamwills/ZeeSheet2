@@ -390,6 +390,7 @@ class Prettify2:
         ncols = max(len(item.children) for item in items)
         indent = max(2, len(prefix))
 
+
         # Create a table of simple text representations and calculate the maximum widths of each column
         table = [[run.to_rst().strip() for run in item.children] for item in items]
         col_widths = [0] * ncols

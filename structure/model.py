@@ -66,16 +66,18 @@ class ImageDetail:
     def name(self):
         return 'Image#' + str(self.index)
 
+
 @dataclass
 class Generated:
     source: str
     value: str
 
+
 @dataclass
 class Element:
     value: str
     modifier: Optional[str] = None
-    original: Generated = None
+    generated: Generated = None
 
     def __post_init__(self):
         assert self.value is not None, 'Element must be created with valid content'
@@ -189,16 +191,33 @@ class Run(StructureUnit):
         if not self.children:
             return ''
 
+
         # Split plain text (no modifier elements) into words and create a list of all unsplittable units
         splitter = re.compile(r'(\S+)')
         atoms = []
-        for s in self.children:
-            if s.modifier == 'literal':
+        previous_generated = None
+        for element in self.children:
+            if element.generated:
+                if element.generated == previous_generated:
+                    # We have already added the referenced for this, so can skip this item
+                    pass
+                else:
+                    # A new reference; we need to add it to the elements, with correct modifiers
+                    if element.modifier == 'strong':
+                        m = '**'
+                    elif element.modifier == 'emphasis':
+                        m = '*'
+                    else:
+                        m = ''
+                    fake = Element(m + '{' + element.generated.source + '}' + m )
+                    atoms.append(fake.to_rst())
+                    previous_generated = element.generated
+            elif element.modifier == 'literal':
                 # Do not split literals
-                atoms.append(s.to_rst())
+                atoms.append(element.to_rst())
             else:
                 # Using explicit space to split keeps the whitespace around
-                for w in splitter.split(s.to_rst()):
+                for w in splitter.split(element.to_rst()):
                     if w != '':
                         atoms.append(w)
 
@@ -260,15 +279,16 @@ class Item(StructureUnit):
                 # Does not contain a cell splitter
                 self.add_to_content(element)
             else:
+                generated = element.generated
                 items = element.value.split('|')
                 if items[0]:
                     # add the first one
-                    self.add_to_content(Element(items[0], element.modifier))
+                    self.add_to_content(Element(items[0], None, generated))
                 for s in items[1:]:
                     # For the next items, start a new cell first
                     self.children.append(Run())
                     if s:
-                        self.add_to_content(Element(s, element.modifier))
+                        self.add_to_content(Element(s, None, generated))
 
     def tidy(self, index: list) -> None:
         self.name = 'Item\u00a7' + '.'.join(str(x) for x in index)
@@ -358,46 +378,61 @@ class Sheet(StructureUnit):
         for s in self.children:
             yield from s.children
 
-def text_to_elements(base: str, modifier: Optional[str], variables:dict) -> List[Element]:
-    text = _replace_references(base, variables)
 
-    if modifier:
-        # Keep it as it is
-        return [Element(text, modifier)]
-    else:
-        # Split up to define text fields and checkboxes
-        results = []
-        for f1 in re.split('(\\[\\[[^\\]]+]])', text):
-            if f1.startswith('[[') and f1.endswith(']]'):
-                results.append(Element._from_text(f1))
+class ElementBuilder:
+    def __init__(self, modifier: str, variables: dict[str, str]):
+        self.modifier = modifier
+        self.variables = variables
+
+    def from_text(self, text: str) -> list[Element]:
+        pieces = self.split('({[a-z_][0-9a-z_]*})', text)
+        result = []
+        for is_ref, txt in pieces:
+            if is_ref:
+                generated = self.make_generated(txt)
+                result += self.handle_widgets(generated.value, generated)
             else:
-                for f2 in re.split(r'(\[[ XOxo]])', f1):
-                    for f3 in re.split(r'(``[^`]+``)', f2):
-                        if f3:
-                            results.append(Element._from_text(f3))
-        return results
+                result += self.handle_widgets(txt, None)
+        return result
 
+    def handle_widgets(self, text: str, generated: Generated or None) -> list[Element]:
+        # Look for checkboxes
+        pieces = self.split(r'(\[[ XOxo]])', text)
+        result = []
+        for is_check, txt in pieces:
+            if is_check:
+                value = 'X' if txt[1].lower() == 'x' else ' '
+                result.append(Element(value, 'checkbox', generated))
+            else:
+                result += self.handle_textfield(txt, generated)
+        return result
 
-def _replace_references(text, variables:dict) -> str:
-    parts = re.split('({[a-z_][0-9a-z_]*})', text)
-    if len(parts) == 1:
-        return text
+    def handle_textfield(self, text: str, generated: Generated or None) -> list[Element]:
+        # Look for checkboxes
+        pieces = self.split(r'(\[\[[^\]]+]])', text)
+        result = []
+        for is_check, txt in pieces:
+            if is_check:
+                value = txt[2:-2]
+                result.append(Element(value, 'textfield', generated))
+            else:
+                result.append(Element(txt, self.modifier, generated))
+        return result
 
-    # De-reference script variables
-    modified = []
-    for part in parts:
-        if part:
-            modified.append(_dereference_var(part, variables))
-    return ''.join(modified)
+    def split(self, regex: str, text: str) -> list[tuple[bool, str]]:
+        parts = re.split(regex, text)
+        return [(re.match(regex, p) is not None, p) for p in parts if p]
 
-def _dereference_var(name: str, variables:dict) -> str:
-    if name[0] == '{' and name[-1] == '}':
-        key = name[1:-1]
+    def make_generated(self, p):
+        key = p[1:-1]
         try:
-            return variables[key]
+            value = self.variables[key]
+            return Generated(key, value)
         except KeyError:
             warnings.warn(f"Tried to use script variable '{key}' as text, but it was not defined")
-            return '?'
-    else:
-        # Not a variable, leave as is
-        return name
+            return Generated(key, '?')
+
+
+def text_to_elements(base: str, modifier: Optional[str], variables: dict[str, str]) -> List[Element]:
+    builder = ElementBuilder(modifier, variables)
+    return builder.from_text(base)
