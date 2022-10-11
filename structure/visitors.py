@@ -282,18 +282,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
             p = self.start(node)
 
         text = node.astext().replace('\n', ' ')
-
-        text2 = self._replace_references(text)
-        elements = Element.text_to_elements(text2, s)
-        if text != text2:
-            if not elements:
-                # Put in an empty one to hold the original value
-                elements = [Element('', None)]
-            # Put the original value in the first element and set all the others to be blank
-            elements[0].original = text
-            for e in elements[1:]:
-                e.original = ''
-
+        elements = text_to_elements(text, s, self.variables)
         self.add_elements(elements, node, p)
 
     def visit_problematic(self, node: docutils.nodes.Node) -> None:
@@ -305,14 +294,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def visit_substitution_reference(self, node: docutils.nodes.Node) -> None:
         # Treat the pipe symbols as actual text both before and after
         p = self._processing(2)
-        elements = Element.text_to_elements('|', None)
-        self.add_elements(elements, node, p)
+        self.add_elements([Element('|')], node, p)
 
     def depart_substitution_reference(self, node: docutils.nodes.Node) -> None:
         # Treat the pipe symbols as actual text both before and after
         p = self._processing(2)
-        elements = Element.text_to_elements('|', None)
-        self.add_elements(elements, node, p)
+        self.add_elements([Element('|')], node, p)
 
     def visit_script(self, node):
         self.sheet.scripts.append(list(node.content))
@@ -463,26 +450,3 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
 
-    def _dereference_var(self, name: str) -> str:
-        if name[0] == '{' and name[-1] == '}':
-            key = name[1:-1]
-            try:
-                return self.variables[key]
-            except KeyError:
-                warnings.warn(f"Tried to use script variable '{key}' as text, but it was not defined")
-                return '?'
-        else:
-            # Not a variable, leave as is
-            return name
-
-    def _replace_references(self, text) -> str:
-        parts = re.split('({[a-z_][0-9a-z_]*})', text)
-        if len(parts) == 1:
-            return text
-
-        # De-reference script variables
-        modified = []
-        for part in parts:
-            if part:
-                modified.append(self._dereference_var(part))
-        return ''.join(modified)

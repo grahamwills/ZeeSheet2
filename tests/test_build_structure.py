@@ -3,7 +3,7 @@ import warnings
 
 import main
 from structure import description
-from structure.model import Element
+from structure.model import Element, text_to_elements
 from . import util
 
 
@@ -94,7 +94,7 @@ class BasicBlocks(unittest.TestCase):
         self.assertEqual(expected, description(sheet))
 
     def test_checkboxes(self):
-        elements = Element.text_to_elements('[ ] [X] [O]', None)
+        elements = text_to_elements('[ ] [X] [O]', None, {})
         expected = [Element(' ', 'checkbox'), Element(' '),
                     Element('X', 'checkbox'), Element(' '),
                     Element(' ', 'checkbox')]

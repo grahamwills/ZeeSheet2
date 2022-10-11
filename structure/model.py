@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import List, Optional, ClassVar, Dict, Generator
@@ -65,12 +66,16 @@ class ImageDetail:
     def name(self):
         return 'Image#' + str(self.index)
 
+@dataclass
+class Generated:
+    source: str
+    value: str
 
 @dataclass
 class Element:
     value: str
     modifier: Optional[str] = None
-    original: str = None  # If it has been modified, this is what the original value was
+    original: Generated = None
 
     def __post_init__(self):
         assert self.value is not None, 'Element must be created with valid content'
@@ -88,21 +93,18 @@ class Element:
             return self.value
 
     def to_rst(self):
-        # If the original version was nothing, retun nothing
-        if self.original == '':
-            return ''
         if self.modifier == 'strong':
-            return '**' + (self.original or self.value) + '**'
+            return '**' + self.value + '**'
         elif self.modifier == 'emphasis':
-            return '*' + (self.original or self.value) + '*'
+            return '*' + self.value + '*'
         elif self.modifier == 'literal':
-            return '``' + (self.original or self.value) + '``'
+            return '``' + self.value + '``'
         elif self.modifier == 'checkbox':
-            return self.original or '[' + self.value + ']'
+            return '[' + self.value + ']'
         elif self.modifier == 'textfield':
-            return self.original or '[[' + self.value + ']]'
+            return '[[' + self.value + ']]'
         elif self.modifier is None:
-            return self.original or self.value
+            return self.value
         else:
             raise ValueError('Unknown Element modifier: ' + self.modifier)
 
@@ -118,24 +120,6 @@ class Element:
             return cls(txt[2:-2], 'literal')
         else:
             return cls(txt, None)
-
-    @classmethod
-    def text_to_elements(cls, text: str, modifier: Optional[str]) -> List[Element]:
-        if modifier:
-            # Keep it as it is
-            return [cls(text, modifier)]
-        else:
-            # Split up to define text fields and checkboxes
-            results = []
-            for f1 in re.split('(\\[\\[[^\\]]+]])', text):
-                if f1.startswith('[[') and f1.endswith(']]'):
-                    results.append(cls._from_text(f1))
-                else:
-                    for f2 in re.split(r'(\[[ XOxo]])', f1):
-                        for f3 in re.split(r'(``[^`]+``)', f2):
-                            if f3:
-                                results.append(cls._from_text(f3))
-            return results
 
     def as_simple_text(self):
         return self.value
@@ -373,3 +357,47 @@ class Sheet(StructureUnit):
     def blocks(self) -> Generator[Block, None, None]:
         for s in self.children:
             yield from s.children
+
+def text_to_elements(base: str, modifier: Optional[str], variables:dict) -> List[Element]:
+    text = _replace_references(base, variables)
+
+    if modifier:
+        # Keep it as it is
+        return [Element(text, modifier)]
+    else:
+        # Split up to define text fields and checkboxes
+        results = []
+        for f1 in re.split('(\\[\\[[^\\]]+]])', text):
+            if f1.startswith('[[') and f1.endswith(']]'):
+                results.append(Element._from_text(f1))
+            else:
+                for f2 in re.split(r'(\[[ XOxo]])', f1):
+                    for f3 in re.split(r'(``[^`]+``)', f2):
+                        if f3:
+                            results.append(Element._from_text(f3))
+        return results
+
+
+def _replace_references(text, variables:dict) -> str:
+    parts = re.split('({[a-z_][0-9a-z_]*})', text)
+    if len(parts) == 1:
+        return text
+
+    # De-reference script variables
+    modified = []
+    for part in parts:
+        if part:
+            modified.append(_dereference_var(part, variables))
+    return ''.join(modified)
+
+def _dereference_var(name: str, variables:dict) -> str:
+    if name[0] == '{' and name[-1] == '}':
+        key = name[1:-1]
+        try:
+            return variables[key]
+        except KeyError:
+            warnings.warn(f"Tried to use script variable '{key}' as text, but it was not defined")
+            return '?'
+    else:
+        # Not a variable, leave as is
+        return name
