@@ -101,7 +101,7 @@ class Font:
         if self.family.category == 'builtin':
             self.line_spacing = (self.ascent + self.descent) * 1.20
         else:
-            self.line_spacing = (self.ascent + self.descent) * 1.15
+            self.line_spacing = (self.ascent + self.descent) * 1.1
 
     @lru_cache(maxsize=10000)
     def width(self, text: str) -> float:

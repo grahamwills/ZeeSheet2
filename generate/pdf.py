@@ -1,12 +1,14 @@
 import colorsys
+import pathlib
 import reprlib
 import warnings
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from io import BytesIO
-from typing import List, Tuple, Union, Dict, Optional, Iterable
+from typing import List, Tuple, Union, Dict, Optional
 
+import PIL.Image
 from PIL.Image import Image
 from reportlab.graphics.shapes import Path
 from reportlab.lib import colors
@@ -23,6 +25,10 @@ from structure.style import Style
 LOGGER = configured_logger(__name__)
 
 _WHITE = colors.Color(1, 1, 1)
+
+IMAGES_DIR = pathlib.Path(__file__).parent / 'resources' / 'images'
+_MISSING_IMAGE_DATA = PIL.Image.open(IMAGES_DIR / 'missing icon.jpg')
+_MISSING_IMAGE = ImageDetail(-1, _MISSING_IMAGE_DATA, _MISSING_IMAGE_DATA.width, _MISSING_IMAGE_DATA.height)
 
 
 @dataclass
@@ -225,7 +231,7 @@ class PDF(canvas.Canvas):
         except KeyError:
             warnings.warn(f"Image with index '{image_name}' was requested, but has not been defined for this sheet. "
                           "Use the Sheet Details button to upload images")
-            return None
+            return _MISSING_IMAGE
 
     def draw_image(self, image: Image, bounds: Rect):
         # Invert to fix the coordinate system which has already been inverted

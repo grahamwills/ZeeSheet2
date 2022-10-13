@@ -1,0 +1,229 @@
+.. script::
+   level=1
+   str=14; con=12; dex=15; int=10; wis=8; cha=13
+
+   ac_bonus=0; pd_bonus=0; md_bonus=0
+   melee_bonus=0; ranged_bonus=0; magic_bonus=0
+
+   # Class definitions
+   melee_stat='str'; ranged_stat='dex'; magic_stat='int'
+   hits_per_level=8; recovery_dice='d8'; recoveries=8
+   base_ac=12; base_pd=11; base_md=10
+
+.. section:: columns=2
+.. block::   title-style=big
+
+<<CHARACTER NAME>>
+
+.. block::   title-style=default-title
+
+- Race: **<<RACE>>**     | Class: **<<CLASS>>** | **<<OTHER INFO>>**
+- *<<ONE UNIQUE THING>>*
+
+.. block::   method=attributes
+
+Defenses
+
+- AC | **{ac}**
+- PD | **{pd}**
+- MD | **{md}**
+
+----------------------------------------------------------------------------------------------------
+
+.. block::   method=table
+
+Level **{level}** | Initiative **{initiative}**
+
+- Recoveries: {recovery_checks} **{recovery}** • Advances:  [[         ]]
+
+Hits: **{hits}** | Staggered: **{staggered}**
+
+- [[                     ]]
+
+.. section:: columns=3
+.. image::   index=1
+.. block::   method=attributes
+
+Attributes
+
+- Strength     | **{str}** | {str_bonus}
+- Constitution | **{con}** | {con_bonus}
+- Dexterity    | **{dex}** | {dex_bonus}
+- Intelligence | **{int}** | {int_bonus}
+- Wisdom       | **{wis}** | {wis_bonus}
+- Charisma     | **{cha}** | {cha_bonus}
+
+.. block::   method=table
+
+Icon Relationships
+
+- <<First Icon>>  | +
+- <<Second Icon>> | ?
+- <<Others>>      | -
+
+Backgrounds
+
+- <<Background One>>   | 3
+- <<Background Two>>   | 3
+- <<Background Three>> | 2
+
+Racial Features
+
+- **<<TITLE>>**: Description of what it is/does
+- **<<TITLE>>**: Description of what it is/does
+
+Class Features
+
+- **<<TITLE>>**: Description of what it does
+- **<<TITLE>>**: Description of what it does
+- **<<TITLE>>**: Description of what it is/does
+
+Talents
+
+- **<<TITLE>** (Source): Description
+- **<<TITLE>** (Source): Description
+- **<<TITLE>** (Source): Description
+
+.. block::   style=green
+
+Melee Basic Attack | At-Will
+
+- **Standard Action**                     | **Nearby**
+- **Target**: One Creature                | **Attack**: {melee_vs_ac}
+- **Hit**: {xd6}{melee_damage} (<<item>>) | **Miss**: {miss}
+
+Ranged Basic Attack | At-Will
+
+- **Standard Action**                      | **Nearby**
+- **Target**: One Creature                 | **Attack**: {ranged_vs_ac}
+- **Hit**: {xd6}{ranged_damage} (<<item>>) | **Miss**: {miss}
+
+<<Other At-Will Attack>> | At-Will
+
+- **Standard Action**                             | **Nearby**
+- **Target**: One Creature                        | **Attack**: {magic_vs_md}
+- **Hit**: {xd6}{magic damage}                    | **Miss**: {miss}
+- **Effect**: <<More information on this attack>>
+
+.. block::   style=orange
+
+<<Flexible Attack>> | Encounter [ ][ ]
+
+- **Flexible Attack**          | **Trigger**: Natural 11+ melee
+- **Effect**: <<What happens>>
+
+<<Flexible Attack>> | At Will
+
+- **Flexible Attack**          | **Trigger**: Natural even roll
+- **Effect**: <<What happens>>
+
+.. block::   style=red
+
+<<Encounter Power>> | Encounter [ ][ ][ ][ ]
+
+- **<<Spell/Power/Whatever>>** | **Reference**: Some info
+- **Options**: More info
+
+<<Rechargable Encounter Power>> | Recharge 11+ [ ]
+
+- **<<Type/Class>>**                           | **<<Action type>>**
+- **Trigger**: <<use this if it is triggered>>
+- **Effect**: <<What happens>>
+- **Attack**: {magic_vs_md}
+- **Hit**: <<damage, e.g.{xd6}>>
+
+.. block::   style=black
+
+<<Daily Power>> | Daily [ ]
+
+- **<<Type>>**                                      | **<<Action type>>**
+- **Attack**: {magic_vs_md}                         | **Target**: <<allowed target>
+- **Hit**: <<damage, e.g.{xd6}>> plus other effects
+- **Miss**: {miss}
+
+.. block::   style=blue
+
+<<Equipment>> | <<Category>>
+
+- <<description>>
+
+Feats
+
+- <<Feat description>>
+- <<Feat description>>
+
+.. section:: columns=1
+.. block::   style=green
+
+Other Players
+
+- <<Player>> | **<<Character>>** | << Description>> | <<One Unique Thing>>
+- <<Player>> | **<<Character>>** | << Description>> | <<One Unique Thing>>
+- <<Player>> | **<<Character>>** | << Description>> | <<One Unique Thing>>
+- <<Player>> | **<<Character>>** | << Description>> | <<One Unique Thing>>
+- <<Player>> | **<<Character>>** | << Description>> | <<One Unique Thing>>
+
+.. styles::
+   default-block
+     border:none effect:rough
+   big
+     text-color:#a00 font-family:Almendra font-size:40 background:none
+   blue
+     background:#eef
+   black
+     background:#eee
+   green
+     background:#efe
+   red
+     background:#fdd
+   orange
+     background:#fc4
+
+.. script::
+   str_bonus = FLOOR((str-10)/2)
+   con_bonus = FLOOR((con-10)/2)
+   dex_bonus = FLOOR((dex-10)/2)
+   int_bonus = FLOOR((int-10)/2)
+   wis_bonus = FLOOR((wis-10)/2)
+   cha_bonus = FLOOR((cha-10)/2)
+
+   xd4 = level + 'd4'
+   xd6 = level + 'd6'
+   xd8 = level + 'd8'
+   xd10 = level + 'd10'
+   xd12 = level + 'd12'
+
+   # Bonus multipliers at level 6+ and level 8+
+   damage_multiplier = 1 + (level>5) + (level>8)
+   hit_multiplier = 2 + level + MAX(0, level-5) + 2*MAX(0, level-8)
+
+   hits = FLOOR((hits_per_level + con_bonus) * hit_multiplier)
+   staggered = FLOOR(hits/2)
+   ac = base_ac + ac_bonus + level + MIDDLE(con_bonus, dex_bonus, wis_bonus)
+   pd = base_pd + pd_bonus + level + MIDDLE(str_bonus, con_bonus, dex_bonus)
+   md = base_md + md_bonus + level + MIDDLE(int_bonus, wis_bonus, cha_bonus)
+
+   recovery = JOIN(level, recovery_dice)
+   recovery_checks = "[ ]" * recoveries
+
+   initiative = ±(dex_bonus + level)
+   IF initiative == 0 THEN initiative = '+0'
+
+   melee = VARIABLE(melee_stat + '_bonus') + melee_bonus + level
+   ranged = VARIABLE(ranged_stat + '_bonus') + ranged_bonus + level
+   magic = VARIABLE(magic_stat + '_bonus') + magic_bonus + level
+
+   melee_damage = ±(VARIABLE(melee_stat + '_bonus') * damage_multiplier + melee_bonus)
+   ranged_damage = ±(VARIABLE(ranged_stat + '_bonus') * damage_multiplier + ranged_bonus)
+   magic_damage = ±(VARIABLE(magic_stat + '_bonus') * damage_multiplier + magic_bonus)
+   miss = level
+
+   melee_vs_ac = JOIN('+', melee, ' vs. AC')
+   melee_vs_pd = JOIN('+', melee, ' vs. PD')
+   melee_vs_md = JOIN('+', melee, ' vs. MD')
+   ranged_vs_ac = JOIN('+', ranged, ' vs. AC')
+   ranged_vs_pd = JOIN('+', ranged, ' vs. PD')
+   ranged_vs_md = JOIN('+', ranged, ' vs. MD')
+   magic_vs_ac = JOIN('+', magic, ' vs. AC')
+   magic_vs_pd = JOIN('+', magic, ' vs. PD')
+   magic_vs_md = JOIN('+', magic, ' vs. MD')

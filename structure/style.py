@@ -422,10 +422,10 @@ class StyleDefaults(metaclass=process_definitions):
 
     DEFINITIONS = '''
         default =   inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 
-                    font:Helvetica font-size:12 font-face:Regular font-spacing:100%
+                    font:Montserrat font-size:10 font-face:Regular font-spacing:100%
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2 effect:none effect-size:3
-        title =     inherit:default font-size:14 font-face:bold padding:1
+        title =     inherit:default font-size:11 font-face:bold padding:1
         block =     inherit:default margin:8
         section =   inherit:default margin:0 padding:0 border:none background:none
         image =     inherit:default-block inherit:default-block border:none background:none

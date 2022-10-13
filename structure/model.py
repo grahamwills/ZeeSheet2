@@ -110,19 +110,6 @@ class Element:
         else:
             raise ValueError('Unknown Element modifier: ' + self.modifier)
 
-    @classmethod
-    def _from_text(cls, txt):
-        if txt == '[ ]' or txt == '[O]' or txt == '[o]':
-            return cls(' ', 'checkbox')
-        elif txt == '[X]' or txt == '[x]':
-            return cls('X', 'checkbox')
-        elif txt.startswith('[[') and txt.endswith(']]'):
-            return cls(txt[2:-2], 'textfield')
-        elif txt.startswith('``') and txt.endswith('``'):
-            return cls(txt[2:-2], 'literal')
-        else:
-            return cls(txt, None)
-
     def as_simple_text(self):
         return self.value
 
@@ -208,7 +195,7 @@ class Run(StructureUnit):
                         m = '*'
                     else:
                         m = ''
-                    fake = Element(m + '{' + element.generated.source + '}' + m )
+                    fake = Element(m + '{' + element.generated.source + '}' + m)
                     atoms.append(fake.to_rst())
                     previous_generated = element.generated
             elif element.modifier == 'literal':
