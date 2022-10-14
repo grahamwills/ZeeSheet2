@@ -20,12 +20,50 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: st
     placed = copy(_build_run(run, extent, style, pdf))
     align = forced_align or style.text.align
 
-    if align == 'right':
-        placed.offset_content(extent.width - placed.extent.width)
-    elif align == 'center':
-        placed.offset_content((extent.width - placed.extent.width) / 2)
 
-    # After alignment, it fills the width. Any unused space is captured in the extent
+    if align == 'right':
+        dx = extent.width - placed.extent.width
+        placed.offset_content(dx)
+    elif align == 'center':
+        dx = (extent.width - placed.extent.width) / 2
+        placed.offset_content(dx)
+    else:
+        dx = 0
+
+    segments = placed.segments
+    if segments and segments[0].y != segments[-1].y:
+        # May need special alignment for last line
+        last_align = style.text.align_last
+        len_last = segments[-1].x + segments[-1].width
+
+        # Choose alignment
+        if last_align == 'same':
+            last_align = align
+        elif last_align == 'auto':
+            if align == 'left' and len_last < placed.extent.width / 2:
+                last_align = 'right'
+            else:
+                last_align = align
+
+        # If needed, re-align the last line
+        if last_align != align:
+            if last_align == 'right':
+                dx = extent.width - len_last - dx
+            elif last_align == 'center':
+                dx = (extent.width - len_last) / 2 - dx
+            else:
+                dx = -dx
+            last_line_y = segments[-1].y
+
+            # Move all segments on that line
+            for segment in segments:
+                if segment.y == last_line_y:
+                    segment.x += dx
+
+
+
+
+    # After alignment, it fills the width. Any unused space is captured in the quality
     placed.extent = Extent(extent.width, placed.extent.height)
     return placed
 
@@ -114,7 +152,6 @@ class RunBuilder:
         segments = []
         width = self.extent.width
         height = self.extent.height
-
         # Keep same line spacing regardless of font changes
         line_spacing = self.font.line_spacing
         if line_spacing > height:
@@ -178,8 +215,8 @@ class RunBuilder:
                         self.expand_field_size(segments, textfield_on_this_line, width - x)
                         textfield_on_this_line = None
 
-                    # Start a new line
-                    x = 0
+                    # Start a new line, indenting as per the style
+                    x = self.style.text.indent
                     y += line_spacing
                     text = text.lstrip()  # No leading spaces on new lines
 

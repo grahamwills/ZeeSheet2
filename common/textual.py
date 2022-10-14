@@ -4,7 +4,19 @@ import math
 import numbers
 import reprlib
 from collections import defaultdict
-from typing import List, Tuple, Any, Iterable
+from typing import List, Tuple, Any
+
+
+def prettify_username(txt: str) -> str:
+    txt = txt.replace("_", ' ')
+    at = 1
+    while at < len(txt):
+        if txt[at - 1].lower() == txt[at - 1] and txt[at].upper() == txt[at]:
+            # A camel-case location
+            txt = txt[:at] + ' ' + txt[at:]
+            at += 1
+        at += 1
+    return txt.title()
 
 
 class MyRepr(reprlib.Repr):

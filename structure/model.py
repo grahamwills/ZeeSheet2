@@ -30,7 +30,8 @@ class CommonOptions:
     image_width: float = None
     image_height: float = None
     image_anchor: str = None
-
+    image_brightness: float = 1.0
+    image_contrast: float = 1.0
 
 @dataclass
 class SheetOptions(CommonOptions):

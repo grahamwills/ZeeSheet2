@@ -9,6 +9,7 @@ from io import BytesIO
 from typing import List, Tuple, Union, Dict, Optional
 
 import PIL.Image
+from PIL import ImageEnhance
 from PIL.Image import Image
 from reportlab.graphics.shapes import Path
 from reportlab.lib import colors
@@ -233,7 +234,13 @@ class PDF(canvas.Canvas):
                           "Use the Sheet Details button to upload images")
             return _MISSING_IMAGE
 
-    def draw_image(self, image: Image, bounds: Rect):
+    def draw_image(self, image: Image, bounds: Rect, brightness:float, contrast:float):
+
+        if contrast != 1:
+            image = ImageEnhance.Contrast(image).enhance(contrast)
+        if brightness != 1:
+            image = ImageEnhance.Brightness(image).enhance(brightness)
+
         # Invert to fix the coordinate system which has already been inverted
         self.translate(bounds.left, bounds.top)
         self.transform(1, 0, 0, -1, 0, bounds.height)

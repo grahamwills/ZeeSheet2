@@ -113,7 +113,8 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         opt = block.options
         item_bounds = item_bounds.pad(extra_space)
         placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
-                                     opt.image_anchor, force_to_top=True)
+                                     opt.image_anchor, block.options.image_brightness, block.options.image_contrast,
+                                     force_to_top=True)
 
     locate_title(title, outer, placed_children.bounds, pdf)
 
@@ -167,7 +168,6 @@ def place_block_title(block: Block, bounds: Rect, quality: str, pdf: PDF) -> Opt
     debug_name = common.name_of(block)
     k = len(block.title.children)
     packer = BlockTablePacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
-    packer.alignments = '.CR'
     return packer.place_table()
 
 
@@ -183,6 +183,7 @@ class BlockTablePacker(ColumnPacker):
         self.pdf = pdf
         self.content_style = pdf.style(style_name)
         super().__init__(debug_name, bounds, len(items), column_count, max_width_combos)
+        self.alignments = '.CR'
 
         self.item_map = {}
         self.span_map = {}

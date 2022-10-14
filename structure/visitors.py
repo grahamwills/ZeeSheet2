@@ -10,6 +10,7 @@ import calculation
 from common.logging import message_unknown_attribute, message_bad_value, configured_logger, message_general
 from . import style
 from .model import *
+from .style import text_to_fraction
 
 LOGGER = configured_logger(__name__)
 
@@ -92,6 +93,11 @@ def _set_option(options, owner, k, v):
         options.image_width = units.toLength(v)
     elif k == 'image-height':
         options.image_height = units.toLength(v)
+    elif k == 'image-brightness':
+        options.image_brightness = text_to_fraction(v)
+    elif k == 'image-contrast':
+        options.image_contrast = text_to_fraction(v)
+
     elif k == 'image-anchor':
         choices = tuple('nw n ne w c e sw s se'.split())
         if v.lower() in choices:
@@ -128,9 +134,9 @@ def _set_option(options, owner, k, v):
 
 class ScriptBuilder(docutils.nodes.SparseNodeVisitor):
 
-    def __init__(self, document):
+    def __init__(self, document, variables:dict):
         super().__init__(document)
-        self.calculator = calculation.Calculator({})
+        self.calculator = calculation.Calculator(variables)
 
     def visit_script(self, node):
         text = '\n'.join(node.content)

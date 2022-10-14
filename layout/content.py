@@ -273,14 +273,18 @@ class PlacedImageContent(PlacedContent):
     desired: Extent
     mode: str
     anchor: str
+    brightness: float
+    contrast: float
 
     def __init__(self, image: ImageDetail, desired: Extent, mode: str, anchor: str, bounds: Rect,
-                 quality: PlacementQuality = None):
+                 brightness: float, contrast: float, quality: PlacementQuality = None):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.desired = desired
         self.image = image
         self.mode = mode
         self.anchor = anchor
+        self.contrast = contrast
+        self.brightness = brightness
 
     def image_bounds(self):
         mode = self.mode
@@ -331,10 +335,11 @@ class PlacedImageContent(PlacedContent):
         return dy
 
     def _draw(self, pdf: PDF):
-        pdf.draw_image(self.image.data, self.image_bounds())
+        pdf.draw_image(self.image.data, self.image_bounds(), self.brightness, self.contrast)
 
     def __copy__(self):
-        return PlacedImageContent(self.image, self.desired, self.mode, self.anchor, self.bounds, self.quality)
+        return PlacedImageContent(self.image, self.desired, self.mode, self.anchor, self.bounds,
+                                  self.brightness, self.contrast, self.quality)
 
     def name(self):
         return 'Image#' + str(self.image.index)
@@ -347,7 +352,9 @@ def make_frame(bounds: Rect, style: Style,
         im = pdf.get_image(options.image)
         if im:
             image = make_image(im, bounds, options.image_mode, options.image_width,
-                               options.image_height, options.image_anchor, force_to_top=False, )
+                               options.image_height, options.image_anchor,
+                               options.image_brightness, options.image_contrast,
+                               force_to_top=False)
             if box:
                 return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
             else:
@@ -370,7 +377,7 @@ def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
 
 
 def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height: float,
-               anchor: str, force_to_top: bool) -> PlacedImageContent:
+               anchor: str, brightness: float, contrast: float, force_to_top: bool) -> PlacedImageContent:
     # Ensure width and height are defined
     aspect = image.height / image.width
     if not width and not height:
@@ -381,7 +388,7 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     elif not width:
         width = height / aspect
 
-    content = PlacedImageContent(image, Extent(width, height), mode, anchor, bounds)
+    content = PlacedImageContent(image, Extent(width, height), mode, anchor, bounds, brightness, contrast)
     image_bounds = content.image_bounds()
     content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
     if force_to_top:

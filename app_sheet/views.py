@@ -181,7 +181,7 @@ def action_dispatcher(request, sheet_id):
     if 'generate' in request.POST:
         # Generate PDF and store on disk
         with warnings.catch_warnings(record=True) as warning_messages:
-            doc = main.Document(edit_content, images_info(csd))
+            doc = main.Document(edit_content, images_info(csd), request.user.username)
             try:
                 pdf_bytes = doc.data()
                 file_name = f"sheets/{request.user.username}-sheet.pdf"

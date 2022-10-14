@@ -137,6 +137,8 @@ class Prettify:
                 else:
                     if k in {'width', 'height', 'image-width', 'image-height'}:
                         v = style.len2str(v)
+                    if k in {'image-brightness', 'image-contrast', }:
+                        v = f"{round(v*100)}%"
                     parts.append(k + '=' + str(v))
 
         # Only add if there actually were any changed values -- or we MUST do so

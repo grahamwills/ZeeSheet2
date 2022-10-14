@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import warnings
 from collections import Counter, defaultdict
 from copy import copy
@@ -9,12 +10,22 @@ from docutils import parsers, core, utils
 
 import common
 import structure
+from common import prettify_username
 from generate.pdf import PDF
 from layout import PlacedGroupContent
 from layout.build_sheet import FONT_LIB, sheet_to_pages
 from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style, Block
 
 LOGGER = common.configured_logger(__name__)
+
+
+def standard_info(username: str, now=None) -> dict[str, str]:
+    now = now or datetime.datetime.now()
+    return {
+        'player': prettify_username(username),
+        'date': now.strftime('%B %-d, %Y'),
+        'short_date': now.strftime('%Y-%m-%d'),
+    }
 
 
 class Document:
@@ -26,14 +37,16 @@ class Document:
     _pages: list[PlacedGroupContent] or None  # Placed content by page
     _data: bytes or None  # PDF as bytes
     _pdf: PDF or None  # The pdf drawing component
+    _input_vars: dict[str, str]
 
-    def __init__(self, source: str, images: Dict[str, ImageDetail] = None):
+    def __init__(self, source: str, images: Dict[str, ImageDetail] = None, username='ZeeSheet User'):
         self.source = source
         self.images = images or {}
         self._sheet = None
         self._pages = None
         self._data = None
         self._pdf = None
+        self._input_vars = standard_info(username)
 
     # noinspection PyUnresolvedReferences
     def sheet(self):
@@ -48,7 +61,7 @@ class Document:
             parser.parse(text, document)
 
             # Run scripts and collect variables to pass to the main visitor
-            script_visitor = visitors.ScriptBuilder(document)
+            script_visitor = visitors.ScriptBuilder(document, self._input_vars)
             document.walkabout(script_visitor)
             variables = script_visitor.calculator.variables()
 
@@ -143,7 +156,7 @@ class StyleResolver:
 
     # Create a mapping of all the usages
     def collect_usages(self):
-        self._validate_and_update_usages(self.sheet.options,'style', 'default-sheet')
+        self._validate_and_update_usages(self.sheet.options, 'style', 'default-sheet')
         for section in self.sheet.children:
             self._validate_and_update_usages(section.options, 'style', 'default-section')
             for block in section.children:
