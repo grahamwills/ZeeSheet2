@@ -298,10 +298,7 @@ class ColumnPacker:
                     LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
                                  self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
                                  best.quality.unplaced, best.quality.minor_score())
-            except ColumnOverfullError as ex:
-                # Just ignore failures
-                pass
-            except ExtentTooSmallError:
+            except (ColumnOverfullError, ExtentTooSmallError):
                 # Just ignore failures
                 pass
 

@@ -1,14 +1,15 @@
 import unittest
 
 from common import Extent, Point, Rect
-from generate.fonts import FontLibrary
-from generate.pdf import PDF
+from drawing import FontLibrary
+from drawing import PDF
 from layout import ExtentTooSmallError
 from layout.build_block import place_block
 from layout.build_run import place_run
 from main.document import StyleResolver
 from structure import Element, Run, Block, Item, Sheet
-from structure.style import Style, FontStyle
+from structure import Style
+from structure.style import FontStyle
 
 
 def _make_item(txt: str) -> Item:
@@ -17,7 +18,7 @@ def _make_item(txt: str) -> Item:
     return item
 
 
-STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0))
+STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('indent', '0')
 
 
 class TestRunPlacement(unittest.TestCase):
@@ -136,7 +137,6 @@ class TestRunPlacement(unittest.TestCase):
         self.assertAlmostEqual(7.77, p2.extent.height, places=2)
 
 
-
 class TestBlockPlacement(unittest.TestCase):
 
     @classmethod
@@ -170,11 +170,10 @@ class TestBlockPlacement(unittest.TestCase):
         self.assertEqual(2, len(group))
 
         # Background
-        self.assertEqual(Rect(0, 300, 19, 67), round(group[0].bounds))
+        self.assertEqual(Rect(0, 300, 19, 68), round(group[0].bounds))
 
         # Main content
         self.assertEqual(Rect(0, 300, 0, 19), round(group[1].bounds))
-
 
         # Contents on the grid
         self.assertEqual(Point(2, 2), round(placed.child(0).child(0).location))

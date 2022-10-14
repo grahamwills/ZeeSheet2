@@ -1,13 +1,13 @@
 Django
-whitenoise
+# whitenoise
 djangocodemirror
 docutils
-sphinx
+# sphinx
 django-crispy-forms
 reportlab
 pyyaml
-numpy
-scipy
+# numpy
+# scipy
 sly
 Pillow
-fonttools
+# fonttools

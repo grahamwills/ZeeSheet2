@@ -185,6 +185,11 @@ class Rect(namedtuple('Rect', 'left right top bottom')):
             Point(self.left, self.bottom),
         ]
 
+    def path_coords(self) -> list[tuple[float, ...]]:
+        # Add an empty tuple after the list of corners to signify a 'close' for the path
+        # noinspection PyTypeChecker
+        return self.corners() + [tuple()]
+
     def pad(self, v: float) -> Rect:
         return Rect(self.left - v, self.right + v, self.top - v, self.bottom + v)
 

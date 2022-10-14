@@ -4,10 +4,11 @@ from unittest import TestCase
 
 import main
 from common import Spacing, Rect, Extent
-from generate.fonts import FontLibrary
+from drawing import FontLibrary
 from main.document import StyleResolver
 from structure import Sheet
-from structure.style import Style, StyleDefaults, set_using_definition, BoxStyle, TextStyle
+from structure import Style, StyleDefaults, BoxStyle
+from structure.style import TextStyle, set_using_definition
 
 
 class TestStyle(TestCase):
@@ -17,7 +18,7 @@ class TestStyle(TestCase):
         self.assertEqual(StyleDefaults.default.name, 'default')
         self.assertEqual(StyleDefaults.default.parent, '#')
         self.assertEqual(StyleDefaults.default.text.align, 'left')
-        self.assertEqual(StyleDefaults.default.font.family, 'Helvetica')
+        self.assertEqual(StyleDefaults.default.font.family, 'Montserrat')
         self.assertEqual(StyleDefaults.default.box.opacity, 1.0)
         self.assertEqual(StyleDefaults.default.box.padding, Spacing(2, 2, 2, 2))
 
@@ -30,8 +31,8 @@ class TestStyle(TestCase):
         self.assertRaises(ValueError, lambda: Style('1badname'))
 
     def test_to_definition_default(self):
-        self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:left text-indent:0 '
-                         'font-family:Helvetica font-size:12 font-face:Regular '
+        self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:left text-align-last:same text-indent:4 '
+                         'font-family:Montserrat font-size:10 font-face:Regular '
                          'font-spacing:100% border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
                          'margin:0 padding:2 effect:none effect-size:3', StyleDefaults.default.to_definition())
@@ -227,7 +228,8 @@ class TestMakeCompleteStyles(TestCase):
         self.assertIsNot(output['default'], input['default'])
 
         # test inherits some parts, but has overrides
-        self.assertEqual(output['test'].text, TextStyle(color='black', opacity=1.0, align='left', indent=0.0))
+        self.assertEqual(output['test'].text, TextStyle(color='black', opacity=1.0, align='left',
+                                                        align_last='same', indent=4))
         self.assertEqual(output['test'].font, input['default'].font)
         self.assertEqual(output['test'].box.margin, Spacing(72, 72, 72, 72))
 

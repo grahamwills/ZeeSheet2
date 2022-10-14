@@ -19,9 +19,9 @@ from reportlab.pdfgen import canvas
 
 from common import Rect, Point
 from common import configured_logger
-from generate.fonts import Font, FontLibrary
-from structure.model import checkbox_character, ImageDetail
-from structure.style import Style
+from drawing import Font, FontLibrary
+from structure import Style
+from structure import checkbox_character, ImageDetail
 
 LOGGER = configured_logger(__name__)
 
@@ -234,7 +234,7 @@ class PDF(canvas.Canvas):
                           "Use the Sheet Details button to upload images")
             return _MISSING_IMAGE
 
-    def draw_image(self, image: Image, bounds: Rect, brightness:float, contrast:float):
+    def draw_image(self, image: Image, bounds: Rect, brightness: float, contrast: float):
 
         if contrast != 1:
             image = ImageEnhance.Contrast(image).enhance(contrast)
@@ -253,7 +253,7 @@ class PDF(canvas.Canvas):
             warnings.warn(f"Style '{style_name}' was not defined, using '{default}' instead")
             try:
                 return self.styles[default]
-            except:
+            except KeyError:
                 raise RuntimeError(f"Default style '{default}' was not found")
 
 

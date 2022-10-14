@@ -2,10 +2,10 @@ import unittest
 
 import layout.quality as quality
 from common import Extent, Rect, Point
-from generate.pdf import TextSegment, CheckboxSegment
+from drawing import TextSegment, CheckboxSegment
 from layout import PlacedImageContent, PlacedRectContent, PlacedRunContent, PlacedGroupContent
 from structure import ImageDetail
-from structure.style import Style
+from structure import Style
 
 POINT = Point(2, 3)
 EXTENT = Extent(1, 1)
@@ -26,7 +26,7 @@ class TestQuality(unittest.TestCase):
         self.assertEqual('⟨box: NONE⟩', str(q))
 
     def test_names_for_placed_items(self):
-        image = PlacedImageContent(IMAGE, IM_DESIRED, 'normal', 'c', Rect(0, 0, 100, 200))
+        image = PlacedImageContent(IMAGE, IM_DESIRED, 'normal', 'c', Rect(0, 0, 100, 200), 1, 1)
         rect = PlacedRectContent(BOUNDS, STYLE, quality=None)
         run = PlacedRunContent(SEGMENTS, STYLE, EXTENT, quality=None, location=POINT)
 

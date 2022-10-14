@@ -138,7 +138,7 @@ class Prettify:
                     if k in {'width', 'height', 'image-width', 'image-height'}:
                         v = style.len2str(v)
                     if k in {'image-brightness', 'image-contrast', }:
-                        v = f"{round(v*100)}%"
+                        v = f"{round(v * 100)}%"
                     parts.append(k + '=' + str(v))
 
         # Only add if there actually were any changed values -- or we MUST do so
@@ -391,7 +391,6 @@ class Prettify2:
     def append_items(self, items, prefix=''):
         ncols = max(len(item.children) for item in items)
         indent = max(2, len(prefix))
-
 
         # Create a table of simple text representations and calculate the maximum widths of each column
         table = [[run.to_rst().strip() for run in item.children] for item in items]

@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple, List
 
-from reportlab.graphics.charts.textlabels import _text2Path
+from reportlab.graphics.charts import textlabels
 from reportlab.pdfbase import pdfmetrics as metrics, pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 
@@ -117,7 +117,8 @@ class Font:
         """
         sizes = []
         for t in texts:
-            r = _text2Path(t, fontName=self.name, fontSize=self.size).getBounds()
+            # noinspection PyProtectedMember
+            r = textlabels._text2Path(t, fontName=self.name, fontSize=self.size).getBounds()
             sizes.append(Rect(r[0], r[2], r[1], r[3]))
         return Rect.union(sizes)
 
@@ -156,7 +157,7 @@ def read_font_info() -> List[FontFamily]:
     return out
 
 
-class FontLibrary():
+class FontLibrary:
     _families: Dict[str, FontFamily]
 
     def __init__(self):
@@ -245,11 +246,11 @@ class FontLibrary():
             return self.get_font(font.family.name, font.size, new_face)
 
     def similar_names(self, family_name: str) -> List[str]:
-        N = 3
-        target = NGram(family_name.lower(), N)
+        n = 3
+        target = NGram(family_name.lower(), n)
 
         def sim(f: FontFamily):
-            other = NGram(f.name.lower(), N)
+            other = NGram(f.name.lower(), n)
             return other.similarity(target), f.name
 
         similarity = [sim(f) for f in self.families()]
@@ -262,15 +263,15 @@ class FontLibrary():
                 result.append(c[1])
         return result
 
-    def _search_for_font_by_name(self, fontName) -> Tuple[FontFamily, str]:
-        name_key = _key(fontName)
+    def _search_for_font_by_name(self, font_name) -> Tuple[FontFamily, str]:
+        name_key = _key(font_name)
         for k, family in self._families.items():
             if name_key.startswith(k):
                 face_key = name_key[len(k):]
                 for face in family.faces.keys():
                     if _key(face) == face_key:
                         return family, face
-        raise KeyError(fontName)
+        raise KeyError(font_name)
 
 
 def register_single_font(family: FontFamily, full_name: str):

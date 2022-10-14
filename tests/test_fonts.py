@@ -3,8 +3,8 @@ import warnings
 import zipfile
 
 from common import Rect
-from generate import fonts
-from generate.fonts import FontLibrary
+from drawing import FontLibrary
+from drawing import fonts
 
 
 class TestFonts(unittest.TestCase):

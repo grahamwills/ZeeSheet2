@@ -8,13 +8,13 @@ import common
 import layout.quality
 from common import Extent, Point, Spacing, Rect
 from common import configured_logger
-from generate.pdf import PDF
+from drawing import PDF
 from structure import Block, style
-from structure.model import BlockOptions, Run, Item
-from . import build_run, content
-from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image
+from structure import BlockOptions, Run, Item
+from . import build_run
+from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image, make_frame, make_frame_box
 from .packer import ColumnPacker
-from .special import AttributeTableBuilder
+from .special_blocks import AttributeTableBuilder
 
 LOGGER = configured_logger(__name__)
 
@@ -91,10 +91,10 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     extra_space = effect.padding()
     if extra_space > 0:
         # Half the padding lies inside the frame
-        outer = outer.pad(-extra_space/2)
+        outer = outer.pad(-extra_space / 2)
 
     # Create the title. Pass in the extra padding space needed with extra to ensure we cover the clip area
-    title, title_spacing = make_title(block, outer, quality, extra_space*2, pdf)
+    title, title_spacing = make_title(block, outer, quality, extra_space * 2, pdf)
 
     if not block.children and not image:
         if not title:
@@ -124,14 +124,14 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         total_height = max(total_height, title.bounds.bottom)
     if main_style.box.has_border():
         total_height += main_style.box.width
-    total_height += extra_space/2
+    total_height += extra_space / 2
     frame_bounds = Rect(0, size.width, 0, total_height)
 
     if block.children:
-        frame = content.make_frame(frame_bounds, main_style, block.options, pdf)
+        frame = make_frame(frame_bounds, main_style, block.options, pdf)
     else:
         # We are showing just an image, which is our children, so do not add it here also
-        frame = content.make_frame_box(frame_bounds, main_style)
+        frame = make_frame_box(frame_bounds, main_style)
 
     # Make the valid items
     items = [i for i in (frame, placed_children, title) if i]
@@ -143,7 +143,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
     if not result.clip_item:
         # I am not sure why this is needed
-        modified_bounds =frame_bounds - Spacing(0,0,0,extra_space)
+        modified_bounds = frame_bounds - Spacing(0, 0, 0, extra_space)
         result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration(block))
 
     # Mark as hidden if our style indicated it was to be hidden

@@ -68,7 +68,7 @@ def items_in_bins_combinations(n: int, m: int, limit: int = 100) -> List[List[in
         if counts <= limit:
             break
         n1 -= 1
-        LOGGER.fine("Too many combinations {}; increasing packing factor to {:1.2f}", counts, n/n1)
+        LOGGER.fine("Too many combinations {}; increasing packing factor to {:1.2f}", counts, n / n1)
 
     results = _pack_recursive(n1, m)
 

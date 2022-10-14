@@ -11,7 +11,7 @@ from docutils import parsers, core, utils
 import common
 import structure
 from common import prettify_username
-from generate.pdf import PDF
+from drawing import PDF
 from layout import PlacedGroupContent
 from layout.build_sheet import FONT_LIB, sheet_to_pages
 from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style, Block

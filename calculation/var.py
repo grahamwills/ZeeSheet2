@@ -105,13 +105,13 @@ class Variable:
                 else:
                     return Variable(math.inf if x > 0 else -math.inf)
             else:
-                return Variable(x/y)
+                return Variable(x / y)
 
     def __mod__(self, other: Variable) -> Variable:
         x = float(self)
         y = float(other)
         if y == 0:
-            if x ==y:
+            if x == y:
                 return Variable(1)
             else:
                 return Variable(math.inf)
@@ -124,7 +124,7 @@ class Variable:
                 return Variable(self.value[:n])
             else:
                 q = str(self).find(' ')
-                if q>=0:
+                if q >= 0:
                     return Variable(self.value[:q])
                 else:
                     return self

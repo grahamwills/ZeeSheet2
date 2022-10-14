@@ -1,7 +1,5 @@
 import random
 
-import structure.validate
-
 import main.main
 
 BLOCKS = [

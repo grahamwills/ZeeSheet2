@@ -2,8 +2,8 @@ from typing import Iterable
 
 import layout
 from common import Extent, Rect, Spacing
-from generate.fonts import Font
-from generate.pdf import PDF, TextSegment
+from drawing import Font
+from drawing import PDF, TextSegment
 from layout import PlacedPathContent, PlacedGroupContent, PlacedRunContent, ExtentTooSmallError
 from structure import Block
 
@@ -115,6 +115,6 @@ class AttributeTableBuilder:
             dx = (box.width - width) / 2
 
         # center in the box. The '0.75 * dy - 0.5' is a fudge factor, but does seem to make the results prettier
-        y = box.center.y - font.ascent + height/2 - 0.75 * dy - 0.5
+        y = box.center.y - font.ascent + height / 2 - 0.75 * dy - 0.5
 
         return TextSegment(txt, box.left + dx, y, width, font)

@@ -12,7 +12,6 @@ from reportlab.lib.units import inch
 from .style import Style
 
 FormatPieces = namedtuple('FormatInfo', 'open close sep')
-Problem = namedtuple('Problem', 'lineNo is_error message')
 
 
 def checkbox_character(state) -> str:
@@ -32,6 +31,7 @@ class CommonOptions:
     image_anchor: str = None
     image_brightness: float = 1.0
     image_contrast: float = 1.0
+
 
 @dataclass
 class SheetOptions(CommonOptions):

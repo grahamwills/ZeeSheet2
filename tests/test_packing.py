@@ -51,7 +51,6 @@ class TestPacker(ColumnPacker):
 
 class PackingTest(unittest.TestCase):
 
-
     def test_combinations(self):
         cp = TestPacker('test', Rect(0, 300, 0, 500), item_count=8, column_count=3, max_width_combos=100)
         widths = cp.choose_widths(need_gaps=False)

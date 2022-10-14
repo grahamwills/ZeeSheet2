@@ -7,17 +7,16 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from reportlab.graphics.shapes import Path
-from reportlab.lib.colors import toColor
 
 import common
 import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
-from generate.pdf import TextSegment, PDF
+from drawing import TextSegment, PDF, coords_to_path
 from layout.quality import PlacementQuality
+from structure import CommonOptions, to_color
 from structure import ImageDetail
-from structure.model import CommonOptions
-from structure.style import Style, BoxStyle
+from structure import Style, BoxStyle
 
 LOGGER = configured_logger(__name__)
 
@@ -75,7 +74,7 @@ class PlacedContent(abc.ABC):
         if pdf.debug and self.DEBUG_STYLE:
             color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
             pdf.saveState()
-            pdf.setFillColor(toColor(color))
+            pdf.setFillColor(to_color(color))
             pdf.setFillAlpha(fill_a)
             pdf.rect(0, 0, self.extent.width, self.extent.height, fill=1, stroke=0)
             pdf.restoreState()
@@ -86,7 +85,7 @@ class PlacedContent(abc.ABC):
         if pdf.debug and self.DEBUG_STYLE:
             pdf.restoreState()
             color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
-            pdf.setStrokeColor(toColor(color))
+            pdf.setStrokeColor(to_color(color))
             pdf.setStrokeAlpha(stroke_a)
             pdf.setLineWidth(width)
             if dash:
@@ -98,7 +97,7 @@ class PlacedContent(abc.ABC):
     def _debug_draw(self, pdf):
         if pdf.debug:
             color, stroke_a, fill_a, width, dash = self.DEBUG_STYLE
-            c = toColor(color)
+            c = to_color(color)
             pdf.saveState()
             pdf.setFillColor(c)
             pdf.setStrokeColor(c)
@@ -112,6 +111,10 @@ class PlacedContent(abc.ABC):
 
 
 class PlacedGroupContent(PlacedContent):
+
+    def as_path(self) -> Path:
+        raise NotImplementedError('Grouped content does not provide a path')
+
     DEBUG_STYLE = ('#C70A80', 0.25, 0.1, 3, None)
 
     items: List[PlacedContent] = None
@@ -133,6 +136,7 @@ class PlacedGroupContent(PlacedContent):
             extent = r.extent
         return PlacedGroupContent(items, extent, quality, ZERO)
 
+    # noinspection PyUnboundLocalVariable,PyUnresolvedReferences
     def _draw(self, pdf: PDF):
         clip = self.clip_item
         if clip:
@@ -174,6 +178,9 @@ class PlacedGroupContent(PlacedContent):
 
 @dataclass
 class PlacedRunContent(PlacedContent):
+    def as_path(self) -> Path:
+        raise NotImplementedError('Run content does not provide a path')
+
     DEBUG_STYLE = ('#590696', 0.75, 0.1, 1, None)
 
     segments: List[TextSegment]  # base text pieces
@@ -198,8 +205,8 @@ class PlacedRunContent(PlacedContent):
         return base[0] + reprlib.repr(txt) + ', ' + base[1:]
 
     def __copy__(self):
-        segs = [copy(s) for s in self.segments]
-        return PlacedRunContent(segs, self.style, self.extent, self.quality, self.location)
+        segments = [copy(s) for s in self.segments]
+        return PlacedRunContent(segments, self.style, self.extent, self.quality, self.location)
 
     def name(self):
         return ''.join(s.to_text() for s in self.segments)
@@ -219,8 +226,8 @@ class PlacedRectContent(PlacedContent):
     def as_path(self) -> Path:
         if not self._asPath:
             effect = self.style.get_effect()
-            cords = self.bounds.corners() + [tuple()]
-            self._asPath = effect.apply(cords, hash(self.bounds))
+            coords = self.bounds.path_coords()
+            self._asPath = coords_to_path(coords, effect, hash(self.bounds))
         return self._asPath
 
     def _draw(self, pdf: PDF):
@@ -253,7 +260,7 @@ class PlacedPathContent(PlacedContent):
     def as_path(self) -> Path:
         if not self._asPath:
             effect = self.style.get_effect()
-            self._asPath = effect.apply(self.coords, hash(self.bounds))
+            self._asPath = coords_to_path(self.coords, effect, hash(self.bounds))
         return self._asPath
 
     def _draw(self, pdf: PDF):
@@ -275,6 +282,9 @@ class PlacedImageContent(PlacedContent):
     anchor: str
     brightness: float
     contrast: float
+
+    def as_path(self) -> Path:
+        raise NotImplementedError('Image content does not provide a path')
 
     def __init__(self, image: ImageDetail, desired: Extent, mode: str, anchor: str, bounds: Rect,
                  brightness: float, contrast: float, quality: PlacementQuality = None):
@@ -369,7 +379,7 @@ def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
     has_border = s.border_color != 'none' and s.border_opacity > 0 and s.width > 0
     if has_border or has_background:
         if s.has_border():
-            # Inset because the stroke is drawn centered around the box and we want it drawn just within
+            # Inset because the stroke is drawn centered around the box, and we want it drawn just within
             bounds = bounds - Spacing.balanced(s.width / 2)
         return PlacedRectContent(bounds, style, layout.quality.for_decoration(bounds))
     else:
@@ -398,29 +408,6 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     else:
         content.extent = bounds.extent
     return content
-
-
-def toPath(coords: list[tuple], pdf: PDF) -> Path:
-    p = pdf.beginPath()
-    need_move = True
-    for c in coords:
-        m = len(c)
-        if m == 0:
-            p.close()
-            need_move = True
-        elif m == 2:
-            if need_move:
-                p.moveTo(*c)
-                need_move = False
-            else:
-                p.lineTo(*c)
-        elif m == 6:
-            p.curveTo(*c)
-        else:
-            raise RuntimeError('Bad path specification')
-    if not need_move:
-        p.close()
-    return p
 
 
 class ExtentTooSmallError(RuntimeError):

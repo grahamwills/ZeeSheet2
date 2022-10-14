@@ -2,7 +2,7 @@ from typing import Union, Tuple, Optional, List
 
 import common
 from common import Extent, Rect, Spacing
-from generate.pdf import PDF
+from drawing import PDF
 from layout import build_block
 from layout.content import PlacedContent, PlacedGroupContent, make_frame, PlacedImageContent
 from layout.packer import ColumnPacker, ColumnFit
@@ -44,6 +44,12 @@ class SectionPacker(ColumnPacker):
         self.quality = quality
         max_combos = self.QUALITY_TO_COMBOS[quality.lower()]
         super().__init__(debug_name, bounds, len(items), column_count, max_combos)
+
+    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
+        return True
+
+    def span_of_item(self, item_index: Union[int, Tuple[int, int]]) -> int:
+        return 1
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)

@@ -212,7 +212,7 @@ def show_file(request, file_name: str):
 def delete_old_sheets():
     storage: FileSystemStorage = default_storage
     _, files = storage.listdir('sheets/')
-    one_day_ago = timezone.now()- timedelta(days=1)
+    one_day_ago = timezone.now() - timedelta(days=1)
     for f in files:
         file = 'sheets/' + f
         t = storage.get_modified_time(file)

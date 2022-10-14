@@ -135,7 +135,7 @@ CODEMIRROR_THEMES.update({
     'ttcn': 'CodeMirror/theme/ttcn.css',
 })
 CODEMIRROR_MODES.update(
-    {'markdown':'CodeMirror/mode/markdown/markdown.js'}
+    {'markdown': 'CodeMirror/mode/markdown/markdown.js'}
 )
 
 CODEMIRROR_SETTINGS.update({
@@ -143,7 +143,7 @@ CODEMIRROR_SETTINGS.update({
         'mode': 'rst',
         'modes': ['python', 'stex', 'rst'],
         'lineNumbers': True,
-        'tabSize':3,
+        'tabSize': 3,
         'indentUnit': 3,
         'addons': ['CodeMirror/addon/mode/overlay.js']
     },

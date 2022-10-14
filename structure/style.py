@@ -6,35 +6,31 @@ from dataclasses import dataclass, field
 from typing import List, Iterable, Optional, Union
 from warnings import warn
 
-import reportlab.lib.colors
-from reportlab.lib import units
-from reportlab.lib.colors import Color
+from reportlab.lib import units, colors
 
 import common
 from common import Spacing, Rect, Extent
 from common.logging import message_unknown_attribute, message_bad_value, configured_logger
-from .path_effects import Effect, Effects
 
 LOGGER = configured_logger(__name__)
 
-_TRANSPARENT = Color(1, 1, 1, 0)
+_TRANSPARENT = colors.Color(1, 1, 1, 0)
 
 
-def _q(txt: str) -> str:
-    if ' ' in txt:
-        return "'" + txt + "'"
-    else:
-        return txt
+def to_color(txt: str) -> colors.Color or None:
+    txt = txt.lower()
+    if len(txt) == 4 and txt[0] == '#':
+        txt = '#' + txt[1] + txt[1] + txt[2] + txt[2] + txt[3] + txt[3]
+    if txt == 'none':
+        return _TRANSPARENT
+    if txt == 'auto':
+        # Not an error, but cannot be converted to a color
+        return None
+    # noinspection PyArgumentList
+    return colors.toColor(txt)
 
 
-def _check_valid_color(name: str):
-    """ raises a key error if the name is not found"""
-    name = name.lower()
-    if name not in {'none', 'auto'}:
-        reportlab.lib.colors.toColor(name)
-
-
-def _brightness(c: Color) -> bool:
+def _brightness(c: colors.Color) -> bool:
     """ Returns true if the color is mostly lighter"""
 
     # Assume the background is light if we have an alpha value
@@ -42,7 +38,7 @@ def _brightness(c: Color) -> bool:
     return base * c.alpha + (1 - c.alpha)
 
 
-def _modify_brightness(c: Color, value: float) -> str:
+def _modify_brightness(c: colors.Color, value: float) -> str:
     h, l, s = colorsys.rgb_to_hls(*c.rgb())
     if s > 0.1:
         s = 1.0
@@ -50,7 +46,7 @@ def _modify_brightness(c: Color, value: float) -> str:
     return f'#{r:02x}{g:02x}{b:02x}'
 
 
-def _is_grayscale(c: Color) -> bool:
+def _is_grayscale(c: colors.Color) -> bool:
     h, s, v = colorsys.rgb_to_hsv(*c.rgb())
     return s < 0.01
 
@@ -83,19 +79,43 @@ def validate_value(key: str, value: str, possibles: Iterable[str]):
 
 
 @dataclass
+class Effect:
+    name: str  # name
+    needs_path_conversion: bool  # if true, rects need convertign to paths first
+    needs_padding: bool  # space needed inside the usual frame
+    size: float = None
+
+    def sized(self, size: float) -> Effect:
+        return Effect(self.name, self.needs_path_conversion, self.needs_padding, size)
+
+    def padding(self) -> float:
+        return self.size if self.needs_padding else 0
+
+
+class Effects:
+    NONE = Effect('none', False, False)
+    ROUNDED = Effect('rounded', False, False)
+    ROUGH = Effect('rough', True, True)
+    COGS = Effect('cogs', True, True)
+    ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH, COGS)}
+
+
+@dataclass
 class FontStyle:
+    FACES = ('normal', 'regular', 'bold', 'italic', 'bolditalic')
+
     family: str = None
     size: float = None
     face: str = None
     spacing: float = None
 
+    # noinspection SpellCheckingInspection
     def set(self, key: str, value):
-        FACES = ('normal', 'regular', 'bold', 'italic', 'bolditalic')
         if key in ['font', 'fontfamily', 'family']:
             self.family = value
         elif key == 'size':
             self.size = float(value)
-        elif value is None and key.lower() in FACES:
+        elif value is None and key.lower() in self.FACES:
             self.face = key.lower()
         elif key == 'spacing':
             self.spacing = text_to_fraction(value)
@@ -137,7 +157,7 @@ class TextStyle:
         if key.startswith('text'):
             key = key[4:]
         if key in ['color', 'foreground']:
-            _check_valid_color(value)  # Check it is valid
+            to_color(value)  # Throws KeyError if it not a valid color
             self.color = value
         elif key == 'opacity':
             self.opacity = txt2fraction(value)
@@ -192,12 +212,12 @@ class BoxStyle:
             key = key[3:]
 
         if key in {'color', 'backgroundcolor', 'background', 'bg'}:
-            _check_valid_color(value)  # Check it is valid
+            to_color(value)  # Check it is valid
             self.color = value
         elif key in {'opacity', 'backgroundopacity', 'bgopacity'}:
             self.opacity = txt2fraction(value)
         elif key == 'bordercolor' or key == 'border':
-            _check_valid_color(value)  # Check it is valid
+            to_color(value)  # Check it is valid
             self.border_color = value
         elif key == 'borderopacity':
             self.border_opacity = txt2fraction(value)
@@ -310,7 +330,7 @@ class Style:
             warn(message_bad_value(self.name, name, str(ex), category='style'))
             return self
 
-    def get_color(self, box: bool = False, border: bool = False) -> Color:
+    def get_color(self, box: bool = False, border: bool = False) -> colors.Color:
         if border:
             name = self.box.border_color
             opacity = self.box.border_opacity
@@ -326,11 +346,11 @@ class Style:
         if name[0] == '#' and len(name) == 4:
             # Also handle the '#RGB' format
             name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
-        c: Color = reportlab.lib.colors.toColor(name)
-        if opacity == 1.0 or opacity == None:
+        c = to_color(name)
+        if opacity == 1.0 or opacity is None:
             return c
         else:
-            return Color(c.red, c.green, c.blue, c.alpha * opacity)
+            return colors.Color(c.red, c.green, c.blue, c.alpha * opacity)
 
     def get_effect(self) -> Effect:
         size = self.box.effect_size
@@ -385,7 +405,7 @@ def num2str(x: float) -> str:
 
 def len2str(x: float) -> str:
     if x == 0:
-        return 0
+        return '0'
     if x % 72 == 0:
         return f'{int(x) // 72}in'
     if x % 9 == 0:
@@ -536,7 +556,7 @@ class StyleDefaults(metaclass=process_definitions):
         cls.set_auto_box(style, target, pair)
 
     @classmethod
-    def set_auto_text(cls, style: Style, target: str, pair: Style):
+    def set_auto_text(cls, style: Style, *_):
         bg = style.get_color(box=True)
         # Set the text to contrast with the background
         if _brightness(bg) > 0.5:
@@ -545,7 +565,7 @@ class StyleDefaults(metaclass=process_definitions):
             style.text.color = 'white'
 
     @classmethod
-    def set_auto_box(cls, style: Style, target: str, pair: Style):
+    def set_auto_box(cls, style: Style, *_):
         text = style.get_color()
         border = style.get_color(border=True)
         # Set the background to match the border and contrast with the text
@@ -561,7 +581,7 @@ class StyleDefaults(metaclass=process_definitions):
                 style.box.color = _modify_brightness(border, StyleDefaults.BRIGHT)
 
     @classmethod
-    def set_auto_border(cls, style: Style, target: str, pair: Style):
+    def set_auto_border(cls, style: Style, *_):
         if style.box.color == 'none':
             style.box.border_color = 'none'
             return
@@ -592,3 +612,10 @@ class StyleDefaults(metaclass=process_definitions):
             method(style, target, pair)
             LOGGER.debug(f'Set auto styles for {style.name}: '
                          f'txt={style.text.color}, bg={style.box.color}, bdr={style.box.border_color}')
+
+
+def _q(txt: str) -> str:
+    if ' ' in txt:
+        return "'" + txt + "'"
+    else:
+        return txt

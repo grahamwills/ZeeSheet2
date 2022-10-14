@@ -1,5 +1,4 @@
 import reprlib
-import warnings
 from copy import copy
 
 import docutils.nodes
@@ -134,7 +133,7 @@ def _set_option(options, owner, k, v):
 
 class ScriptBuilder(docutils.nodes.SparseNodeVisitor):
 
-    def __init__(self, document, variables:dict):
+    def __init__(self, document, variables: dict):
         super().__init__(document)
         self.calculator = calculation.Calculator(variables)
 
@@ -455,4 +454,3 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
 
     def _count_ancestors(self, target):
         return sum(t == target for t in self.process_stack)
-

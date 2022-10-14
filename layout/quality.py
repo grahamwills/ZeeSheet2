@@ -26,22 +26,23 @@ class LayoutMethod(Enum):
     IMAGE = 4
     NONE = 5
 
+
 @dataclass
 class PlacementQuality(Generic[T]):
     """
             Contains information on the quality of a layout
 
-            :param target: What this measures the quality of. Usually a PlacedContent.
-            :param method:  The method that was used in the layout
-            :param count: Number of items placed
-            :param excess_width: The total amount of excess width
-            :param desired: The desired width of the placement
-            :param unplaced: A count of the number of items that could not be added at all
-            :param unplaced_descendants: A count of the number of items in childrern that could not be added
-            :param bad_breaks: Number of times we had to break within a word (a bad break)
-            :param good_breaks: Number of times we had to break between words (a good break)
-            :param image_shrinkage: Sum of factors by which images was shrunk from their desired size
-            :param height_dev: Average difference in heights of items in the layout from the largest
+            target:               What this measures the quality of. Usually a PlacedContent.
+            method:               The method that was used in the layout
+            count:                Number of items placed
+            excess_width:         The total amount of excess width
+            desired:              The desired width of the placement
+            unplaced:             A count of the number of items that could not be added at all
+            unplaced_descendants: A count of the number of items in children that could not be added
+            bad_breaks:           Number of times we had to break within a word (a bad break)
+            good_breaks:          Number of times we had to break between words (a good break)
+            image_shrinkage:      Sum of factors by which images was shrunk from their desired size
+            height_dev:           Average difference in heights of items in the layout from the largest
 
     """
 
@@ -79,7 +80,7 @@ class PlacementQuality(Generic[T]):
         return self.height_dev / 10
 
     def _score_excess_space(self) -> float:
-        return (self.excess_ss / 100)**0.5
+        return (self.excess_ss / 100) ** 0.5
 
     def _score_image(self) -> float:
         return self.image_shrinkage * 15
@@ -150,7 +151,7 @@ class PlacementQuality(Generic[T]):
 
 def for_wrapping(target: T, excess_width: float, bad_breaks: int, good_breaks: int) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
-    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width*excess_width,
+    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width * excess_width,
                             bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 

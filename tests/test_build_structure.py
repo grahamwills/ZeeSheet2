@@ -2,8 +2,9 @@ import unittest
 import warnings
 
 import main
+from structure import Element
 from structure import description
-from structure.model import Element, text_to_elements
+from structure.model import text_to_elements
 from . import util
 
 
@@ -14,7 +15,7 @@ class BasicBlocks(unittest.TestCase):
         cls.items = util.test_data()
 
     def setUp(self) -> None:
-        # Throw errors for warnings as we shoudl not see them in general
+        # Throw errors for warnings as we should not see them in general
         warnings.simplefilter('error', Warning)
 
     def tearDown(self) -> None:

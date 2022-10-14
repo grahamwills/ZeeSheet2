@@ -1,16 +1,14 @@
-import warnings
 from copy import copy
-from typing import Dict, Union, Tuple, Optional, Iterable
+from typing import Union, Tuple, Optional
 
 import common
 from common import Extent, Rect
-from generate.fonts import FontLibrary
-from generate.pdf import PDF
+from drawing import FontLibrary
+from drawing import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
 from layout.content import PlacedContent, PlacedGroupContent, make_frame
-from structure import Sheet, style
-from structure.style import Style
+from structure import Sheet
 
 FONT_LIB = FontLibrary()
 

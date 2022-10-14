@@ -1,6 +1,5 @@
 import warnings
 
-from docutils.nodes import warning
 from sly import Lexer
 
 
@@ -79,8 +78,9 @@ class CalcLexer(Lexer):
             if self.index == len(self.text):
                 break
             if self.text[self.index] in ';\n':
-                self.index+=1
+                self.index += 1
                 break
+
 
 if __name__ == '__main__':
     data = 'x = 3 + 42 * (s - t)'

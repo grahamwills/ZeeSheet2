@@ -4,11 +4,11 @@ from typing import Tuple, Union
 
 import layout.quality
 from common import Extent
-from generate.fonts import Font
-from generate.pdf import TextSegment, CheckboxSegment, PDF, TextFieldSegment
+from drawing import Font
+from drawing import TextSegment, CheckboxSegment, PDF, TextFieldSegment
 from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
-from structure.style import Style
+from structure import Style
 
 
 @lru_cache(maxsize=10000)
@@ -19,7 +19,6 @@ def _build_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunCon
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: str = None) -> PlacedRunContent:
     placed = copy(_build_run(run, extent, style, pdf))
     align = forced_align or style.text.align
-
 
     if align == 'right':
         dx = extent.width - placed.extent.width
@@ -60,14 +59,9 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: st
                 if segment.y == last_line_y:
                     segment.x += dx
 
-
-
-
     # After alignment, it fills the width. Any unused space is captured in the quality
     placed.extent = Extent(extent.width, placed.extent.height)
     return placed
-
-
 
 
 @lru_cache(maxsize=10000)
@@ -210,7 +204,7 @@ class RunBuilder:
                         # Or the text cannot fit into the next line
                         raise ExtentTooSmallError()
 
-                    # Handle any textfields on this line, expanding to fill line
+                    # Handle any text fields on this line, expanding to fill line
                     if textfield_on_this_line is not None:
                         self.expand_field_size(segments, textfield_on_this_line, width - x)
                         textfield_on_this_line = None
@@ -222,7 +216,7 @@ class RunBuilder:
 
                     breaks += 1
 
-        # Handle any textfields on this line, expanding to fill line
+        # Handle any text fields on this line, expanding to fill line
         if textfield_on_this_line is not None:
             self.expand_field_size(segments, textfield_on_this_line, width - x)
 
@@ -238,7 +232,8 @@ class RunBuilder:
         content = PlacedRunContent(segments, self.style, outer, quality)
         return content
 
-    def expand_field_size(self, segments: list[Union[TextFieldSegment, CheckboxSegment, TextSegment]],
+    @staticmethod
+    def expand_field_size(segments: list[Union[TextFieldSegment, CheckboxSegment, TextSegment]],
                           index: int, dx: float):
         segments[index].width += dx
         for s in segments[index + 1:]:

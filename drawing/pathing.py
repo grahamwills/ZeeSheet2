@@ -1,52 +1,27 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
 from typing import Generator, Callable
 
 import reportlab.pdfgen.pathobject
 from reportlab.graphics.shapes import Path
 
 from common import Point
+from structure import Effect, Effects
 
 
-@dataclass
-class Effect:
-    name: str  # name
-    needs_path_conversion: bool  # if true, rects need convertign to paths first
-    needs_padding: bool  # space needed inside the usual frame
-    size: float = None
-
-    def sized(self, size: float) -> Effect:
-        return Effect(self.name, self.needs_path_conversion, self.needs_padding, size)
-
-    def padding(self) -> float:
-        return self.size if self.needs_padding else 0
-
-    def apply(self, coords: list[tuple], seed: int) -> Path:
-        return Effects.make_from_coords(self, coords, seed)
-
-
-class Effects:
-    NONE = Effect('none', False, False)
-    ROUNDED = Effect('rounded', False, False)
-    ROUGH = Effect('rough', True, True)
-    COGS = Effect('cogs', True, True)
-    ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH, COGS)}
-
-    @classmethod
-    def make_from_coords(cls, effect: Effect, coords: list[tuple], seed: int) -> Path:
-        if effect.name == Effects.NONE.name:
-            transformed = coords
-        elif effect.name == Effects.ROUNDED.name:
-            transformed = round_edges(coords, effect.size)
-        elif effect.name == Effects.ROUGH.name:
-            transformed = apply_effect(roughen, coords, effect.size, seed)
-        elif effect.name == Effects.COGS.name:
-            transformed = apply_effect(cogs, coords, effect.size, seed)
-        else:
-            raise RuntimeError(f"Unknown effect '{effect.name}'")
-        return toPath(transformed)
+def coords_to_path(coords: list[tuple], effect: Effect, seed: int) -> Path:
+    if effect.name == Effects.NONE.name:
+        transformed = coords
+    elif effect.name == Effects.ROUNDED.name:
+        transformed = round_edges(coords, effect.size)
+    elif effect.name == Effects.ROUGH.name:
+        transformed = apply_effect(roughen, coords, effect.size, seed)
+    elif effect.name == Effects.COGS.name:
+        transformed = apply_effect(cogs, coords, effect.size, seed)
+    else:
+        raise RuntimeError(f"Unknown effect '{effect.name}'")
+    return to_path(transformed)
 
 
 def round_edges(coords: list[tuple], radius) -> list[tuple]:
@@ -93,12 +68,12 @@ def cogs(points: list[Point], radius: float, _) -> list[tuple]:
 
 
 def roughen(points: list[Point], radius: float, rand: random.Random) -> list[tuple]:
-    DECAY = 0.5
+    decay = 0.5
     result = []
     d = Point(0, 0)
     for q in points:
         while True:
-            d1 = d * (1 - DECAY) + Point(rand.gauss(0, 0.5), rand.gauss(0, 0.5)) * DECAY
+            d1 = d * (1 - decay) + Point(rand.gauss(0, 0.5), rand.gauss(0, 0.5)) * decay
             if abs(d1.x) <= 1 and abs(d1.y) <= radius:
                 break
         d = d1
@@ -214,7 +189,8 @@ def flatten(coords: list[tuple], step: float) -> list[Point]:
     return result
 
 
-def toPath(coords: list[tuple]) -> Path:
+# noinspection PyTypeChecker
+def to_path(coords: list[tuple]) -> Path:
     p = reportlab.pdfgen.pathobject.PDFPathObject()
     need_move = True
     for c in coords:
