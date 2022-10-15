@@ -1,5 +1,5 @@
 Django
-# whitenoise
+whitenoise
 djangocodemirror
 docutils
 # sphinx
