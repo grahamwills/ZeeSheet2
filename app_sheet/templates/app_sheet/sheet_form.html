@@ -5,7 +5,15 @@
     <h2>&nbsp;</h2>
     <h2>{{ sheet.name }} • {{ sheet.system }}</h2>
 
-    <p>Make any changes you want to the following meta-data for your character sheet:</p>
+    <p>
+        Edit details on the character sheet.
+    </p>
+    <p>
+        This is also where you can upload or modify image files.
+    </p>
+    <p>
+        The total size of your images is subject to a limit, so if one file is big, the other must be small!
+    </p>
 
     {% include 'app_sheet/messages.html' %}
 
@@ -13,7 +21,7 @@
         <form action="" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form|crispy }}
-            <input type="submit" value="Submit"/>
+            <input type="submit" class="btn btn-primary" value="Submit"/>
         </form>
     </div>
 {% endblock %}

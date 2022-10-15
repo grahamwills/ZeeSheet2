@@ -17,6 +17,6 @@ urlpatterns = [
 
                   path('accounts/', include('django.contrib.auth.urls')),
                   path("register", views.register_request, name="register"),
-                  path('sheet/<int:pk>/update/', views.SheetUpdate.as_view(), name='sheet-update'),
+                  path('sheet/<int:sheet_id>/update/', views.show_details, name='sheet-update'),
                   path('sheet/<int:pk>/delete/', views.SheetDelete.as_view(), name='sheet-delete'),
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
