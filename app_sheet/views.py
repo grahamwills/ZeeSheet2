@@ -16,7 +16,7 @@ from django.views.generic import UpdateView
 
 import main
 from layout.content import ExtentTooSmallError
-from .forms import NewUserForm, SheetDetailsForm
+from .forms import NewUserForm
 from .models import Sheet
 
 
@@ -96,25 +96,6 @@ class SheetDelete(UpdateView):
     success_url = reverse_lazy('home')
 
 
-def show_details(request, sheet_id=None):
-    # if this is a POST request we need to process the form data
-    csd = None
-    if request.method == 'POST':
-        # create a form instance and populate it with data from the request:
-        form = SheetDetailsForm(request.POST)
-        # check whether it's valid:
-        if form.is_valid():
-            form.save()
-            return redirect("home")
-    elif sheet_id is not None:
-        csd = get_object_or_404(Sheet, pk=sheet_id)
-        form = SheetDetailsForm(instance=csd)
-    else:
-        form = SheetDetailsForm()
-        csd = {'name':'New Sheet', 'system': 'System Not Yet Defined'}
-    return render(request, 'app_sheet/sheet_form.html', {'form': form, 'sheet':csd})
-
-
 def show_sheet(request, sheet_id, edit_content=None, pdf_file=None):
     csd = get_object_or_404(Sheet, pk=sheet_id)
     return render(
@@ -184,7 +165,7 @@ def action_dispatcher(request, sheet_id):
         # Save the content to saved
         csd.content = edit_content
         if request.user == csd.owner:
-            return redirect('sheet-update', sheet_id=sheet_id)
+            return redirect('sheet-update', pk=sheet_id)
         else:
             return HttpResponseForbidden('you are not the owner of this sheet')
     if 'revert' in request.POST:

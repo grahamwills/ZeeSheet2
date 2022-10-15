@@ -1,15 +1,13 @@
 """
 Definition of forms.
 """
-from crispy_forms.helper import FormHelper
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from django.forms import ModelForm
-from django.utils.translation import gettext_lazy as _
 
-from app_sheet.models import Sheet
+from django.utils.translation import gettext_lazy as _
 
 
 class BootstrapAuthenticationForm(AuthenticationForm):
@@ -37,11 +35,3 @@ class NewUserForm(UserCreationForm):
         if commit:
             user.save()
         return user
-
-
-class SheetDetailsForm(ModelForm):
-    helper = FormHelper()
-
-    class Meta:
-        model = Sheet
-        fields = ("name", "system", "is_shared", "image1", "image2", "image3")
