@@ -176,10 +176,10 @@ class ColumnPacker:
         fit.height = y
         return fit, space_is_full
 
-    def place_table(self) -> PlacedGroupContent:
+    def place_table(self, equal:bool) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
 
-        width_choices = self.choose_widths(need_gaps=True)
+        width_choices = self.choose_widths(need_gaps=True, equal_column_widths=equal)
 
         if len(width_choices) > 1:
             LOGGER.debug("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
@@ -203,13 +203,19 @@ class ColumnPacker:
         # Polishing optimizing code used to be here. It didn't help enough to keep
         return best
 
-    def choose_widths(self, need_gaps: bool):
+    def choose_widths(self, need_gaps: bool, equal_column_widths: bool):
 
         available_space = self.bounds.width
         if need_gaps:
             # Padding between cells and on the far left and far right
             col_gap = self.average_spacing.horizontal / 2
             available_space -= col_gap * (self.k + 1)
+
+
+        if equal_column_widths:
+            # This makes it very simple
+            equal = [available_space/self.k] * self.k
+            return [equal]
 
         # Simplest possible option -- all equal
         # Find the ideal granularity -- the width 'steps' that we can use to define multiples of
@@ -277,11 +283,8 @@ class ColumnPacker:
         placed_children.location = bounds.top_left
         return placed_children
 
-    def place_in_columns(self, width_allocations: List[float] = None) -> PlacedGroupContent:
-        if width_allocations:
-            width_choices = [width_allocations]
-        else:
-            width_choices = self.choose_widths(need_gaps=False)
+    def place_in_columns(self, equal: bool = False) -> PlacedGroupContent:
+        width_choices = self.choose_widths(need_gaps=False, equal_column_widths=equal)
 
         LOGGER.info("[{}] Placing {} items in {} columns using {} width options",
                     self.debug_name, self.n, self.k, len(width_choices))

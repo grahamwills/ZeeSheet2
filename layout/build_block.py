@@ -159,7 +159,7 @@ def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> 
         debug_name = common.name_of(block)
         packer = BlockTablePacker(debug_name, item_bounds, block.children,
                                   block.column_count(), block.options.style, quality, pdf)
-        return packer.place_table()
+        return packer.place_table(equal=block.options.equal)
     else:
         return None
 
@@ -168,7 +168,7 @@ def place_block_title(block: Block, bounds: Rect, quality: str, pdf: PDF) -> Opt
     debug_name = common.name_of(block)
     k = len(block.title.children)
     packer = BlockTablePacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
-    return packer.place_table()
+    return packer.place_table(equal=block.options.equal)
 
 
 class BlockTablePacker(ColumnPacker):

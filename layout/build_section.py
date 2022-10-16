@@ -23,7 +23,8 @@ def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> P
         blocks = blocks + [build_block.tiny_block()]
 
     sp = SectionPacker(common.name_of(section), content_bounds, blocks, k, pdf, quality=quality)
-    content = sp.place_in_columns()
+
+    content = sp.place_in_columns(equal=section.options.equal)
 
     # Make the frame
     frame_bounds = section_style.box.outset_to_border(content.bounds)

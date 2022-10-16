@@ -62,10 +62,8 @@ Sheet
 -----
 
 The sheet is the top level object. It consists of a list of sections and can be given the following options
-using the following syntax::
+using the following syntax and table of options::
     .. sheet:: {options}
-
-Sheet Options
 
 ======================= =========================== =====================================================
 Name                    Example                     Description
@@ -75,30 +73,54 @@ height                  height=800                  Page height in pixels, or wi
 columns                 columns=2                   (experimental) Layout the sections in columns
 quality                 quality=low                 Trade speed for quality in layout (low, medium, high, extreme)
 debug                   debug                       Set to turn on debugging mode
-style                   style='name'                Define a style for each page (see styles documentation)
+style                   style=my_style_1            Define a style for each page (see styles documentation)
 image                   image=1                     Set an image to use as a page background (1,2,3 or 0 for none)
-*image-?????*           *various options*           Set image options (see image documentation)
+image-mode              image-mode=stretch          image draw mode (see image documentation)
+image-width             image-width=2in             image preferred width (see image documentation)
+image-height            image-height=5cm            image preferred height (see image documentation)
+image-anchor            image-anchor=nw             placement within frame (see image documentation)
+image-brightness        image-brightness=50%        modification to image brightness (see image documentation)
+image-contrast          image-contrast=120%         modification to image contrast (see image documentation)
 ======================= =========================== =====================================================
+
+
+
 
 Sections
 --------
 
-A sheet starts with a default unnamed section. If you define a section before other content, it will be
-replaced with that section. Sections are defined as an underlined title, like so::
+Each sheet contain at least one section. If you set section options before adding any content to the section,
+then the options will be appleid to that section. Once you define content for a section, then a section
+directive will start a new section with the options given (if any)
 
-    Best Section Ever
-    -----------------
+    .. section:: {options}
 
-Note that section titles cannot span multiple lines.
+======================= =========================== =====================================================
+Name                    Example                     Description
+======================= =========================== =====================================================
+columns                 columns=3                   Number of columns to use to lay out the section
+equal                   equal                       If set, columns will all be the same width
+image                   image=1                     Set an image to use as a section background (1,2,3 or 0 for none)
+image-mode              image-mode=stretch          image draw mode (see image documentation)
+image-width             image-width=2in             image preferred width (see image documentation)
+image-height            image-height=5cm            image preferred height (see image documentation)
+image-anchor            image-anchor=nw             placement within frame (see image documentation)
+image-brightness        image-brightness=50%        modification to image brightness (see image documentation)
+image-contrast          image-contrast=120%         modification to image contrast (see image documentation)
+======================= =========================== =====================================================
 
+Sections contain multiple blocks, and those blocks are laid out newspaper-style with the number of columns
+defined by the section options. Blocks are placed into the first column until it is filled, and then into
+the second and so on.
 
-To start a new section, simply add a new heading, like the one above.
+If 'equal' has been defiend as an option, then the column widths will all be the same. Otehrwise, their
+widths will be dynamically chosen to make the layout look good by minimizing breaks, trying to get the columns
+a similar height and so on. This can be a slow algorithm as it tries out many combinations, and this is where the
+sheet 'quality' setting comes in; the higher the quality, the more combiantions are tried and the slower the process.
 
-.. note:: You can use equal signs or a few other symbols to underline if you prefer,
-          but you must be consistent; don't mix two different styles!
-
-
-
+.. hint:: If the layout is slow, set the 'equal' option toa void the complex calcuation until the content looks
+          good. Alternatively, you could lower the quality and switch it to a high setting when you are happy with
+          the overall look and want to make it perfect!
 
 Blocks
 ------

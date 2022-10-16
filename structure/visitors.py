@@ -50,7 +50,7 @@ def _line_of(node: docutils.nodes.Node):
 def _apply_option_definitions(owner: str, definitions: Dict[str, str], options):
     for k, v in definitions.items():
         try:
-            _set_option(options, owner, k, v)
+            _set_option(options, k, v)
         except AttributeError:
             warnings.warn(message_unknown_attribute(owner, k, 'option'))
         except ValueError:
@@ -59,19 +59,19 @@ def _apply_option_definitions(owner: str, definitions: Dict[str, str], options):
             warnings.warn(message_bad_value(owner, k, str(ex), 'option'))
 
 
-def _set_option(options, owner, k, v):
+def _set_option(options, k, v):
     if k == 'style':
         options.style = v
     elif k == 'title-style':
         options.title_style = v
-    elif k == 'method' and owner == 'block':
+    elif k == 'method':
         choices = ('table', 'attributes')
         if v.lower() in choices:
             options.method = v.lower()
         else:
             message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
             raise RuntimeError(message)
-    elif k == 'columns' and owner != 'block':
+    elif k == 'columns':
         i = int(v)
         if 1 <= i <= 8:
             options.columns = i
