@@ -162,7 +162,7 @@ class TextStyle:
         elif key == 'opacity':
             self.opacity = txt2fraction(value)
         elif key in {'align', 'alignment'}:
-            validate_value(key, value, ('left', 'right', 'center'))
+            validate_value(key, value, ('left', 'right', 'center', 'auto'))
             self.align = value
         elif key in {'alignlast', 'alignmentlast', 'lastalign', 'lastalignmeent'}:
             validate_value(key, value, ('left', 'right', 'same', 'auto'))
@@ -447,7 +447,7 @@ class StyleDefaults(metaclass=process_definitions):
     BRIGHT = 1 - DARK
 
     DEFINITIONS = '''
-        default =   inherit:# text-color:auto text-opacity:1 text-align:left text-align-last:same text-indent:4 
+        default =   inherit:# text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4 
                     font:Montserrat font-size:10 font-face:Regular font-spacing:100%
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2 effect:none effect-size:3
@@ -458,8 +458,8 @@ class StyleDefaults(metaclass=process_definitions):
         sheet =     inherit:default padding:0.25in margin:0 border:none background:none
         hidden =    inherit:default margin:0 padding:0 font-size:1 border:none 
         
-        attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' align:center box-effect:rounded
-        attributes-title =  inherit:default-title font-size:22 margin:2 padding:6 text-color:yellow align:center
+        attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' align:auto box-effect:rounded
+        attributes-title =  inherit:default-title font-size:22 margin:2 padding:6 text-color:yellow align:auto
     '''
 
     @classmethod

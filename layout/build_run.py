@@ -15,12 +15,14 @@ def _build_run(run: Run, width: float, style: Style, pdf: PDF) -> PlacedRunConte
     return RunBuilder(run, style, width, pdf).build()
 
 
-def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: str = None) -> PlacedRunContent:
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, auto_align: str = None) -> PlacedRunContent:
     placed = _build_run(run, extent.width, style, pdf)
     if placed.extent.height > extent.height:
         raise ExtentTooSmallError()
 
-    align = forced_align or style.text.align
+    align = style.text.align
+    if align == 'auto':
+        align = auto_align
 
     if align == 'right':
         dx = extent.width - placed.extent.width
