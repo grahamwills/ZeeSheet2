@@ -45,17 +45,15 @@ class ColumnPacker:
         self.bounds = bounds
         self.max_width_combos = max_width_combos
         self.average_spacing = self._average_spacing()
+        self.col_gap = self.average_spacing.horizontal / 2
+        self.row_gap = self.average_spacing.vertical / 2
+        self.quality_table: list[list[PlacementQuality or None]] = [[None] * self.n for _ in range(0, self.k)]
+        self.column_left = [0.0] * self.k
+        self.column_right = [0.0] * self.k
 
-        # Forces alignments for columns (left, any middle columns, right)
-        #  L is left aligned, C is centered, R is right. Anything else is as per the default style
-        self.alignments = '...'
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
-        raise NotImplementedError('This method must be defined by an inheriting class')
-
-    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
-        """ Return true if the item exists """
         raise NotImplementedError('This method must be defined by an inheriting class')
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
@@ -74,7 +72,8 @@ class ColumnPacker:
         bottom = sum(self.margins_of_item(i).bottom for i in range(0, n))
         return Spacing(left / n, right / n, top / n, bottom / n)
 
-    def _place_in_sized_columns(self, widths: list[float]) -> tuple[PlacedGroupContent, list[int]]:
+    def _place_in_sized_columns(self, widths: list[float], unplaced_limit: int
+                                ) -> tuple[PlacedGroupContent or None, list[int] or None]:
 
         # Strategy: Fill the columns from left to right, then try moving to even out column heights
         # Start with as many as possible in the first column, then one in each other
@@ -109,6 +108,9 @@ class ColumnPacker:
 
         fits = self.post_placement_modifications(fits)
         result = self.fits_to_content(fits)
+        if result.quality.unplaced > unplaced_limit:
+            # Does not fit well enough to continue
+            return None, None
 
         # Try moving from the tallest column
         while True:
@@ -135,7 +137,7 @@ class ColumnPacker:
         cell_qualities = [[cell.quality for cell in column.items] for column in fits]
         heights = [column.height for column in fits]
         unplaced_count = self.n - len(all_items)
-        q = layout.quality.for_columns('Columnar', heights, cell_qualities, unplaced=unplaced_count)
+        q = layout.quality.for_columns(heights, cell_qualities, unplaced=unplaced_count)
         return PlacedGroupContent.from_items(all_items, q, extent=ext)
 
     @lru_cache
@@ -239,41 +241,40 @@ class ColumnPacker:
         return results
 
     def place_table_given_widths(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
-        col_gap = self.average_spacing.horizontal / 2
-        row_gap = self.average_spacing.vertical / 2
-        top = self.average_spacing.top
-        bottom = top
+        col_gap = self.col_gap
+        row_gap = self.row_gap
+        bottom = top = self.average_spacing.top
         placed_items = []
-        quality_table: list[list[PlacementQuality or None]] = [[None] * self.n for _ in column_sizes]
 
-        column_left = [0.0] * self.k
-        column_right = [0.0] * self.k
-        column_left[0] = self.average_spacing.left
-        column_right[0] = column_left[0] + column_sizes[0]
+        lefts = self.column_left
+        rights = self.column_right
+
+        lefts[0] = self.average_spacing.left
+        rights[0] = lefts[0] + column_sizes[0]
         for i in range(1, self.k):
-            column_left[i] = column_left[i - 1] + column_sizes[i - 1] + col_gap
-            column_right[i] = column_left[i] + column_sizes[i]
+            lefts[i] = lefts[i - 1] + column_sizes[i - 1] + col_gap
+            rights[i] = lefts[i] + column_sizes[i]
 
         for row in range(0, self.n):
             max_row_height = bounds.bottom - top
             for col in range(0, self.k):
                 index = (row, col)
-                if self.item_exists(index):
-                    span = self.span_of_item(index)
-                    left = column_left[col]
-                    right = column_right[col + span - 1]
+                span = self.span_of_item(index)
+                if span:
+                    left = lefts[col]
+                    right = rights[col + span - 1]
                     placed_cell = self.place_item(index, Extent(right - left, max_row_height))
                     placed_items.append(placed_cell)
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
-                    quality_table[col][row] = placed_cell.quality
+                    self.quality_table[col][row] = placed_cell.quality
 
             # Update the top for the next row
             top = bottom + row_gap
         # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
         table_bottom = bottom + self.average_spacing.bottom
         extent = Extent(bounds.extent.width, table_bottom)
-        table_quality = layout.quality.for_table('Group', quality_table, 0)
+        table_quality = layout.quality.for_table(self.quality_table, 0)
         placed_children = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         placed_children.location = bounds.top_left
         return placed_children
@@ -287,11 +288,13 @@ class ColumnPacker:
         best = None
         best_combo = None
 
+        least_unplaced = 999999
         for widths in width_choices:
             try:
-                trial, counts = self._place_in_sized_columns(widths)
-                if trial.better(best):
+                trial, counts = self._place_in_sized_columns(widths, least_unplaced)
+                if trial and trial.better(best):
                     best = copy(trial)
+                    least_unplaced = best.quality.unplaced
                     best_combo = widths, counts
                     LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
                                  self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],

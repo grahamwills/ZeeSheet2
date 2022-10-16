@@ -341,8 +341,7 @@ class PlacedImageContent(PlacedContent):
     def shrink_to_fit(self, bottom: float) -> float:
         dy = self.bounds.bottom - bottom
         self.extent = self.extent - Extent(0, dy)
-        self.quality = layout.quality.for_image(self.quality.target, self.mode, self.desired, self.image_bounds(),
-                                                self.bounds)
+        self.quality = layout.quality.for_image(self.mode, self.desired, self.image_bounds(), self.bounds)
         return dy
 
     def _draw(self, pdf: PDF):
@@ -367,7 +366,7 @@ def make_frame(bounds: Rect, style: Style,
                                options.image_brightness, options.image_contrast,
                                force_to_top=False)
             if box:
-                return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration(bounds))
+                return PlacedGroupContent.from_items([box, image], layout.quality.for_decoration())
             else:
                 return image
 
@@ -382,7 +381,7 @@ def make_frame_box(bounds: Rect, style: Style) -> Optional[PlacedRectContent]:
         if s.has_border():
             # Inset because the stroke is drawn centered around the box, and we want it drawn just within
             bounds = bounds - Spacing.balanced(s.width / 2)
-        return PlacedRectContent(bounds, style, layout.quality.for_decoration(bounds))
+        return PlacedRectContent(bounds, style, layout.quality.for_decoration())
     else:
         return None
 
@@ -401,7 +400,7 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
 
     content = PlacedImageContent(image, Extent(width, height), mode, anchor, bounds, brightness, contrast)
     image_bounds = content.image_bounds()
-    content.quality = layout.quality.for_image(image, mode, Extent(width, height), image_bounds, bounds)
+    content.quality = layout.quality.for_image(mode, Extent(width, height), image_bounds, bounds)
     if force_to_top:
         # We do this when it is the only content of a block as we don't want that extra space on top
         content.location = Point(content.location.x, bounds.top)

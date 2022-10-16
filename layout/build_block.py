@@ -52,7 +52,7 @@ def make_title(block: Block, inner: Rect, quality: str, extra_space: float, pdf:
     if extra_space:
         plaque_rect_to_draw = plaque_rect_to_draw + Spacing(extra_space, extra_space, extra_space, 0)
 
-    plaque_quality = layout.quality.for_decoration('title')
+    plaque_quality = layout.quality.for_decoration()
     plaque = PlacedRectContent(plaque_rect_to_draw, title_style, plaque_quality)
     title_extent = plaque_rect.extent + title_style.box.margin
     spacing = Spacing(0, 0, title_extent.height, 0)
@@ -139,13 +139,13 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 
     block_extent = Extent(size.width, total_height)
     cell_qualities = [i.quality for i in items]
-    block_quality = layout.quality.for_columns(block, [total_height], [cell_qualities], 0)
+    block_quality = layout.quality.for_columns([total_height], [cell_qualities], 0)
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
     if not result.clip_item:
         # I am not sure why this is needed
         modified_bounds = frame_bounds - Spacing(0, 0, 0, extra_space)
-        result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration(block))
+        result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration())
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:
@@ -207,16 +207,17 @@ class BlockTablePacker(ColumnPacker):
         # All block items share common margins
         return self.content_style.box.padding
 
-    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
-        return item_index in self.item_map
-
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
         item = self.item_map[idx]
         align = self.alignments[idx[1]]
         return build_run.place_run(item, extent, self.content_style, self.pdf, align)
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
-        return self.span_map[idx]
+        try:
+            return self.span_map[idx]
+        except KeyError:
+            # Does not exist
+            return 0
 
 
 def tiny_block() -> Block:

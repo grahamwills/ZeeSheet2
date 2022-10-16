@@ -46,9 +46,6 @@ class SectionPacker(ColumnPacker):
         max_combos = self.QUALITY_TO_COMBOS[quality.lower()]
         super().__init__(debug_name, bounds, len(items), column_count, max_combos)
 
-    def item_exists(self, item_index: Union[int, Tuple[int, int]]) -> bool:
-        return True
-
     def span_of_item(self, item_index: Union[int, Tuple[int, int]]) -> int:
         return 1
 

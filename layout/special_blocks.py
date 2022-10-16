@@ -86,11 +86,11 @@ class AttributeTableBuilder:
 
         bounds = Rect(0, self.extent.width, 0, top)
 
-        q_decoration = layout.quality.for_decoration(self.block)
+        q_decoration = layout.quality.for_decoration()
         placed_attributes = PlacedRunContent(attributes, self.style, bounds.extent, q_decoration, bounds.top_left)
         placed_values = PlacedRunContent(values, self.style2, bounds.extent, q_decoration, bounds.top_left)
 
-        quality = layout.quality.for_wrapping(self.block, excess, 0, 0)
+        quality = layout.quality.for_wrapping(excess, 0, 0)
         path = PlacedPathContent(coords, bounds, self.style, quality)
 
         return PlacedGroupContent.from_items([path, placed_attributes, placed_values], quality, bounds.extent)

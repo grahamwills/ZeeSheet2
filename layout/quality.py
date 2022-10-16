@@ -46,7 +46,6 @@ class PlacementQuality(Generic[T]):
 
     """
 
-    target: T
     method: LayoutMethod
     count: int = 0
     excess_ss: float = None
@@ -133,11 +132,10 @@ class PlacementQuality(Generic[T]):
         return ', '.join(parts)
 
     def __str__(self):
-        name = common.name_of(self.target)
         if self.count:
-            head = f"{common.name_of(name)}: {self.method.name}({self.count})"
+            head = f"{self.method.name}({self.count})"
         else:
-            head = f"{common.name_of(name)}: {self.method.name}"
+            head = self.method.name
 
         parts = self.str_parts()
         if parts:
@@ -149,27 +147,30 @@ class PlacementQuality(Generic[T]):
         raise RuntimeError('Conversion to boolean is confusing; do not call this')
 
 
-def for_wrapping(target: T, excess_width: float, bad_breaks: int, good_breaks: int) -> PlacementQuality[T]:
+def for_wrapping(excess_width: float, bad_breaks: int, good_breaks: int) -> PlacementQuality[T]:
     """ Define a quality for a text wrapping """
-    return PlacementQuality(target, LayoutMethod.WRAPPING, count=1, excess_ss=excess_width * excess_width,
+    return PlacementQuality(LayoutMethod.WRAPPING, count=1, excess_ss=excess_width * excess_width,
                             bad_breaks=bad_breaks, good_breaks=good_breaks)
 
 
-def for_image(target: T, mode, desired: Extent, drawn: Rect, outer: Rect) -> PlacementQuality[T]:
+def for_image(mode, desired: Extent, drawn: Rect, outer: Rect) -> PlacementQuality[T]:
     shrinkage = max(desired.area / drawn.area - 1, 0) if mode == 'normal' else 0
     excess = outer.width - drawn.width
-    return PlacementQuality(target, LayoutMethod.IMAGE, count=1, excess_ss=excess ** 2, image_shrinkage=shrinkage)
+    return PlacementQuality(LayoutMethod.IMAGE, count=1, excess_ss=excess ** 2, image_shrinkage=shrinkage)
 
 
-def for_decoration(target: T) -> PlacementQuality[T]:
+_DECORATION_QUALITY = PlacementQuality(LayoutMethod.NONE)
+
+
+def for_decoration() -> PlacementQuality[T]:
     """ Define a quality for anything that does not care about layout"""
-    return PlacementQuality(target, LayoutMethod.NONE)
+    return _DECORATION_QUALITY
 
 
-def for_table(target: T, cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
+def for_table(cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
-    q = PlacementQuality(target, LayoutMethod.TABLE, excess_ss=0, unplaced=unplaced)
+    q = PlacementQuality(LayoutMethod.TABLE, excess_ss=0, unplaced=unplaced)
     for row in cells_columnwise:
         min_excess2 = None
         for cell in row:
@@ -188,10 +189,10 @@ def for_table(target: T, cells_columnwise: list[list[PlacementQuality]], unplace
     return q
 
 
-def for_columns(target: T, actual_heights: list[int],
-                cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
+def for_columns(actual_heights: list[int], cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> \
+PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
-    q = for_table(target, cells_columnwise, unplaced)
+    q = for_table(cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
     q.height_dev = max(actual_heights) * len(cells_columnwise) - sum(actual_heights)
     return q
