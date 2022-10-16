@@ -8,6 +8,7 @@ from typing import Optional, Tuple, Union, List
 import common
 import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations, items_in_bins_counts
+from layout import PlacementQuality
 from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
 
 LOGGER = configured_logger(__name__)
@@ -176,7 +177,7 @@ class ColumnPacker:
         fit.height = y
         return fit, space_is_full
 
-    def place_table(self, equal:bool) -> PlacedGroupContent:
+    def place_table(self, equal: bool) -> PlacedGroupContent:
         """ Expect to have the table structure methods defined and use them for placement """
 
         width_choices = self.choose_widths(need_gaps=True, equal_column_widths=equal)
@@ -211,10 +212,9 @@ class ColumnPacker:
             col_gap = self.average_spacing.horizontal / 2
             available_space -= col_gap * (self.k + 1)
 
-
         if equal_column_widths:
             # This makes it very simple
-            equal = [available_space/self.k] * self.k
+            equal = [available_space / self.k] * self.k
             return [equal]
 
         # Simplest possible option -- all equal
@@ -243,36 +243,33 @@ class ColumnPacker:
     def place_table_given_widths(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
         col_gap = self.average_spacing.horizontal / 2
         row_gap = self.average_spacing.vertical / 2
-
         top = self.average_spacing.top
         bottom = top
         placed_items = []
-        quality_table = [[] for _ in column_sizes]
+        quality_table:list[list[PlacementQuality or None]] = [[None] * self.n for _ in column_sizes]
+
+        column_left = [0.0] * self.k
+        column_right = [0.0] * self.k
+        column_left[0] = self.average_spacing.left
+        column_right[0] = column_left[0] + column_sizes[0]
+        for i in range(1, self.k):
+            column_left[i] = column_left[i - 1] + column_sizes[i - 1] + col_gap
+            column_right[i] = column_left[i] + column_sizes[i]
+
         for row in range(0, self.n):
-            left = self.average_spacing.left
             max_row_height = bounds.bottom - top
             for col in range(0, self.k):
                 index = (row, col)
                 if self.item_exists(index):
-                    column_width = column_sizes[col]
                     span = self.span_of_item(index)
-                    if span == 1:
-                        cell_extent = Extent(column_width, max_row_height)
-                    else:
-                        # Add up widths to find the correct column width (don't forget the gaps!)
-                        combined = sum(i for i in column_sizes[col:col + span]) + (span - 1) * col_gap
-                        cell_extent = Extent(combined, max_row_height)
-
-                    placed_cell = self.place_item(index, cell_extent)
-                    cell_quality = placed_cell.quality
+                    left = column_left[col]
+                    right = column_right[col + span - 1]
+                    placed_cell = self.place_item(index, Extent(right - left, max_row_height))
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     placed_items.append(placed_cell)
-                    quality_table[col].append(cell_quality)
-                else:
-                    quality_table[col].append(None)
+                    quality_table[col][row] = placed_cell.quality
 
-                left += cell_extent.width + col_gap
             # Update the top for the next row
             top = bottom + row_gap
         # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
