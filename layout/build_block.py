@@ -186,9 +186,14 @@ class BlockTablePacker(ColumnPacker):
         super().__init__(debug_name, bounds, len(items), column_count, max_width_combos)
         self.alignments = '.CR'
 
+        # Set defautl alignments
+        self.alignments = ['center'] * self.k
+        self.alignments[-1] = 'right'
+        self.alignments[0] = 'left'
+
+        # Set maps for cells and spans
         self.item_map = {}
         self.span_map = {}
-
         for r, row in enumerate(items):
             for c, item in enumerate(row):
                 self.item_map[(r, c)] = item
@@ -207,22 +212,7 @@ class BlockTablePacker(ColumnPacker):
 
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
         item = self.item_map[idx]
-
-        # Force alignment if required
-        align_char = self.alignments[1]
-        if idx[1] == 0:
-            align_char = self.alignments[0]
-        elif idx[1] == self.k - 1:
-            align_char = self.alignments[-1]
-        if align_char == 'L':
-            align = 'left'
-        elif align_char == 'R':
-            align = 'right'
-        elif align_char == 'C':
-            align = 'center'
-        else:
-            align = None
-
+        align = self.alignments[idx[1]]
         return build_run.place_run(item, extent, self.content_style, self.pdf, align)
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:

@@ -200,8 +200,6 @@ class ColumnPacker:
                 pass
         if best is None:
             raise ExtentTooSmallError('All width choices failed to produce a good fit')
-
-        # Polishing optimizing code used to be here. It didn't help enough to keep
         return best
 
     def choose_widths(self, need_gaps: bool, equal_column_widths: bool):
@@ -246,7 +244,7 @@ class ColumnPacker:
         top = self.average_spacing.top
         bottom = top
         placed_items = []
-        quality_table:list[list[PlacementQuality or None]] = [[None] * self.n for _ in column_sizes]
+        quality_table: list[list[PlacementQuality or None]] = [[None] * self.n for _ in column_sizes]
 
         column_left = [0.0] * self.k
         column_right = [0.0] * self.k
@@ -265,9 +263,9 @@ class ColumnPacker:
                     left = column_left[col]
                     right = column_right[col + span - 1]
                     placed_cell = self.place_item(index, Extent(right - left, max_row_height))
+                    placed_items.append(placed_cell)
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
-                    placed_items.append(placed_cell)
                     quality_table[col][row] = placed_cell.quality
 
             # Update the top for the next row
