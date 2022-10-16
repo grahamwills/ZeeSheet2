@@ -118,22 +118,51 @@ widths will be dynamically chosen to make the layout look good by minimizing bre
 a similar height and so on. This can be a slow algorithm as it tries out many combinations, and this is where the
 sheet 'quality' setting comes in; the higher the quality, the more combiantions are tried and the slower the process.
 
-.. hint:: If the layout is slow, set the 'equal' option toa void the complex calcuation until the content looks
+.. note:: If the layout is slow, set the 'equal' option to avoid the complex calculation until the content looks
           good. Alternatively, you could lower the quality and switch it to a high setting when you are happy with
           the overall look and want to make it perfect!
 
 Blocks
 ------
 
-Any block of text that has no indentation and is surrounded by blank lines defines a new block
-with that text as the title. It's legal for the block title to span multiple lines, but it's
-not a great idea to have long block titles, so in general, try and keep them short.
+Blocks are the fundamental unit that contains information to display on a sheet. Blocks may contain a **title**
+and **content**.
 
-.. note:: You must separate a block title from its items by a blank line in all cases.
+The general format of a block looks like this:
+
+    .. block:: options
+
+       block title
+
+       - first block item
+       - second block item
+
+.. note:: You must separate a block title from its items by a blank line
+
+Block options are optional -- any text on a new line with a blank line before it defines a new block,
+whether or not options have been defined. Furthermore, the options for a new block are coptied from the previous
+ones, so if you change (say) the style for one block, that will be the style used for all subsequent blocks
+in the document until you set a new style in a block options.
+
+Titles and content items in a block can contain multiple parts, separated by a '|' symbol
+(often called a *pipe symbol*). When the block method is `table` -- the default -- then the pipe symbol
+divides up a row into columns; the first part is the in the first column, the second in the second, etc. Some
+notes for tables:
+
+* The number of columns in a table is equal to the number of columns in the row with the most columns
+* The last part in a row fills all the remaining columns to the right of the table.
+* By default, the right column is right aligned.
+* If there are more than two columns, the central columns are center aligned
+
+When the block method is `attributes`, then each itme is expected to have two or three parts.
+The first is the name of an attribute, the second its value and the third is a optional 'other value'.
+These are drawn in a specific block layout for that attribute
 
 
 Items
 -----
+
+As mentioned above, items form the content of blocks.
 
 An item is defined using a list item prefix, a dash or a bullet.
 If an item text is long, then when you wrap it, make sure you indent subsequent lines to keep them part
@@ -148,30 +177,21 @@ Here is an example of a block with three items::
       tribes to the east, and won much glory
     - Settled in the south
 
-
-Special Text Markup
-===================
-
-Anytime text is defined for viewing (item content, block and section markers) it can be simple text
-or it can contain special markup. Here is a list of the markup allowed:
-
-Bold and Italic
-  Use single or double asterisks around simple text to indicate italic or bold content.
-  There must be no whitespace between the asterisks and the content.
-
-Literal tags
-  To ensure that text is processed as literal text with no processing, use two back-quotes around
-  the content. The enclosed content can span lines if desired
+items can be divided up into part by pipe symbols, and within each part further special markup is allowed:
 
 
-Examples
---------
+======================= =========================== =====================================================
+Type                    Examples                    Notes
+======================= =========================== =====================================================
+Check Box               [X] or [ ]                  Exactly one character must be present between the square braces
+Text Field              [[ abc ]]                   Text inside is placed in the editable field
+Literal                 ``*asterisks are fun``      Anything between double back-quotes is treated as simple text
+Bold                    **wow**                     asterisks must surround words, not white space
+Italic                  *gosh*                      asterisks must surround words, not white space
+Script Variable         {level}                     the value of a *script variable*
+======================= =========================== =====================================================
 
-.. code-block::
+For text fields, the width of them (use blank spaces just to make them longer) is taken as a hint as to the size
+you want them to be, but when actually placed in a block, they will fill up the available space.
 
-    Asterisks denote **bold** or *italic* text
-
-    ``This is literal text. Special characters are ignored,
-    such as *these*, [ ]``.
-
-
+Script Variables are covered later in the **Scripts** topic.

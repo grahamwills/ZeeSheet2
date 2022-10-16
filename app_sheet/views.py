@@ -188,7 +188,7 @@ def action_dispatcher(request, sheet_id):
             try:
                 pdf_bytes = doc.data()
                 file_name = f"sheets/{request.user.username}-sheet.pdf"
-                delete_old_sheets()
+                # delete_old_sheets()
                 path = default_storage.save(file_name, ContentFile(pdf_bytes))
                 pdf_file = path[7:]  # remove the 'sheets/' prefix
                 for w in warning_messages:
