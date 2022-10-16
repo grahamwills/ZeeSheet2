@@ -17,7 +17,7 @@ def _build_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunCon
 
 
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: str = None) -> PlacedRunContent:
-    placed = copy(_build_run(run, extent, style, pdf))
+    placed = _build_run(run, extent, style, pdf)
     align = forced_align or style.text.align
 
     if align == 'right':

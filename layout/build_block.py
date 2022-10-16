@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 

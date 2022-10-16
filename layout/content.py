@@ -121,9 +121,10 @@ class PlacedGroupContent(PlacedContent):
     clip_item: PlacedContent = None
 
     def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO):
+                 location: Point = ZERO, clip_item:PlacedContent = None):
         super().__init__(extent, quality, location)
         self.items = items
+        self.clip_item = clip_item
 
     def children(self) -> List[PlacedContent]:
         return self.items
@@ -162,7 +163,7 @@ class PlacedGroupContent(PlacedContent):
 
     def __copy__(self):
         items = [copy(g) for g in self.items]
-        return PlacedGroupContent(items, self.extent, self.quality, self.location)
+        return PlacedGroupContent(items, self.extent, self.quality, self.location, self.clip_item)
 
     def __getitem__(self, item) -> type(PlacedContent):
         return self.items[item]

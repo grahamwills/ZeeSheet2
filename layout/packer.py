@@ -193,7 +193,7 @@ class ColumnPacker:
             try:
                 placed_children = self.place_table_given_widths(column_sizes, self.bounds)
                 if placed_children.better(best):
-                    best = placed_children
+                    best = copy(placed_children)
             except ExtentTooSmallError:
                 # Skip this option
                 pass
@@ -296,7 +296,7 @@ class ColumnPacker:
             try:
                 trial, counts = self._place_in_sized_columns(widths)
                 if trial.better(best):
-                    best = trial
+                    best = copy(trial)
                     best_combo = widths, counts
                     LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
                                  self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
