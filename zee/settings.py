@@ -164,7 +164,7 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
-MEDIA_URL = '/media/'
+MEDIA_URL = 'media/'
 
 # We use bootstrap version 4
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
