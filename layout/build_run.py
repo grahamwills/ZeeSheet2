@@ -1,4 +1,3 @@
-from copy import copy
 from functools import lru_cache
 from typing import Tuple, Union
 
@@ -12,12 +11,15 @@ from structure import Style
 
 
 @lru_cache(maxsize=10000)
-def _build_run(run: Run, extent: Extent, style: Style, pdf: PDF) -> PlacedRunContent:
-    return RunBuilder(run, style, extent, pdf).build()
+def _build_run(run: Run, width: float, style: Style, pdf: PDF) -> PlacedRunContent:
+    return RunBuilder(run, style, width, pdf).build()
 
 
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, forced_align: str = None) -> PlacedRunContent:
-    placed = _build_run(run, extent, style, pdf)
+    placed = _build_run(run, extent.width, style, pdf)
+    if placed.extent.height > extent.height:
+        raise ExtentTooSmallError()
+
     align = forced_align or style.text.align
 
     if align == 'right':
@@ -134,9 +136,9 @@ def split_text(text: str,
 
 class RunBuilder:
 
-    def __init__(self, run: Run, style: Style, extent: Extent, pdf: PDF):
+    def __init__(self, run: Run, style: Style, width: float, pdf: PDF):
         self.run = run
-        self.extent = extent
+        self.width = width
         self.elements = run.children
         self.style = style
         self.font = pdf.get_font(style)
@@ -144,16 +146,12 @@ class RunBuilder:
     def build(self) -> PlacedRunContent:
 
         segments = []
-        width = self.extent.width
-        height = self.extent.height
-        # Keep same line spacing regardless of font changes
+        width = self.width
         line_spacing = self.font.line_spacing
-        if line_spacing > height:
-            raise ExtentTooSmallError()
 
         bad_breaks = breaks = 0
 
-        x = y = 0
+        x = left = y = 0
 
         textfield_on_this_line = None
         for element in self.elements:
@@ -199,9 +197,8 @@ class RunBuilder:
                                 bad_breaks += 1
 
                 if text:
-                    if x == 0 or y + line_spacing > height:
+                    if x == left:
                         # We were unable to place it and had the whole space to place into
-                        # Or the text cannot fit into the next line
                         raise ExtentTooSmallError()
 
                     # Handle any text fields on this line, expanding to fill line
@@ -210,7 +207,7 @@ class RunBuilder:
                         textfield_on_this_line = None
 
                     # Start a new line, indenting as per the style
-                    x = self.style.text.indent
+                    x = left = self.style.text.indent
                     y += line_spacing
                     text = text.lstrip()  # No leading spaces on new lines
 
@@ -225,7 +222,7 @@ class RunBuilder:
         outer = Extent(right, bottom)
 
         # Only count excess for the last lines; not using 'right' which would be for all lines
-        excess = self.extent.width - x
+        excess = self.width - x
 
         # The good breaks equals all the breaks minus the bad ones
         quality = layout.quality.for_wrapping(self.run, excess, bad_breaks, breaks - bad_breaks)
