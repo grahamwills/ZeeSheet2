@@ -87,7 +87,7 @@ def split_text(text: str,
     wid = 0
 
     first = True
-    for p in range(guess, 1, -1):
+    for p in range(guess, 0, -1):
         if text[p].isspace() and not text[p + 1].isspace():
             w = font.width(text[:p])
             if w <= width:
@@ -144,12 +144,14 @@ class RunBuilder:
         self.elements = run.children
         self.style = style
         self.font = pdf.get_font(style)
+        self.lines = []
 
     def build(self) -> PlacedRunContent:
 
         segments = []
         width = self.width
-        line_spacing = self.font.line_spacing
+        font = self.font
+        line_spacing = font.line_spacing
 
         bad_breaks = breaks = 0
 
@@ -159,14 +161,11 @@ class RunBuilder:
         for element in self.elements:
             text = element.value
             modifier = element.modifier
-            font = self.font
-            if modifier == 'emphasis' or modifier == 'strong':
-                font = font.modify(element.modifier)
 
             while text:
                 if modifier == 'checkbox':
                     # Try to place checkbox on the line
-                    w = (font.ascent + font.descent) * 1.1
+                    w = line_spacing * 0.9
                     if x + w <= width:
                         segments.append(CheckboxSegment(text == 'X', x, y, w, font))
                         x += w
@@ -181,18 +180,26 @@ class RunBuilder:
                         x += w
                         text = None
                 else:
-                    # Place as much text as possible on this line
-                    w = font.width(text)
+                    if y > 0:
+                        # No leading whitespace on second and subsequent lines
+                        text = text.lstrip()
+
+                    if modifier:
+                        fnt = font.modify(modifier)
+                    else:
+                        fnt = font
+
+                    w = fnt.width(text)
                     if x + w <= width:
                         # Happy path; it all fits
-                        segments.append(TextSegment(text, x, y, w, font))
+                        segments.append(TextSegment(text, x, y, w, fnt))
                         x += w
                         text = None
                     else:
                         # Need to split the line
-                        p, w, is_bad = split_text(text, font, width - x, w, x > 0)
+                        p, w, is_bad = split_text(text, fnt, width - x, w, x > 0)
                         if p > 0:
-                            segments.append(TextSegment(text[:p], x, y, w, font))
+                            segments.append(TextSegment(text[:p], x, y, w, fnt))
                             x += w
                             text = text[p:]
                             if is_bad:
@@ -211,25 +218,22 @@ class RunBuilder:
                     # Start a new line, indenting as per the style
                     x = left = self.style.text.indent
                     y += line_spacing
-                    text = text.lstrip()  # No leading spaces on new lines
-
                     breaks += 1
 
         # Handle any text fields on this line, expanding to fill line
         if textfield_on_this_line is not None:
             self.expand_field_size(segments, textfield_on_this_line, width - x)
 
-        bottom = y + line_spacing
-        right = max(s.x + s.width for s in segments)
-        outer = Extent(right, bottom)
+        # Set the extent to cover the whole space
+        right = max(s.right for s in segments)
+        outer = Extent(right, y + line_spacing)
 
         # Only count excess for the last lines; not using 'right' which would be for all lines
         excess = self.width - x
 
         # The good breaks equals all the breaks minus the bad ones
         quality = layout.quality.for_wrapping(excess, bad_breaks, breaks - bad_breaks)
-        content = PlacedRunContent(segments, self.style, outer, quality)
-        return content
+        return PlacedRunContent(segments, self.style, outer, quality)
 
     @staticmethod
     def expand_field_size(segments: list[Union[TextFieldSegment, CheckboxSegment, TextSegment]],

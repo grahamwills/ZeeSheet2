@@ -12,7 +12,8 @@ import common
 import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
-from drawing import TextSegment, PDF, coords_to_path
+from drawing import PDF, coords_to_path
+from drawing.pdf import Segment
 from layout.quality import PlacementQuality
 from structure import CommonOptions, to_color
 from structure import ImageDetail
@@ -115,15 +116,13 @@ class PlacedContent(abc.ABC):
 
 
 class PlacedGroupContent(PlacedContent):
-
-
     DEBUG_STYLE = ('#C70A80', 0.25, 0.1, 3, None)
 
     items: List[PlacedContent] = None
     clip_item: PlacedContent = None
 
     def __init__(self, items: List[PlacedContent], extent: Extent, quality: PlacementQuality,
-                 location: Point = ZERO, clip_item:PlacedContent = None):
+                 location: Point = ZERO, clip_item: PlacedContent = None):
         super().__init__(extent, quality, location)
         self.items = items
         self.clip_item = clip_item
@@ -131,10 +130,8 @@ class PlacedGroupContent(PlacedContent):
     def drawn_bounds(self) -> Rect:
         return Rect.union(p.drawn_bounds() for p in self.items) + self.location
 
-
     def as_path(self) -> Path:
         raise NotImplementedError('Grouped content does not provide a path')
-
 
     def children(self) -> List[PlacedContent]:
         return self.items
@@ -194,10 +191,10 @@ class PlacedRunContent(PlacedContent):
 
     DEBUG_STYLE = ('#590696', 0.75, 0.1, 1, None)
 
-    segments: List[TextSegment]  # base text pieces
+    segments: List[Segment]  # base text pieces
     style: Style  # Style for this item
 
-    def __init__(self, segments: List[TextSegment], style: Style, extent: Extent, quality: PlacementQuality,
+    def __init__(self, segments: List[Segment], style: Style, extent: Extent, quality: PlacementQuality,
                  location: Point = ZERO):
         super().__init__(extent, quality, location)
         self.segments = segments
@@ -212,10 +209,8 @@ class PlacedRunContent(PlacedContent):
         return Rect(left + self.location.x, right + self.location.x,
                     self.location.y, self.location.y + self.extent.height)
 
-
     def as_path(self) -> Path:
         raise NotImplementedError('Grouped content does not provide a path')
-
 
     def offset_content(self, dx: float):
         for s in self.segments:
@@ -292,8 +287,8 @@ class PlacedPathContent(PlacedContent):
         pdf.draw_path(self.as_path(), self.style)
 
     def drawn_bounds(self) -> Rect:
-        l,t,r,b = self._asPath.getBounds()
-        return Rect(l,r,t,b) + self.location
+        l, t, r, b = self._asPath.getBounds()
+        return Rect(l, r, t, b) + self.location
 
     def __copy__(self):
         return PlacedPathContent(self.coords, self.bounds, self.style, self.quality)

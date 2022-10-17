@@ -80,9 +80,9 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual(4, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
-        self.assertEqual('hello to this |brave|new| world', texts)
+        self.assertEqual('hello to this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(75, 0)|(0, 16)|(26, 16)', locs)
-        self.assertEqual("excess=57, breaks=0•1", placed.quality.str_parts())
+        self.assertEqual("excess=61, breaks=0•1", placed.quality.str_parts())
 
     def test_wrapping_2(self):
         run = Run([self.E1, self.E2, self.E3])
@@ -93,6 +93,17 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('hello to|this |brave|new|world', texts)
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
+
+    def test_wrapping_not_between_items(self):
+        E1 = Element('this is a sentence')
+        E2 = Element(': and this comes after')
+
+        run = Run([E1, E2])
+        placed = place_run(run, Extent(130, 200), STYLE, self.pdf)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
+        texts = '|'.join(s.text for s in placed.segments)
+        self.assertEqual('this is a sentence|:|and this comes after', texts)
+        self.assertEqual('(0, 0)|(108, 0)|(0, 16)', locs)
 
     def test_need_bad_break(self):
         run = Run([self.EX])

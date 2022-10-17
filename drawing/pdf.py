@@ -4,7 +4,6 @@ import reprlib
 import warnings
 from collections import defaultdict
 from copy import copy
-from dataclasses import dataclass
 from io import BytesIO
 from typing import List, Tuple, Union, Dict, Optional
 
@@ -32,13 +31,29 @@ _MISSING_IMAGE_DATA = PIL.Image.open(IMAGES_DIR / 'missing icon.jpg')
 _MISSING_IMAGE = ImageDetail(-1, _MISSING_IMAGE_DATA, _MISSING_IMAGE_DATA.width, _MISSING_IMAGE_DATA.height)
 
 
-@dataclass
-class TextSegment:
-    text: str
+class Segment:
     x: float
     y: float
     width: float
     font: Font
+
+    @property
+    def right(self):
+        return self.x + self.width
+
+    def __init__(self, x: float, y: float, width: float, font: Font):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.font = font
+
+
+class TextSegment(Segment):
+    text: str
+
+    def __init__(self, text: str, x: float, y: float, width: float, font: Font):
+        super().__init__(x, y, width, font)
+        self.text = text
 
     def __str__(self):
         return reprlib.repr(self.text) + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
@@ -47,34 +62,32 @@ class TextSegment:
         return self.text
 
 
-@dataclass
-class CheckboxSegment:
+class CheckboxSegment(Segment):
     state: bool
-    x: float
-    y: float
-    width: float
-    font: Font
+
+    def __init__(self, state: bool, x: float, y: float, width: float, font: Font):
+        super().__init__(x, y, width, font)
+        self.state = state
 
     def __str__(self):
         return checkbox_character(self.state) + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
-        return checkbox_character(self.state)
+        return '\u2612' if self.state else '\u2610'
 
 
-@dataclass
-class TextFieldSegment:
-    value: str
-    x: float
-    y: float
-    width: float
-    font: Font
+class TextFieldSegment(Segment):
+    text: str
+
+    def __init__(self, text: str, x: float, y: float, width: float, font: Font):
+        super().__init__(x, y, width, font)
+        self.text = text
 
     def __str__(self):
         return 'TEXTFIELD' + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
-        return '[[ ' + self.value + ' ]]'
+        return '[[ ' + self.text + ' ]]'
 
 
 class PDF(canvas.Canvas):
@@ -186,7 +199,7 @@ class PDF(canvas.Canvas):
                                 fontName=fname, fontSize=font.size, textColor=color,
                                 fillColor=bg, borderWidth=0.3333, borderColor=border)
 
-    def draw_text(self, style: Style, segments: List[Union[TextSegment, CheckboxSegment, TextFieldSegment]]):
+    def draw_text(self, style: Style, segments: List[Segment]):
         ss = ', '.join([str(s) for s in segments])
         LOGGER.debug(f"Drawing segments {ss}")
 
@@ -211,7 +224,7 @@ class PDF(canvas.Canvas):
                 self._draw_checkbox(seg.x, seg.y, current_font, seg.state, text_color)
             else:
                 # Text field
-                self._draw_textfield(seg.value.strip(), seg.x, seg.y, seg.width, current_font, text_color)
+                self._draw_textfield(seg.text.strip(), seg.x, seg.y, seg.width, current_font, text_color)
 
         self.drawText(text)
 
