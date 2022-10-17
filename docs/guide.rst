@@ -100,6 +100,7 @@ Name                    Example                     Description
 ======================= =========================== =====================================================
 columns                 columns=3                   Number of columns to use to lay out the section
 equal                   equal                       If set, columns will all be the same width
+style                   style=my_style_1            Define a style for the section (see styles documentation)
 image                   image=1                     Set an image to use as a section background (1,2,3 or 0 for none)
 image-mode              image-mode=stretch          image draw mode (see image documentation)
 image-width             image-width=2in             image preferred width (see image documentation)
@@ -142,7 +143,31 @@ The general format of a block looks like this:
 Block options are optional -- any text on a new line with a blank line before it defines a new block,
 whether or not options have been defined. Furthermore, the options for a new block are coptied from the previous
 ones, so if you change (say) the style for one block, that will be the style used for all subsequent blocks
-in the document until you set a new style in a block options.
+in the document until you set a new style in a block options. Block options are:
+
+
+    method: str = 'table'
+    equal : bool = False
+    title: str = None
+    title_style: str = None
+
+======================= =========================== =====================================================
+Name                    Example                     Description
+======================= =========================== =====================================================
+method                  method='attributes'         How to display the items (table, attributes)
+equal                   equal                       If set, table columns will all be the same width
+style                   style=my_style_1            Define a style for the block (see styles documentation)
+title                   title='none'                How to display the title (banner, inline, none)
+title_style             title_style=t2              Define a style for the block title (see styles documentation)
+image                   image=1                     Set an image to use in the block (1,2,3 or 0 for none)
+image-mode              image-mode=stretch          image draw mode (see image documentation)
+image-width             image-width=2in             image preferred width (see image documentation)
+image-height            image-height=5cm            image preferred height (see image documentation)
+image-anchor            image-anchor=nw             placement within frame (see image documentation)
+image-brightness        image-brightness=50%        modification to image brightness (see image documentation)
+image-contrast          image-contrast=120%         modification to image contrast (see image documentation)
+======================= =========================== =====================================================
+
 
 Titles and content items in a block can contain multiple parts, separated by a '|' symbol
 (often called a *pipe symbol*). When the block method is `table` -- the default -- then the pipe symbol
@@ -185,9 +210,9 @@ Type                    Examples                    Notes
 ======================= =========================== =====================================================
 Check Box               [X] or [ ]                  Exactly one character must be present between the square braces
 Text Field              [[ abc ]]                   Text inside is placed in the editable field
-Literal                 ``*asterisks are fun``      Anything between double back-quotes is treated as simple text
-Bold                    **wow**                     asterisks must surround words, not white space
-Italic                  *gosh*                      asterisks must surround words, not white space
+Literal                 \`\`\*asterisks are fun\`\`      Anything between double back-quotes is treated as simple text
+Bold                    \*\*wow\*\*                     asterisks must surround words, not white space
+Italic                  \*gosh\*                      asterisks must surround words, not white space
 Script Variable         {level}                     the value of a *script variable*
 ======================= =========================== =====================================================
 
@@ -197,5 +222,110 @@ you want them to be, but when actually placed in a block, they will fill up the 
 Script Variables are covered later in the **Scripts** topic.
 
 
-MORE
-----
+Styles
+======
+
+Styles are designed to be similar to the way they are used in HTML.
+They provide a list of options that control the appearance of the content.
+Sheets, sections, blocks and block titles each have their own style with a default that can be overriden
+by definign a **styles** section, usually placed at the bottom of your sheet. An example style section looks
+like this::
+
+    .. styles::
+       default
+         text-opacity:0.8 font-family:Montserrat font-size:8 font-spacing:90%
+       attr
+         text-color:white text-align:center font-size:14 border:black border-width:0.5 background:brown
+         padding:4
+       default-block
+         border:none
+ 
+After the `.. styles:` directive, styls are defined by a name ona  sinlge line, followed by a list of 
+properties on indented lines following. 
+
+In the above example, the default font **default** has been overriden. Since all styles are based on this
+style to some extent, those definitions will affect pretty much everything. The default definition for the block
+has also been changed so that blcoks no longer have borders by default.
+
+The style **attr** is not a default style however, so setting values for it will only change the appearance of
+parts of the sheet that specifically reference this style.
+
+
+Style Inheritance
+-----------------
+
+All styles (except *default*) inherit from another style, and if values of the base style are not defined,
+then the values of the style's parent are used. When you define your own style, it is automatcially given a
+parent to inherit from if you do not define one explicitly. Usually, that should be a good enough choice for
+you. The choice of what to inherit from is done semi-intelligently; if a style is mostly used for attributes,
+for example, it will inherit from *default-attributes*.
+
+
+Default Styles
+--------------
+
+The following styles are the pre-defined defaults used in ZeeSheet::
+
+        default =   text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4 
+                    font:Montserrat font-size:10 font-face:Regular font-spacing:100%
+                    box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
+                    box-margin:0 box-padding:2 effect:none effect-size:3
+        
+        default-title =     inherit:default font-size:11 font-face:bold padding:1
+        default-block =     inherit:default margin:8
+        default-section =   inherit:default margin:0 padding:0 border:none background:none
+        default-image =     inherit:default-block inherit:default-block border:none background:none
+        default-sheet =     inherit:default padding:0.25in margin:0 border:none background:none
+        default-hidden =    inherit:default margin:0 padding:0 font-size:1 border:none 
+        
+        default-attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4' 
+                                    align:auto box-effect:rounded
+        default-attributes-title =  inherit:default-title font-size:22 margin:2 padding:6 
+                                    text-color:yellow align:auto
+
+Style Attributes
+----------------
+
+Styles are defined with a simple key-value pairs. You can use quotes to surround attribute values that
+have spaces in them, such as font names or padding arrays. Here is the full list of style options:
+
+======================= =========================== =====================================================
+Name                    Example                     Description
+======================= =========================== =====================================================
+text-color              text-color:#dfe             Color of the text drawn
+text-opacity            text-opacity:1              How transparent the text is to be displayed as
+text-align              text-align:auto             How to align the text
+text-align-last         text-align-last:same        How to align the last line of text that wraps
+text-indent             text-indent:4               Indentation for 2nd and subsequent lines of wrapped text
+font                    font:Montserrat             The family to use for the font
+font-size               font-size:10                font size in points
+font-face               font-face:ExtraThin         Fonts can have a variety of faces to choose from
+font-spacing            font-spacing:90%            Modify the default line spacing between text lines
+box-color               box-color:auto              The background color (usually of a box, but not always)
+box-opacity             box-opacity:1               The opacity of the background color
+box-width               box-width:1                 The width of the box border
+box-border-color        box-border-color:auto       The color of the box border
+box-border-opacity      box-border-opacity:1        The opacity of the box border
+box-margin              box-margin:0                The space between the border of a box and its container
+box-padding             box-padding:2               The space between the border of a box and its contents
+effect                  effect:none                 A special effect for the border (none, rounded, rough, cogs)
+effect-size             effect-size:3               How big the effect is, in pixels
+======================= =========================== =====================================================
+
+Color
+    Colors can be a name (red, pink, beige, ...) or a hex representation (#ddd, #fda43c).
+    The name 'none' requests that text not be drawn, and the special name 'auto' attmpts to choose
+    a color that will match well with other defined colors for the style. It even considers the colors in
+    other styles in the same block. This allows you to define a background color, for example, and have the
+    text color automatically chosen to contrast well with it.
+Fraction
+    Fractions can be defined as a number such as '0.75', or as a poercentage, such as '75%'
+Alignment
+    'auto' alignment is used in tables so that the left column is left aligned and the right column
+    right aligned. 'same' alignment (for *text-align-last*) sattes that the alignment of the last
+    line in some wrapping text is aligned the same was as the previous lines. Standard alignments are left,
+    right and center.
+Font
+    Helvetica, Courier and Times and all Google Fonts (as of 2022-10-1) are available to be used.
+    The excellent site https://goofonts.com is a great resource to choose a font for
+    a sheet.
