@@ -74,7 +74,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 
     # Reduce space for the items to account for the title.
     # Inset for padding and border
-    item_bounds = outer - titler.spacing
+    item_bounds = outer - titler.content_spacing
     if block.children:
         placed_children = place_block_children(block, item_bounds, quality, pdf)
     else:
@@ -84,9 +84,6 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         placed_children = make_image(image, item_bounds, opt.image_mode, opt.image_width, opt.image_height,
                                      opt.image_anchor, block.options.image_brightness, block.options.image_contrast,
                                      force_to_top=True)
-
-    titler.locate_title()
-
     # Frame everything
     total_height = placed_children.bounds.bottom
     if titler.title_inside_clip:
@@ -94,7 +91,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     if main_style.box.has_border():
         total_height += main_style.box.width
     total_height += extra_space / 2
-    frame_bounds = Rect(0, size.width, 0, total_height)
+    frame_bounds = Rect(0, size.width, 0, total_height) - titler.frame_spacing
 
     if block.children:
         frame = make_frame(frame_bounds, main_style, block.options, pdf)

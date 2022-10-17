@@ -1,6 +1,4 @@
-from typing import Tuple, Optional
-
-from common import Rect, Spacing, Point, Extent
+from common import Rect, Spacing, Point
 from drawing import PDF
 from structure import Block
 from . import quality
@@ -14,7 +12,8 @@ class TitleBuilder:
     bleed_space: float
     pdf: PDF
     title: PlacedContent or None
-    spacing: Spacing
+    content_spacing: Spacing
+    frame_spacing: Spacing
     title_inside_clip: bool
 
     def __init__(self, block: Block, bleed_space: float, pdf: PDF):
@@ -22,20 +21,18 @@ class TitleBuilder:
         self.bleed_space = bleed_space  # Space to add to title to cover ragged borders
         self.pdf = pdf
         self.style = pdf.style(block.options.title_style, 'default-title')
-
+        self.title_inside_clip = False
+        self.content_spacing = NO_SPACING
+        self.frame_spacing = NO_SPACING
 
     def build_for(self, bounds: Rect):
         block = self.block
         if not block.title or block.options.title == 'none':
             self.title = None
-            self.spacing = NO_SPACING
-            self.title_inside_clip = False
         elif block.options.title == 'inline':
             self.inline_title(bounds)
-            self.title_inside_clip = False
         elif block.options.title == 'banner':
             self.banner_title(bounds)
-            self.title_inside_clip = True
         else:
             raise RuntimeError("Unexpected block title method: " + str(block.options.title))
 
@@ -55,7 +52,8 @@ class TitleBuilder:
         drawn_bounds = drawn + title_style.box.padding
         plaque = PlacedRectContent(drawn_bounds, title_style, quality.for_decoration())
         self.title = PlacedGroupContent.from_items([plaque, placed], placed.quality, plaque.extent)
-        self.spacing = Spacing(0, 0, placed.extent.height / 2, 0)
+        self.content_spacing = Spacing(0, 0, placed.extent.height, 0)
+        self.frame_spacing = Spacing(0, 0, placed.extent.height / 2, 0)
 
     def banner_title(self, bounds: Rect):
         title_style = self.style
@@ -78,13 +76,5 @@ class TitleBuilder:
         title_extent = plaque_rect.extent + title_style.box.margin
         # The plaque makes no difference, so the group quality is the same as the title
         self.title = PlacedGroupContent.from_items([plaque, placed], placed.quality, title_extent)
-        self.spacing = Spacing(0, 0, title_extent.height, 0)
-
-    def locate_title(self) -> None:
-        """ Defines the title location and returns the bounds of everything including the title"""
-        if not self.title:
-            return
-        if self.block.options.title == 'inline':
-            self.title.location = Point(0, -self.title.extent.height / 2)
-        elif self.block.options.title == 'banner':
-            self.title.location = Point(0, 0)
+        self.content_spacing = Spacing(0, 0, title_extent.height, 0)
+        self.title_inside_clip = True

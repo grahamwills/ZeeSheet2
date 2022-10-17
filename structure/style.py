@@ -556,11 +556,16 @@ class StyleDefaults(metaclass=process_definitions):
         cls.set_auto_box(style, target, pair)
 
     @classmethod
-    def set_auto_text(cls, style: Style, *_):
+    def set_auto_text(cls, style: Style, target: str, pair: Style):
         bg = style.get_color(box=True)
         # Set the text to contrast with the background
-        if _brightness(bg) > 0.5:
-            style.text.color = 'black'
+        back_bright = _brightness(bg)
+        if back_bright > 0.5:
+            c = pair.get_color(border=True) if pair else None
+            if c and back_bright - _brightness(c) > 0.2:
+                style.text.color = pair.box.border_color
+            else:
+                style.text.color = 'black'
         else:
             style.text.color = 'white'
 
