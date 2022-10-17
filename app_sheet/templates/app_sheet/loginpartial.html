@@ -3,9 +3,9 @@
         {% csrf_token %}
         <ul class="nav navbar-nav navbar-right">
             {% if user.is_superuser %}
-                <li><a href="/admin">Admin</a></li>
+                <li><a class="nav-link" href="/admin">Admin</a></li>
             {% endif %}
-            <li><a href="{% url 'logout' %}">Log out</a></li>
+            <li><a class="nav-link" href="{% url 'logout' %}">Log out</a></li>
         </ul>
 
     </form>
@@ -13,8 +13,8 @@
 {% else %}
 
     <ul class="nav navbar-nav navbar-right">
-        <li><a href="{% url 'login' %}">Log in</a></li>
-        <li><a href="{% url 'register' %}">Register</a></li>
+        <li><a class="nav-link" href="{% url 'login' %}">Log in</a></li>
+        <li><a class="nav-link" href="{% url 'register' %}">Register</a></li>
     </ul>
 
 {% endif %}

@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '1234567890'
+SECRET_KEY = '29752975'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -42,7 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'djangocodemirror',
     'crispy_forms',
+    'crispy_bootstrap5',
     'app_sheet.apps.SheetConfig',
+    'bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -126,11 +128,6 @@ STATIC_ROOT = BASE_DIR / 'static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CODEMIRROR_SETTINGS = codemirror_settings_update(CODEMIRROR_SETTINGS, {
-#     'lineNumbers': True,
-#     'indent': 4
-# })
-
 CODEMIRROR_THEMES.update({
     'ttcn': 'CodeMirror/theme/ttcn.css',
 })
@@ -166,5 +163,5 @@ LOGOUT_REDIRECT_URL = '/'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = 'media/'
 
-# We use bootstrap version 4
-CRISPY_TEMPLATE_PACK = 'bootstrap3'
+# We use bootstrap version 5
+CRISPY_TEMPLATE_PACK = 'bootstrap5'

@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Tuple, Union
 
+import common
 import layout.quality
 from common import Extent
 from drawing import Font
@@ -9,6 +10,7 @@ from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
 from structure import Style
 
+LOGGER = common.configured_logger(__name__)
 
 @lru_cache(maxsize=10000)
 def _build_run(run: Run, width: float, style: Style, pdf: PDF) -> PlacedRunContent:
@@ -78,6 +80,8 @@ def split_text(text: str,
     """ Find a good splitting position for the text """
 
     n = len(text)
+    if n < 2:
+        return -1, 0, True
 
     # A guess at where we might find a good split
     guess = max(1, min(round(width * n / text_width), n - 2))
@@ -88,14 +92,17 @@ def split_text(text: str,
 
     first = True
     for p in range(guess, 0, -1):
-        if text[p].isspace() and not text[p + 1].isspace():
-            w = font.width(text[:p])
-            if w <= width:
-                loc = p
-                wid = w
-                break
-            else:
-                first = False
+        try:
+            if text[p].isspace() and not text[p + 1].isspace():
+                w = font.width(text[:p])
+                if w <= width:
+                    loc = p
+                    wid = w
+                    break
+                else:
+                    first = False
+        except IndexError as ex:
+            LOGGER.error("{}   {}", guess, n)
 
     if loc:
         # We found a good breaking point
