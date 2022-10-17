@@ -50,6 +50,10 @@ class PlacedContent(abc.ABC):
                     self.location.y,
                     self.location.y + self.extent.height)
 
+    def drawn_bounds(self) -> Rect:
+        """ The bounds of objects actually drawn, as opposed to theoretical bounds """
+        raise NotImplementedError('Must be defined in subclass')
+
     def as_path(self) -> Path:
         raise NotImplementedError('Must be defined in subclass')
 
@@ -112,8 +116,6 @@ class PlacedContent(abc.ABC):
 
 class PlacedGroupContent(PlacedContent):
 
-    def as_path(self) -> Path:
-        raise NotImplementedError('Grouped content does not provide a path')
 
     DEBUG_STYLE = ('#C70A80', 0.25, 0.1, 3, None)
 
@@ -125,6 +127,14 @@ class PlacedGroupContent(PlacedContent):
         super().__init__(extent, quality, location)
         self.items = items
         self.clip_item = clip_item
+
+    def drawn_bounds(self) -> Rect:
+        return Rect.union(p.drawn_bounds() for p in self.items) + self.location
+
+
+    def as_path(self) -> Path:
+        raise NotImplementedError('Grouped content does not provide a path')
+
 
     def children(self) -> List[PlacedContent]:
         return self.items
@@ -196,6 +206,17 @@ class PlacedRunContent(PlacedContent):
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
 
+    def drawn_bounds(self) -> Rect:
+        left = min(s.x for s in self.segments)
+        right = max(s.x + s.width for s in self.segments)
+        return Rect(left + self.location.x, right + self.location.x,
+                    self.location.y, self.location.y + self.extent.height)
+
+
+    def as_path(self) -> Path:
+        raise NotImplementedError('Grouped content does not provide a path')
+
+
     def offset_content(self, dx: float):
         for s in self.segments:
             s.x += dx
@@ -230,6 +251,9 @@ class PlacedRectContent(PlacedContent):
             coords = self.bounds.path_coords()
             self._asPath = coords_to_path(coords, effect, hash(self.bounds))
         return self._asPath
+
+    def drawn_bounds(self) -> Rect:
+        return self.bounds
 
     def _draw(self, pdf: PDF):
         effect = self.style.get_effect()
@@ -266,6 +290,10 @@ class PlacedPathContent(PlacedContent):
 
     def _draw(self, pdf: PDF):
         pdf.draw_path(self.as_path(), self.style)
+
+    def drawn_bounds(self) -> Rect:
+        l,t,r,b = self._asPath.getBounds()
+        return Rect(l,r,t,b) + self.location
 
     def __copy__(self):
         return PlacedPathContent(self.coords, self.bounds, self.style, self.quality)
@@ -337,6 +365,9 @@ class PlacedImageContent(PlacedContent):
             y = dy / 2
 
         return Rect(x, x + width, y, y + height)
+
+    def drawn_bounds(self) -> Rect:
+        return self.image_bounds() + self.location
 
     def shrink_to_fit(self, bottom: float) -> float:
         dy = self.bounds.bottom - bottom

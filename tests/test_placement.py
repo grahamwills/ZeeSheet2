@@ -152,6 +152,7 @@ class TestBlockPlacement(unittest.TestCase):
     def test_empty_block(self):
         # Title by itself
         block = Block(self.title, [])
+        block.options.title = 'banner'
         placed = place_block(block, Extent(200, 100), 'medium', self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))
@@ -165,6 +166,7 @@ class TestBlockPlacement(unittest.TestCase):
             _make_item('for all the fish')
         ]
         block = Block(self.title, items)
+        block.options.title = 'banner'
         placed = place_block(block, Extent(300, 100), 'medium', self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))

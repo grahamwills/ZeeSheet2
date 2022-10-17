@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import warnings
-from copy import copy
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 
 import common
 import layout.quality
-from common import Extent, Point, Spacing, Rect
+from common import Extent, Spacing, Rect
 from common import configured_logger
 from drawing import PDF
 from structure import Block, style
 from structure import BlockOptions, Run, Item
 from . import build_run
+from .build_title import TitleBuilder
 from .content import PlacedContent, PlacedGroupContent, PlacedRectContent, make_image, make_frame, make_frame_box
 from .packer import ColumnPacker
 from .special_blocks import AttributeTableBuilder
@@ -23,50 +23,18 @@ MIN_BLOCK_DIMENSION = 8
 NO_SPACING = Spacing(0, 0, 0, 0)
 
 
-def make_title(block: Block, inner: Rect, quality: str, extra_space: float, pdf: PDF) -> Tuple[
-    Optional[PlacedContent], Spacing]:
-    if not block.title or block.options.title == 'none':
-        return None, NO_SPACING
+class BlockTitleBuilder(TitleBuilder):
+    def __init__(self, block: Block, pdf: PDF, bleed_space: float, layout_quality: str):
+        super().__init__(block, bleed_space, pdf)
+        self.layout_quality = layout_quality
 
-    if block.options.title != 'simple':
-        # warnings.warn(f"Border style '{block.options.title}' is not yet supported, treating as 'simple'")
-        pass
-
-    title_style = pdf.style(block.options.title_style, 'default-title')
-
-    title_bounds = title_style.box.inset_within_padding(inner)
-    placed = place_block_title(block, title_bounds, quality, pdf)
-    placed.location = title_bounds.top_left
-
-    r1 = title_style.box.inset_within_margin(inner)
-    r2 = title_style.box.outset_to_border(placed.bounds)
-    plaque_rect = Rect(r1.left, r1.right, r2.top, r2.bottom)
-    plaque_rect_to_draw = plaque_rect
-
-    if title_style.box.has_border():
-        # Need to reduce the plaque to draw INSIDE the border
-        plaque_rect_to_draw = plaque_rect - Spacing.balanced(title_style.box.width / 2)
-
-    # When we have a border effect, we need to expand the plaque to make sure it is behind it all.
-    # But not below, since the simple plaque is on the top
-    if extra_space:
-        plaque_rect_to_draw = plaque_rect_to_draw + Spacing(extra_space, extra_space, extra_space, 0)
-
-    plaque_quality = layout.quality.for_decoration()
-    plaque = PlacedRectContent(plaque_rect_to_draw, title_style, plaque_quality)
-    title_extent = plaque_rect.extent + title_style.box.margin
-    spacing = Spacing(0, 0, title_extent.height, 0)
-
-    group_quality = placed.quality  # The plaque makes no difference, so the group quality is the same as the title
-    return PlacedGroupContent.from_items([plaque, placed], group_quality, title_extent), spacing
-
-
-def locate_title(title: PlacedContent, outer: Rect, content_extent: Extent, pdf: PDF) -> None:
-    """ Defines the title location and returns the bounds of everything including the title"""
-
-    # Currently we only do simple -- at the top
-    if title:
-        title.location = Point(0, 0)
+    def place_block_title(self, bounds: Rect) -> PlacedGroupContent:
+        block = self.block
+        debug_name = common.name_of(block)
+        k = len(block.title.children)
+        packer = BlockTablePacker(debug_name, bounds, [block.title], k,
+                                  block.options.title_style, self.layout_quality, self.pdf)
+        return packer.place_table(equal=block.options.equal)
 
 
 def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[PlacedContent]:
@@ -94,19 +62,19 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         # Half the padding lies inside the frame
         outer = outer.pad(-extra_space / 2)
 
-    # Create the title. Pass in the extra padding space needed with extra to ensure we cover the clip area
-    title, title_spacing = make_title(block, outer, quality, extra_space * 2, pdf)
+    titler = BlockTitleBuilder(block, pdf, extra_space * 2, quality)
+    titler.build_for(outer)
 
     if not block.children and not image:
-        if not title:
+        if not titler.title:
             warnings.warn('Block defined without title, image or content')
             return None
         else:
-            return title
+            return titler.title
 
     # Reduce space for the items to account for the title.
     # Inset for padding and border
-    item_bounds = outer - title_spacing
+    item_bounds = outer - titler.spacing
     if block.children:
         placed_children = place_block_children(block, item_bounds, quality, pdf)
     else:
@@ -117,12 +85,12 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
                                      opt.image_anchor, block.options.image_brightness, block.options.image_contrast,
                                      force_to_top=True)
 
-    locate_title(title, outer, placed_children.bounds, pdf)
+    titler.locate_title()
 
     # Frame everything
     total_height = placed_children.bounds.bottom
-    if title:
-        total_height = max(total_height, title.bounds.bottom)
+    if titler.title_inside_clip:
+        total_height = max(total_height, titler.title.bounds.bottom)
     if main_style.box.has_border():
         total_height += main_style.box.width
     total_height += extra_space / 2
@@ -135,7 +103,13 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         frame = make_frame_box(frame_bounds, main_style)
 
     # Make the valid items
-    items = [i for i in (frame, placed_children, title) if i]
+    items = []
+    if frame:
+        items.append(frame)
+    if placed_children:
+        items.append(placed_children)
+    if titler.title_inside_clip:
+        items.append(titler.title)
 
     block_extent = Extent(size.width, total_height)
     cell_qualities = [i.quality for i in items]
@@ -143,9 +117,11 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
     if not result.clip_item:
-        # I am not sure why this is needed
+        # I am not sure why this additional spacing is needed
         modified_bounds = frame_bounds - Spacing(0, 0, 0, extra_space)
         result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration())
+    if titler.title and not titler.title_inside_clip:
+        result = PlacedGroupContent.from_items([result, titler.title], block_quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:
@@ -163,13 +139,6 @@ def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> 
         return packer.place_table(equal=block.options.equal)
     else:
         return None
-
-
-def place_block_title(block: Block, bounds: Rect, quality: str, pdf: PDF) -> Optional[PlacedGroupContent]:
-    debug_name = common.name_of(block)
-    k = len(block.title.children)
-    packer = BlockTablePacker(debug_name, bounds, [block.title], k, block.options.title_style, quality, pdf)
-    return packer.place_table(equal=block.options.equal)
 
 
 class BlockTablePacker(ColumnPacker):

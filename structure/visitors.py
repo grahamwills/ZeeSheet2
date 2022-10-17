@@ -117,7 +117,7 @@ def _set_option(options, k, v):
             message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
             raise RuntimeError(message)
     elif k == 'title':
-        if v.lower() in ('none', 'simple'):
+        if v.lower() in ('none', 'banner', 'inline'):
             options.title = v.lower()
         else:
             message = f"'{v}' is not a legal value for {k}. Should be one of none, simple"

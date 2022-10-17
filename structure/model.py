@@ -312,7 +312,7 @@ class Block(StructureUnit):
         elif method.startswith('image'):
             return BlockOptions(title='none', method=method, style='default-image')
         else:
-            return BlockOptions(title='simple', method=method,
+            return BlockOptions(title='banner', method=method,
                                 style='default-block', title_style='default-title')
 
     def column_count(self) -> int:
