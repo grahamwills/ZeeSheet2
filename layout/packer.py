@@ -196,7 +196,7 @@ class ColumnPacker:
     def fit_within_space(self, available_space):
         best = None
         WID = 1e6
-        enormous = self.place_table_given_widths([WID] * self.k, self.bounds)
+        self.place_table_given_widths([WID] * self.k, self.bounds)
         col_width = []
         col_to_end_width = []
         for c in range(0, self.k):
@@ -226,8 +226,7 @@ class ColumnPacker:
             extra_per_column = (available_space - total_widest) / self.k
             column_widths = [w + extra_per_column for w in col_width]
             # TODO: Can actually just move the created values to the right place
-            best = self.place_table_given_widths(column_widths, self.bounds)
-        return best
+            return self.place_table_given_widths(column_widths, self.bounds)
 
     def find_best_compression(self) -> PlacedGroupContent:
         width_choices = self.choose_widths(need_gaps=True, equal_column_widths=False)
