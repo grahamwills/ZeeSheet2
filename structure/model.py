@@ -310,7 +310,7 @@ class Block(StructureUnit):
             return BlockOptions(title='none', method=method,
                                 style='default-attributes', title_style='default-attributes-title')
         elif method.startswith('image'):
-            return BlockOptions(title='none', method=method, style='default-image')
+            return BlockOptions(title='none', method=method, style='default-image', title_style='default-title')
         else:
             return BlockOptions(title='banner', method=method,
                                 style='default-block', title_style='default-title')
