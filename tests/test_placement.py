@@ -1,7 +1,9 @@
 import unittest
 
+from reportlab.lib.colors import Color
+
 from common import Extent, Point, Rect
-from drawing import FontLibrary
+from drawing import FontLibrary, TextFontModifier, Font
 from drawing import PDF
 from layout import ExtentTooSmallError
 from layout.build_block import place_block
@@ -9,7 +11,7 @@ from layout.build_run import place_run
 from main.document import StyleResolver
 from structure import Element, Run, Block, Item, Sheet
 from structure import Style
-from structure.style import FontStyle
+from structure.style import FontStyle, TextStyle
 
 
 def _make_item(txt: str) -> Item:
@@ -18,7 +20,22 @@ def _make_item(txt: str) -> Item:
     return item
 
 
-STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('indent', '0').set('align', 'left')
+STYLE = Style('test',
+              font=FontStyle('Helvetica', 14, 'regular', 1.0),
+              text=TextStyle('red', 1, 'left', 0)
+              )
+
+
+class SimpleModifer(TextFontModifier):
+
+    def modify_font(self, font: Font, modifier: str) -> Font:
+        return font.modify(modifier) if modifier else font
+
+    def modify_color(self, c: Color, modifier: str) -> Color:
+        return c
+
+
+MOD = SimpleModifer()
 
 
 class TestRunPlacement(unittest.TestCase):
@@ -32,13 +49,13 @@ class TestRunPlacement(unittest.TestCase):
     def test_split_with_checkboxes(self):
         e = Element('X', 'checkbox')
         run = Run([e] * 13)
-        placed = place_run(run, Extent(30, 200), STYLE, self.pdf)
+        placed = place_run(run, Extent(30, 200), STYLE, self.pdf, MOD)
         self.assertEqual(13, len(placed.segments))
         self.assertEqual("excess=16, breaks=0•6", placed.quality.str_parts())
 
     def test_single_plenty_of_space(self):
         run = Run([self.E1])
-        placed = place_run(run, Extent(100, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(100, 100), STYLE, self.pdf, MOD)
         self.assertEqual(1, len(placed.segments))
         s1 = placed.segments[0]
         self.assertEqual('hello to this ', s1.text)
@@ -48,7 +65,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_multiple_plenty_of_space(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(200, 100), STYLE, self.pdf, MOD)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -58,15 +75,15 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_run_aligned_right(self):
         run = Run([self.E1, self.E2, self.E3])
-        style = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1)).set('align', 'right')
-        placed = place_run(run, Extent(300, 100), style, self.pdf)
+        style = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1), text=TextStyle('red', 1, 'right', 0))
+        placed = place_run(run, Extent(300, 100), style, self.pdf, MOD)
         self.assertEqual(3, len(placed.segments))
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         self.assertEqual('(123, 0)|(198, 0)|(263, 0)', locs)
 
     def test_bold_font(self):
         run = Run([self.E1, self.E2A, self.E3])
-        placed = place_run(run, Extent(200, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(200, 100), STYLE, self.pdf, MOD)
         self.assertEqual(3, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -76,7 +93,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_wrapping_1(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(120, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(120, 100), STYLE, self.pdf, MOD)
         self.assertEqual(4, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -86,7 +103,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_wrapping_2(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(50, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(50, 100), STYLE, self.pdf, MOD)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -99,7 +116,7 @@ class TestRunPlacement(unittest.TestCase):
         E2 = Element(': and this comes after')
 
         run = Run([E1, E2])
-        placed = place_run(run, Extent(130, 200), STYLE, self.pdf)
+        placed = place_run(run, Extent(130, 200), STYLE, self.pdf, MOD)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
         texts = '|'.join(s.text for s in placed.segments)
         self.assertEqual('this is a sentence|:|and this comes after', texts)
@@ -107,7 +124,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_need_bad_break(self):
         run = Run([self.EX])
-        placed = place_run(run, Extent(45, 100), STYLE, self.pdf)
+        placed = place_run(run, Extent(45, 100), STYLE, self.pdf, MOD)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -117,7 +134,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_breaks_again(self):
         run = Run([self.E1, self.E2, self.E3])
-        placed = place_run(run, Extent(50, 80), STYLE, self.pdf)
+        placed = place_run(run, Extent(50, 80), STYLE, self.pdf, MOD)
         self.assertEqual(5, len(placed.segments))
         texts = '|'.join(s.text for s in placed.segments)
         locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
@@ -127,7 +144,7 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_not_enough_space_no_matter_what_we_try(self):
         run = Run([self.E1, self.EX, self.E3])
-        self.assertRaises(ExtentTooSmallError, lambda: place_run(run, Extent(80, 60), STYLE, self.pdf))
+        self.assertRaises(ExtentTooSmallError, lambda: place_run(run, Extent(80, 60), STYLE, self.pdf, MOD))
 
     def test_split_item_into_cells(self):
         item = _make_item('a | b         \t| c | d ')
@@ -140,10 +157,10 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_font_spacing(self):
         run = Run([self.E1])
-        s1 = Style('test1', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('align', 'left')
-        s2 = Style('test2', font=FontStyle('Helvetica', 14, 'regular', 0.5)).set('align', 'left')
-        p1 = place_run(run, Extent(100, 100), s1, self.pdf)
-        p2 = place_run(run, Extent(100, 100), s2, self.pdf)
+        s1 = Style('test1', font=FontStyle('Helvetica', 14, 'regular', 1.0), text=TextStyle('red', 1, 'left', 0))
+        s2 = Style('test2', font=FontStyle('Helvetica', 14, 'regular', 0.5), text=TextStyle('red', 1, 'left', 0))
+        p1 = place_run(run, Extent(100, 100), s1, self.pdf, MOD)
+        p2 = place_run(run, Extent(100, 100), s2, self.pdf, MOD)
         self.assertAlmostEqual(15.54, p1.extent.height, places=2)
         self.assertAlmostEqual(7.77, p2.extent.height, places=2)
 
