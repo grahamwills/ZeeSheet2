@@ -51,7 +51,6 @@ class ColumnPacker:
         self.column_left = [0.0] * self.k
         self.column_right = [0.0] * self.k
 
-
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
@@ -192,16 +191,22 @@ class ColumnPacker:
                          common.to_str(width_choices[0], 0))
 
         best = None
+        best_widths = None
         for column_sizes in width_choices:
             try:
                 placed_children = self.place_table_given_widths(column_sizes, self.bounds)
                 if placed_children.better(best):
                     best = copy(placed_children)
+                    best_widths = column_sizes
             except ExtentTooSmallError:
                 # Skip this option
                 pass
         if best is None:
             raise ExtentTooSmallError('All width choices failed to produce a good fit')
+
+        if self.k > 3 and not equal:
+            best, best_widths = self.reduce_breaks(best, best_widths)
+            best = self.even_excesses(best, best_widths)
         return best
 
     def choose_widths(self, need_gaps: bool, equal_column_widths: bool):
@@ -385,6 +390,63 @@ class ColumnPacker:
 
         # Finished shuffling
         return results
+
+    def reduce_breaks(self, best, column_sizes):
+        """ Try to make it better by moving space to the column with the most breaks"""
+        while True:
+            cols = list(range(self.k))
+
+            col_breaks = [sum(q.good_breaks + 10 * q.bad_breaks for q in col if q is not None) for col in
+                          self.quality_table]
+            col_excess = [min(q.excess for q in col if q is not None) for col in self.quality_table]
+
+            saddest = max(cols, key=lambda i: 1e6 * col_breaks[i] - col_excess[i] * 1e-6)
+            if col_breaks[saddest] <= 0:
+                # Not really sad, actually
+                break
+
+            trial_widths = copy(column_sizes)
+            for c in cols:
+                if col_breaks[c] == 0:
+                    excess = col_excess[c] * 0.5
+                    trial_widths[c] -= excess
+                    trial_widths[saddest] += excess
+            try:
+                trial = self.place_table_given_widths(trial_widths, self.bounds)
+                if trial.better(best):
+                    best = trial
+                    column_sizes = trial_widths
+                else:
+                    break
+            except ExtentTooSmallError:
+                break
+        return best, column_sizes
+
+    def even_excesses(self, best, column_sizes):
+        """ Try to even out the excess space between all columns"""
+        while True:
+            cols = list(range(self.k))
+
+            col_excess = [min(q.excess for q in col if q is not None) for col in self.quality_table]
+            most_excess = max(cols, key=lambda i: col_excess[i])
+            least_excess = min(cols, key=lambda i: col_excess[i])
+
+            amount = (col_excess[most_excess] - col_excess[least_excess]) / 2
+
+            trial_widths = copy(column_sizes)
+            trial_widths[most_excess] -= amount
+            trial_widths[least_excess] += amount
+
+            try:
+                trial = self.place_table_given_widths(trial_widths, self.bounds)
+                if trial.better(best):
+                    best = trial
+                    column_sizes = trial_widths
+                else:
+                    break
+            except ExtentTooSmallError:
+                break
+        return best
 
     def __str__(self):
         return f"{self.debug_name}[n={self.n}, k={self.k}, bounds={round(self.bounds)}, " \

@@ -3,9 +3,668 @@
 {% block content %}
 
     <div class="container" style="margin-top:40px">
-    <h3>{{ message }}</h3>
-    <p>ZeeSheet is a personal project, provided to the community as is.</p>
-    <p>No guarantees are made with respect to this service; you use it at your own risk!</p>
+        <h3>{{ message }}</h3>
+        <p>ZeeSheet is a personal project, provided to the community as is. No guarantees are made with respect to this
+            service;
+            you use it at your own risk!</p>
+        <p> Below is a brief intricution to the sheet structure</p>
     </div>
 
+
+    <div class="container">
+
+
+        <div class="section" id="document-structure">
+            <h1>Document structure</h1>
+            <p>A character sheet document has the following structure, working from the top down:</p>
+            <dl class="docutils">
+                <dt>Sheet</dt>
+                <dd>This is the whole document. It comprises one or more sections.
+                    The sheet has the same layout options as a section does, but typically the simple
+                    layout of of stacking sections below each other works well
+                </dd>
+                <dt>Section</dt>
+                <dd>A section is a rectangular area comprised of a set of blocks.
+                    Each section has a defined layout and places the blocks inside that layout.
+                    Sections usually have titles which can be displayed or hidden.
+                    A simple sheet may only have a single section.
+                </dd>
+                <dt>Block</dt>
+                <dd>The block is the fundamental layout unit. It is rectangular area and contains a
+                    number of items that are laid out inside it. It has a title which may be displayed or hidden.
+                    Blocks have differemt layout options, sometimes very specific to the content,
+                    but the table layout is the most common (nd the default).
+                    All items in a block share the same basic presentation style
+                </dd>
+                <dt>Item</dt>
+                <dd>Blocks are divided into items, each of which displays as a coherent whole.
+                    In a 'table' block, an item corresponds to a row of the table.
+                    In an 'attributes' block, an item corresponds to a single attribute.
+                    Items usually have multiple parts, each of which is a combination of
+                    piece of text, editable fields, or checkboxes.
+                </dd>
+            </dl>
+            <div class="section" id="example">
+                <h2>Example</h2>
+                <p>For a simple character sheet consisting of a name, a picture, a description, three statistics and two
+                    skills,
+                    we might have something like this:</p>
+                <pre class="literal-block">
+Basic Information
+
+- Zonani the fire mage
+- Powerfully built, she wields a staff of living flame
+- [image:nowhere.com/abc.png]
+
+Statistics
+
+- Body: **2**
+- Mind: **6**
+- Soul: **4**
+
+Skills
+
+- Oration  | +4
+- Sneaking Up On People | +3
+</pre>
+                <p>This has one (unnamed, default) section and three blocks. The blocks have 3, 3, and 2 items in them.
+                    The second block uses asterisks to give a strong style to the numbers, and the third block uses a
+                    vertical
+                    bar (also knowns as a 'pipe symbol') to specify alignment.</p>
+            </div>
+        </div>
+        <div class="section" id="syntax">
+            <h1>Syntax</h1>
+            <p>This section describes the syntax for each component</p>
+            <div class="section" id="sheet">
+                <h2>Sheet</h2>
+                <p>The sheet is the top level object. It consists of a list of sections and can be given the following
+                    options
+                    using the following syntax and table of options:</p>
+                <pre class="literal-block">
+.. sheet:: {options}
+</pre>
+                <table border="1" class="docutils">
+                    <colgroup>
+                        <col width="21%"/>
+                        <col width="24%"/>
+                        <col width="55%"/>
+                    </colgroup>
+                    <thead valign="bottom">
+                    <tr>
+                        <th class="head">Name</th>
+                        <th class="head">Example</th>
+                        <th class="head">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody valign="top">
+                    <tr>
+                        <td>width</td>
+                        <td>width=8.5in</td>
+                        <td>Page width in pixels, or with a sufix as in, cm, mm</td>
+                    </tr>
+                    <tr>
+                        <td>height</td>
+                        <td>height=800</td>
+                        <td>Page height in pixels, or with a sufix as in, cm, mm</td>
+                    </tr>
+                    <tr>
+                        <td>columns</td>
+                        <td>columns=2</td>
+                        <td>(experimental) Layout the sections in columns</td>
+                    </tr>
+                    <tr>
+                        <td>quality</td>
+                        <td>quality=low</td>
+                        <td>Trade speed for quality in layout (low, medium, high, extreme)</td>
+                    </tr>
+                    <tr>
+                        <td>debug</td>
+                        <td>debug</td>
+                        <td>Set to turn on debugging mode</td>
+                    </tr>
+                    <tr>
+                        <td>style</td>
+                        <td>style=my_style_1</td>
+                        <td>Define a style for each page (see styles documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image</td>
+                        <td>image=1</td>
+                        <td>Set an image to use as a page background (1,2,3 or 0 for none)</td>
+                    </tr>
+                    <tr>
+                        <td>image-mode</td>
+                        <td>image-mode=stretch</td>
+                        <td>image draw mode (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-width</td>
+                        <td>image-width=2in</td>
+                        <td>image preferred width (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-height</td>
+                        <td>image-height=5cm</td>
+                        <td>image preferred height (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-anchor</td>
+                        <td>image-anchor=nw</td>
+                        <td>placement within frame (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-brightness</td>
+                        <td>image-brightness=50%</td>
+                        <td>modification to image brightness (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-contrast</td>
+                        <td>image-contrast=120%</td>
+                        <td>modification to image contrast (see image documentation)</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="section" id="sections">
+                <h2>Sections</h2>
+                <p>Each sheet contain at least one section. If you set section options before adding any content to the
+                    section,
+                    then the options will be appleid to that section. Once you define content for a section, then a
+                    section
+                    directive will start a new section with the options given (if any):</p>
+                <pre class="literal-block">
+.. section:: {options}
+</pre>
+
+
+                <table border="1" class="docutils">
+                    <colgroup>
+                        <col width="20%"/>
+                        <col width="23%"/>
+                        <col width="57%"/>
+                    </colgroup>
+                    <thead valign="bottom">
+                    <tr>
+                        <th class="head">Name</th>
+                        <th class="head">Example</th>
+                        <th class="head">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody valign="top">
+                    <tr>
+                        <td>columns</td>
+                        <td>columns=3</td>
+                        <td>Number of columns to use to lay out the section</td>
+                    </tr>
+                    <tr>
+                        <td>equal</td>
+                        <td>equal</td>
+                        <td>If set, columns will all be the same width</td>
+                    </tr>
+                    <tr>
+                        <td>style</td>
+                        <td>style=my_style_1</td>
+                        <td>Define a style for the section (see styles documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image</td>
+                        <td>image=1</td>
+                        <td>Set an image to use as a section background (1,2,3 or 0 for none)</td>
+                    </tr>
+                    <tr>
+                        <td>image-mode</td>
+                        <td>image-mode=stretch</td>
+                        <td>image draw mode (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-width</td>
+                        <td>image-width=2in</td>
+                        <td>image preferred width (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-height</td>
+                        <td>image-height=5cm</td>
+                        <td>image preferred height (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-anchor</td>
+                        <td>image-anchor=nw</td>
+                        <td>placement within frame (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-brightness</td>
+                        <td>image-brightness=50%</td>
+                        <td>modification to image brightness (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-contrast</td>
+                        <td>image-contrast=120%</td>
+                        <td>modification to image contrast (see image documentation)</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <p>Sections contain multiple blocks, and those blocks are laid out newspaper-style with the number of
+                    columns
+                    defined by the section options. Blocks are placed into the first column until it is filled, and then
+                    into
+                    the second and so on.</p>
+                <p>If 'equal' has been defiend as an option, then the column widths will all be the same. Otherwise,
+                    their
+                    widths will be dynamically chosen to make the layout look good by minimizing breaks, trying to get
+                    the columns
+                    a similar height and so on. This can be a slow algorithm as it tries out many combinations, and this
+                    is where the
+                    sheet 'quality' setting comes in; the higher the quality, the more combiantions are tried and the
+                    slower the process.</p>
+                <div class="admonition note">
+                    <p class="first admonition-title">Note</p>
+                    <p class="last">If the layout is slow, set the 'equal' option to avoid the complex calculation until
+                        the content looks
+                        good. Alternatively, you could lower the quality and switch it to a high setting when you are
+                        happy with
+                        the overall look and want to make it perfect!</p>
+                </div>
+            </div>
+            <div class="section" id="blocks">
+                <h2>Blocks</h2>
+                <p>Blocks are the fundamental unit that contains information to display on a sheet. Blocks may contain a
+                    <strong>title</strong>
+                    and <strong>content</strong>.</p>
+                <p>The general format of a block looks like this:</p>
+                <pre class="literal-block">
+.. block:: options
+
+   block title
+
+   - first block item
+   - second block item
+</pre>
+                <div class="admonition note">
+                    <p class="first admonition-title">Note</p>
+                    <p class="last">You must separate a block title from its items by a blank line</p>
+                </div>
+                <p>Block options are optional -- any text on a new line with a blank line before it defines a new block,
+                    whether or not options have been defined. Furthermore, the options for a new block are coptied from
+                    the previous
+                    ones, so if you change (say) the style for one block, that will be the style used for all subsequent
+                    blocks
+                    in the document until you set a new style in a block options. Block options are:</p>
+                <blockquote>
+                    method: str = 'table'
+                    equal : bool = False
+                    title: str = None
+                    title_style: str = None
+                </blockquote>
+                <table border="1" class="docutils">
+                    <colgroup>
+                        <col width="21%"/>
+                        <col width="24%"/>
+                        <col width="55%"/>
+                    </colgroup>
+                    <thead valign="bottom">
+                    <tr>
+                        <th class="head">Name</th>
+                        <th class="head">Example</th>
+                        <th class="head">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody valign="top">
+                    <tr>
+                        <td>method</td>
+                        <td>method='attributes'</td>
+                        <td>How to display the items (table, attributes)</td>
+                    </tr>
+                    <tr>
+                        <td>equal</td>
+                        <td>equal</td>
+                        <td>If set, table columns will all be the same width</td>
+                    </tr>
+                    <tr>
+                        <td>style</td>
+                        <td>style=my_style_1</td>
+                        <td>Define a style for the block (see styles documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>title</td>
+                        <td>title='none'</td>
+                        <td>How to display the title (banner, inline, none)</td>
+                    </tr>
+                    <tr>
+                        <td>title_style</td>
+                        <td>title_style=t2</td>
+                        <td>Define a style for the block title (see styles documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image</td>
+                        <td>image=1</td>
+                        <td>Set an image to use in the block (1,2,3 or 0 for none)</td>
+                    </tr>
+                    <tr>
+                        <td>image-mode</td>
+                        <td>image-mode=stretch</td>
+                        <td>image draw mode (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-width</td>
+                        <td>image-width=2in</td>
+                        <td>image preferred width (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-height</td>
+                        <td>image-height=5cm</td>
+                        <td>image preferred height (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-anchor</td>
+                        <td>image-anchor=nw</td>
+                        <td>placement within frame (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-brightness</td>
+                        <td>image-brightness=50%</td>
+                        <td>modification to image brightness (see image documentation)</td>
+                    </tr>
+                    <tr>
+                        <td>image-contrast</td>
+                        <td>image-contrast=120%</td>
+                        <td>modification to image contrast (see image documentation)</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <p>Titles and content items in a block can contain multiple parts, separated by a '|' symbol
+                    (often called a <em>pipe symbol</em>). When the block method is <cite>table</cite> -- the default --
+                    then the pipe symbol
+                    divides up a row into columns; the first part is the in the first column, the second in the second,
+                    etc. Some
+                    notes for tables:</p>
+                <ul class="simple">
+                    <li>The number of columns in a table is equal to the number of columns in the row with the most
+                        columns
+                    </li>
+                    <li>The last part in a row fills all the remaining columns to the right of the table.</li>
+                    <li>By default, the right column is right aligned.</li>
+                    <li>If there are more than two columns, the central columns are center aligned</li>
+                </ul>
+                <p>When the block method is <cite>attributes</cite>, then each itme is expected to have two or three
+                    parts.
+                    The first is the name of an attribute, the second its value and the third is a optional 'other
+                    value'.
+                    These are drawn in a specific block layout for that attribute</p>
+            </div>
+            <div class="section" id="items">
+                <h2>Items</h2>
+                <p>As mentioned above, items form the content of blocks.</p>
+                <p>An item is defined using a list item prefix, a dash or a bullet.
+                    If an item text is long, then when you wrap it, make sure you indent subsequent lines to keep them
+                    part
+                    of the same item. You do not need to put blank lines between list items.</p>
+                <p>Here is an example of a block with three items:</p>
+                <pre class="literal-block">
+History
+
+- Born in Ireland in 787AD
+- Age 18, they went on a raid against the Cymric
+  tribes to the east, and won much glory
+- Settled in the south
+</pre>
+                <p>items can be divided up into part by pipe symbols, and within each part further special markup is
+                    allowed:</p>
+                <table border="1" class="docutils">
+                    <colgroup>
+                        <col width="20%"/>
+                        <col width="23%"/>
+                        <col width="57%"/>
+                    </colgroup>
+                    <thead valign="bottom">
+                    <tr>
+                        <th class="head">Type</th>
+                        <th class="head">Examples</th>
+                        <th class="head">Notes</th>
+                    </tr>
+                    </thead>
+                    <tbody valign="top">
+                    <tr>
+                        <td>Check Box</td>
+                        <td>[X] or [ ]</td>
+                        <td>Exactly one character must be present between the square braces</td>
+                    </tr>
+                    <tr>
+                        <td>Text Field</td>
+                        <td>[[ abc ]]</td>
+                        <td>Text inside is placed in the editable field</td>
+                    </tr>
+                    <tr>
+                        <td>Literal</td>
+                        <td>``*asterisks are fun``</td>
+                        <td>Anything between double back-quotes is treated as simple text</td>
+                    </tr>
+                    <tr>
+                        <td>Bold</td>
+                        <td>**wow**</td>
+                        <td>asterisks must surround words, not white space</td>
+                    </tr>
+                    <tr>
+                        <td>Italic</td>
+                        <td>*gosh*</td>
+                        <td>asterisks must surround words, not white space</td>
+                    </tr>
+                    <tr>
+                        <td>Script Variable</td>
+                        <td>{level}</td>
+                        <td>the value of a <em>script variable</em></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <p>For text fields, the width of them (use blank spaces just to make them longer) is taken as a hint as
+                    to the size
+                    you want them to be, but when actually placed in a block, they will fill up the available space.</p>
+                <p>Script Variables are covered later in the <strong>Scripts</strong> topic.</p>
+            </div>
+        </div>
+        <div class="section" id="styles">
+            <h1>Styles</h1>
+            <p>Styles are designed to be similar to the way they are used in HTML.
+                They provide a list of options that control the appearance of the content.
+                Sheets, sections, blocks and block titles each have their own style with a default that can be overriden
+                by definign a <strong>styles</strong> section, usually placed at the bottom of your sheet. An example
+                style section looks
+                like this:</p>
+            <pre class="literal-block">
+.. styles::
+   default
+     text-opacity:0.8 font-family:Montserrat font-size:8 font-spacing:90%
+   attr
+     text-color:white text-align:center font-size:14 border:black border-width:0.5 background:brown
+     padding:4
+   default-block
+     border:none
+</pre>
+            <p>After the <cite>.. styles:</cite> directive, styls are defined by a name ona sinlge line, followed by a
+                list of
+                properties on indented lines following.</p>
+            <p>In the above example, the default font <strong>default</strong> has been overriden. Since all styles are
+                based on this
+                style to some extent, those definitions will affect pretty much everything. The default definition for
+                the block
+                has also been changed so that blcoks no longer have borders by default.</p>
+            <p>The style <strong>attr</strong> is not a default style however, so setting values for it will only change
+                the appearance of
+                parts of the sheet that specifically reference this style.</p>
+            <div class="section" id="style-inheritance">
+                <h2>Style Inheritance</h2>
+                <p>All styles (except <em>default</em>) inherit from another style, and if values of the base style are
+                    not defined,
+                    then the values of the style's parent are used. When you define your own style, it is automatcially
+                    given a
+                    parent to inherit from if you do not define one explicitly. Usually, that should be a good enough
+                    choice for
+                    you. The choice of what to inherit from is done semi-intelligently; if a style is mostly used for
+                    attributes,
+                    for example, it will inherit from <em>default-attributes</em>.</p>
+            </div>
+            <div class="section" id="default-styles">
+                <h2>Default Styles</h2>
+                <p>The following styles are the pre-defined defaults used in ZeeSheet:</p>
+                <pre class="literal-block">
+default =   text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4
+            font:Montserrat font-size:10 font-face:Regular font-spacing:100%
+            box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
+            box-margin:0 box-padding:2 effect:none effect-size:3
+
+default-title =     inherit:default font-size:11 font-face:bold padding:1
+default-block =     inherit:default margin:8
+default-section =   inherit:default margin:0 padding:0 border:none background:none
+default-image =     inherit:default-block inherit:default-block border:none background:none
+default-sheet =     inherit:default padding:0.25in margin:0 border:none background:none
+default-hidden =    inherit:default margin:0 padding:0 font-size:1 border:none
+
+default-attributes =        inherit:default-block font-size:12 bg:#004166 padding:'6 4'
+                            align:auto box-effect:rounded
+default-attributes-title =  inherit:default-title font-size:22 margin:2 padding:6
+                            text-color:yellow align:auto
+</pre>
+            </div>
+            <div class="section" id="style-attributes">
+                <h2>Style Attributes</h2>
+                <p>Styles are defined with a simple key-value pairs. You can use quotes to surround attribute values
+                    that
+                    have spaces in them, such as font names or padding arrays. Here is the full list of style
+                    options:</p>
+                <table border="1" class="docutils">
+                    <colgroup>
+                        <col width="21%"/>
+                        <col width="25%"/>
+                        <col width="55%"/>
+                    </colgroup>
+                    <thead valign="bottom">
+                    <tr>
+                        <th class="head">Name</th>
+                        <th class="head">Example</th>
+                        <th class="head">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody valign="top">
+                    <tr>
+                        <td>text-color</td>
+                        <td>text-color:#dfe</td>
+                        <td>Color of the text drawn</td>
+                    </tr>
+                    <tr>
+                        <td>text-opacity</td>
+                        <td>text-opacity:1</td>
+                        <td>How transparent the text is to be displayed as</td>
+                    </tr>
+                    <tr>
+                        <td>text-align</td>
+                        <td>text-align:auto</td>
+                        <td>How to align the text</td>
+                    </tr>
+                    <tr>
+                        <td>text-align-last</td>
+                        <td>text-align-last:same</td>
+                        <td>How to align the last line of text that wraps</td>
+                    </tr>
+                    <tr>
+                        <td>text-indent</td>
+                        <td>text-indent:4</td>
+                        <td>Indentation for 2nd and subsequent lines of wrapped text</td>
+                    </tr>
+                    <tr>
+                        <td>font</td>
+                        <td>font:Montserrat</td>
+                        <td>The family to use for the font</td>
+                    </tr>
+                    <tr>
+                        <td>font-size</td>
+                        <td>font-size:10</td>
+                        <td>font size in points</td>
+                    </tr>
+                    <tr>
+                        <td>font-face</td>
+                        <td>font-face:ExtraThin</td>
+                        <td>Fonts can have a variety of faces to choose from</td>
+                    </tr>
+                    <tr>
+                        <td>font-spacing</td>
+                        <td>font-spacing:90%</td>
+                        <td>Modify the default line spacing between text lines</td>
+                    </tr>
+                    <tr>
+                        <td>box-color</td>
+                        <td>box-color:auto</td>
+                        <td>The background color (usually of a box, but not always)</td>
+                    </tr>
+                    <tr>
+                        <td>box-opacity</td>
+                        <td>box-opacity:1</td>
+                        <td>The opacity of the background color</td>
+                    </tr>
+                    <tr>
+                        <td>box-width</td>
+                        <td>box-width:1</td>
+                        <td>The width of the box border</td>
+                    </tr>
+                    <tr>
+                        <td>box-border-color</td>
+                        <td>box-border-color:auto</td>
+                        <td>The color of the box border</td>
+                    </tr>
+                    <tr>
+                        <td>box-border-opacity</td>
+                        <td>box-border-opacity:1</td>
+                        <td>The opacity of the box border</td>
+                    </tr>
+                    <tr>
+                        <td>box-margin</td>
+                        <td>box-margin:0</td>
+                        <td>The space between the border of a box and its container</td>
+                    </tr>
+                    <tr>
+                        <td>box-padding</td>
+                        <td>box-padding:2</td>
+                        <td>The space between the border of a box and its contents</td>
+                    </tr>
+                    <tr>
+                        <td>effect</td>
+                        <td>effect:none</td>
+                        <td>A special effect for the border (none, rounded, rough, cogs)</td>
+                    </tr>
+                    <tr>
+                        <td>effect-size</td>
+                        <td>effect-size:3</td>
+                        <td>How big the effect is, in pixels</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <dl class="docutils">
+                    <dt>Color</dt>
+                    <dd>Colors can be a name (red, pink, beige, ...) or a hex representation (#ddd, #fda43c).
+                        The name 'none' requests that text not be drawn, and the special name 'auto' attmpts to choose
+                        a color that will match well with other defined colors for the style. It even considers the
+                        colors in
+                        other styles in the same block. This allows you to define a background color, for example, and
+                        have the
+                        text color automatically chosen to contrast well with it.
+                    </dd>
+                    <dt>Fraction</dt>
+                    <dd>Fractions can be defined as a number such as '0.75', or as a poercentage, such as '75%'</dd>
+                    <dt>Alignment</dt>
+                    <dd>'auto' alignment is used in tables so that the left column is left aligned and the right column
+                        right aligned. 'same' alignment (for <em>text-align-last</em>) sattes that the alignment of the
+                        last
+                        line in some wrapping text is aligned the same was as the previous lines. Standard alignments
+                        are left,
+                        right and center.
+                    </dd>
+                    <dt>Font</dt>
+                    <dd>Helvetica, Courier and Times and all Google Fonts (as of 2022-10-1) are available to be used.
+                        The excellent site <a class="reference external" href="https://goofonts.com">https://goofonts.com</a>
+                        is a great resource to choose a font for
+                        a sheet.
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
 {% endblock %}

@@ -144,15 +144,13 @@ class BlockTablePacker(ColumnPacker):
 
     def __init__(self, debug_name: str, bounds: Rect, items: list[Item], k: int, style_name: str, quality: str,
                  pdf: PDF):
-        max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()]
-
+        max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()] / 2
         column_count = max(len(item.children) for item in items)
         self.pdf = pdf
         self.content_style = pdf.style(style_name)
         super().__init__(debug_name, bounds, len(items), column_count, max_width_combos)
-        self.alignments = '.CR'
 
-        # Set defautl alignments
+        # Set default alignments
         self.alignments = ['center'] * self.k
         self.alignments[-1] = 'right'
         self.alignments[0] = 'left'

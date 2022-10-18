@@ -63,6 +63,7 @@ Sheet
 
 The sheet is the top level object. It consists of a list of sections and can be given the following options
 using the following syntax and table of options::
+
     .. sheet:: {options}
 
 ======================= =========================== =====================================================
@@ -91,7 +92,7 @@ Sections
 
 Each sheet contain at least one section. If you set section options before adding any content to the section,
 then the options will be appleid to that section. Once you define content for a section, then a section
-directive will start a new section with the options given (if any)
+directive will start a new section with the options given (if any)::
 
     .. section:: {options}
 
@@ -129,7 +130,7 @@ Blocks
 Blocks are the fundamental unit that contains information to display on a sheet. Blocks may contain a **title**
 and **content**.
 
-The general format of a block looks like this:
+The general format of a block looks like this::
 
     .. block:: options
 
