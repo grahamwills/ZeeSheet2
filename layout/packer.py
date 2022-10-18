@@ -194,7 +194,6 @@ class ColumnPacker:
         return self.fit_within_space(available_space) or self.find_best_compression()
 
     def fit_within_space(self, available_space):
-        best = None
         WID = 1e6
         self.place_table_given_widths([WID] * self.k, self.bounds)
         col_width = []

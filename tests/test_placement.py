@@ -18,7 +18,7 @@ def _make_item(txt: str) -> Item:
     return item
 
 
-STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('indent', '0')
+STYLE = Style('test', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('indent', '0').set('align', 'left')
 
 
 class TestRunPlacement(unittest.TestCase):
@@ -140,8 +140,8 @@ class TestRunPlacement(unittest.TestCase):
 
     def test_font_spacing(self):
         run = Run([self.E1])
-        s1 = Style('test1', font=FontStyle('Helvetica', 14, 'regular', 1.0))
-        s2 = Style('test2', font=FontStyle('Helvetica', 14, 'regular', 0.5))
+        s1 = Style('test1', font=FontStyle('Helvetica', 14, 'regular', 1.0)).set('align', 'left')
+        s2 = Style('test2', font=FontStyle('Helvetica', 14, 'regular', 0.5)).set('align', 'left')
         p1 = place_run(run, Extent(100, 100), s1, self.pdf)
         p2 = place_run(run, Extent(100, 100), s2, self.pdf)
         self.assertAlmostEqual(15.54, p1.extent.height, places=2)
@@ -190,7 +190,7 @@ class TestBlockPlacement(unittest.TestCase):
 
         # Contents on the grid
         self.assertEqual(Point(2, 2), round(placed.child(0).child(0).location))
-        self.assertEqual(Point(148, 2), round(placed.child(0).child(1).location))
+        self.assertEqual(Point(149, 2), round(placed.child(0).child(1).location))
         self.assertEqual(Point(2, 17), round(placed.child(0).child(2).location))
-        self.assertEqual(Point(148, 17), round(placed.child(0).child(3).location))
+        self.assertEqual(Point(149, 17), round(placed.child(0).child(3).location))
         self.assertEqual(Point(2, 33), round(placed.child(0).child(4).location))

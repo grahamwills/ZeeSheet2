@@ -31,7 +31,7 @@ class TestStyle(TestCase):
         self.assertRaises(ValueError, lambda: Style('1badname'))
 
     def test_to_definition_default(self):
-        self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4 '
+        self.assertEqual('inherit:# text-color:auto text-opacity:1 text-align:auto text-indent:4 '
                          'font-family:Montserrat font-size:10 font-face:Regular '
                          'font-spacing:100% border:auto border-opacity:1 border-width:1 '
                          'background:auto background-opacity:1 '
@@ -228,8 +228,7 @@ class TestMakeCompleteStyles(TestCase):
         self.assertIsNot(output['default'], input['default'])
 
         # test inherits some parts, but has overrides
-        self.assertEqual(output['test'].text, TextStyle(color='black', opacity=1.0, align='auto',
-                                                        align_last='same', indent=4))
+        self.assertEqual(output['test'].text, TextStyle(color='black', opacity=1.0, align='auto', indent=4))
         self.assertEqual(output['test'].font, input['default'].font)
         self.assertEqual(output['test'].box.margin, Spacing(72, 72, 72, 72))
 

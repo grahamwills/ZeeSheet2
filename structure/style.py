@@ -150,7 +150,6 @@ class TextStyle:
     color: str = None
     opacity: float = None
     align: str = None
-    align_last: str = None
     indent: float = None
 
     def set(self, key: str, value):
@@ -164,9 +163,6 @@ class TextStyle:
         elif key in {'align', 'alignment'}:
             validate_value(key, value, ('left', 'right', 'center', 'auto'))
             self.align = value
-        elif key in {'alignlast', 'alignmentlast', 'lastalign', 'lastalignmeent'}:
-            validate_value(key, value, ('left', 'right', 'same', 'auto'))
-            self.align_last = value
         elif key in ['indent', 'indentation']:
             self.indent = units.toLength(value)
         else:
@@ -179,8 +175,6 @@ class TextStyle:
             parts.append(f'text-opacity:{num2str(self.opacity)}')
         if self.align is not None:
             parts.append(f'text-align:{self.align}')
-        if self.align_last is not None:
-            parts.append(f'text-align-last:{self.align_last}')
         if self.indent is not None:
             parts.append(f'text-indent:{num2str(self.indent)}')
 
@@ -447,7 +441,7 @@ class StyleDefaults(metaclass=process_definitions):
     BRIGHT = 1 - DARK
 
     DEFINITIONS = '''
-        default =   inherit:# text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4 
+        default =   inherit:# text-color:auto text-opacity:1 text-align:auto text-indent:4 
                     font:Montserrat font-size:10 font-face:Regular font-spacing:100%
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2 effect:none effect-size:3

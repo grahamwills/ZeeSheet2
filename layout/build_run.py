@@ -6,6 +6,7 @@ import layout.quality
 from common import Extent
 from drawing import Font
 from drawing import TextSegment, CheckboxSegment, PDF, TextFieldSegment
+from drawing.pdf import Segment
 from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
 from structure import Style
@@ -13,57 +14,14 @@ from structure import Style
 LOGGER = common.configured_logger(__name__)
 
 @lru_cache(maxsize=10000)
-def _build_run(run: Run, width: float, style: Style, pdf: PDF) -> PlacedRunContent:
-    return RunBuilder(run, style, width, pdf).build()
+def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF) -> PlacedRunContent:
+    return RunBuilder(run, style, auto_align, width, pdf).build()
 
 
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, auto_align: str = None) -> PlacedRunContent:
-    placed = _build_run(run, extent.width, style, pdf)
+    placed = _build_run(run, extent.width, style, auto_align, pdf)
     if placed.extent.height > extent.height:
         raise ExtentTooSmallError()
-
-    align = style.text.align
-    if align == 'auto':
-        align = auto_align
-
-    if align == 'right':
-        dx = extent.width - placed.extent.width
-        placed.offset_content(dx)
-    elif align == 'center':
-        dx = (extent.width - placed.extent.width) / 2
-        placed.offset_content(dx)
-    else:
-        dx = 0
-
-    segments = placed.segments
-    if segments and segments[0].y != segments[-1].y:
-        # May need special alignment for last line
-        last_align = style.text.align_last
-        len_last = segments[-1].x + segments[-1].width
-
-        # Choose alignment
-        if last_align == 'same':
-            last_align = align
-        elif last_align == 'auto':
-            if align == 'left' and len_last < placed.extent.width / 2:
-                last_align = 'right'
-            else:
-                last_align = align
-
-        # If needed, re-align the last line
-        if last_align != align:
-            if last_align == 'right':
-                dx = extent.width - len_last - dx
-            elif last_align == 'center':
-                dx = (extent.width - len_last) / 2 - dx
-            else:
-                dx = -dx
-            last_line_y = segments[-1].y
-
-            # Move all segments on that line
-            for segment in segments:
-                if segment.y == last_line_y:
-                    segment.x += dx
 
     # After alignment, it fills the width. Any unused space is captured in the quality
     placed.extent = Extent(extent.width, placed.extent.height)
@@ -145,12 +103,15 @@ def split_text(text: str,
 
 class RunBuilder:
 
-    def __init__(self, run: Run, style: Style, width: float, pdf: PDF):
+    def __init__(self, run: Run, style: Style, auto_align: str, width: float, pdf: PDF):
         self.run = run
         self.width = width
         self.elements = run.children
         self.style = style
         self.font = pdf.get_font(style)
+        self.align = style.text.align
+        if self.align == 'auto':
+            self.align = auto_align
         self.lines = []
 
     def build(self) -> PlacedRunContent:
@@ -163,7 +124,7 @@ class RunBuilder:
         bad_breaks = breaks = 0
 
         x = left = y = 0
-
+        line_start = 0
         textfield_on_this_line = None
         for element in self.elements:
             text = element.value
@@ -221,15 +182,20 @@ class RunBuilder:
                     if textfield_on_this_line is not None:
                         self.expand_field_size(segments, textfield_on_this_line, width - x)
                         textfield_on_this_line = None
+                    elif self.align != 'left':
+                        self.align_segments(segments[line_start:], left, width)
 
                     # Start a new line, indenting as per the style
                     x = left = self.style.text.indent
                     y += line_spacing
                     breaks += 1
+                    line_start = len(segments)
 
         # Handle any text fields on this line, expanding to fill line
         if textfield_on_this_line is not None:
             self.expand_field_size(segments, textfield_on_this_line, width - x)
+        elif self.align != 'left':
+            self.align_segments(segments[line_start:], left, width)
 
         # Set the extent to cover the whole space
         right = max(s.right for s in segments)
@@ -247,6 +213,16 @@ class RunBuilder:
                           index: int, dx: float):
         segments[index].width += dx
         for s in segments[index + 1:]:
+            s.x += dx
+
+    def align_segments(self, segments:list[Segment], left, width):
+        if self.align == 'right':
+            dx = width - segments[-1].right
+        elif self.align == 'center':
+            dx = (width + left - segments[-1].right)/2
+        else:
+            print('fooo')
+        for s in segments:
             s.x += dx
 
 

@@ -39,7 +39,7 @@ class TestFullLayout(unittest.TestCase):
     def test_one_column(self):
         txt = read_sample('one column')
         document = main.Document(txt)
-        self.assertEqual('(n=8, h=753)', as_str(column_structure(document.page(0)[0])))
+        self.assertEqual('(n=8, h=766)', as_str(column_structure(document.page(0)[0])))
 
     def test_columns_should_balance(self):
         txt = read_sample('columns should balance')

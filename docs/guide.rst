@@ -267,7 +267,7 @@ Default Styles
 
 The following styles are the pre-defined defaults used in ZeeSheet::
 
-        default =   text-color:auto text-opacity:1 text-align:auto text-align-last:same text-indent:4 
+        default =   text-color:auto text-opacity:1 text-align:auto text-indent:4
                     font:Montserrat font-size:10 font-face:Regular font-spacing:100%
                     box-color:auto box-opacity:1 box-width:1 box-border-color:auto box-border-opacity:1
                     box-margin:0 box-padding:2 effect:none effect-size:3
@@ -296,7 +296,6 @@ Name                    Example                     Description
 text-color              text-color:#dfe             Color of the text drawn
 text-opacity            text-opacity:1              How transparent the text is to be displayed as
 text-align              text-align:auto             How to align the text
-text-align-last         text-align-last:same        How to align the last line of text that wraps
 text-indent             text-indent:4               Indentation for 2nd and subsequent lines of wrapped text
 font                    font:Montserrat             The family to use for the font
 font-size               font-size:10                font size in points
@@ -323,9 +322,7 @@ Fraction
     Fractions can be defined as a number such as '0.75', or as a poercentage, such as '75%'
 Alignment
     'auto' alignment is used in tables so that the left column is left aligned and the right column
-    right aligned. 'same' alignment (for *text-align-last*) sattes that the alignment of the last
-    line in some wrapping text is aligned the same was as the previous lines. Standard alignments are left,
-    right and center.
+    right aligned. Standard alignments are left, right and center.
 Font
     Helvetica, Courier and Times and all Google Fonts (as of 2022-10-1) are available to be used.
     The excellent site https://goofonts.com is a great resource to choose a font for
