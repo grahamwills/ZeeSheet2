@@ -4,11 +4,13 @@ import warnings
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 
+from reportlab.lib.colors import Color
+
 import common
 import layout.quality
 from common import Extent, Spacing, Rect
 from common import configured_logger
-from drawing import PDF
+from drawing import PDF, TextFontModifier, Font
 from structure import Block, style
 from structure import BlockOptions, Run, Item
 from . import build_run
@@ -32,8 +34,9 @@ class BlockTitleBuilder(TitleBuilder):
         block = self.block
         debug_name = common.name_of(block)
         k = len(block.title.children)
+        modifier = BlockTextFontModifier(block.options.title_bold, block.options.title_italic, self.pdf)
         packer = BlockTablePacker(debug_name, bounds, [block.title], k,
-                                  block.options.title_style, self.layout_quality, self.pdf)
+                                  block.options.title_style, self.layout_quality, self.pdf, modifier)
         return packer.place_table(equal=block.options.equal)
 
 
@@ -131,8 +134,9 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
 def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> Optional[PlacedGroupContent]:
     if block.children:
         debug_name = common.name_of(block)
+        modifier = BlockTextFontModifier(block.options.bold, block.options.italic, pdf)
         packer = BlockTablePacker(debug_name, item_bounds, block.children,
-                                  block.column_count(), block.options.style, quality, pdf)
+                                  block.column_count(), block.options.style, quality, pdf, modifier)
         return packer.place_table(equal=block.options.equal)
     else:
         return None
@@ -143,11 +147,12 @@ class BlockTablePacker(ColumnPacker):
     span_map: dict[Tuple[int, int], int]
 
     def __init__(self, debug_name: str, bounds: Rect, items: list[Item], k: int, style_name: str, quality: str,
-                 pdf: PDF):
+                 pdf: PDF, modifier:BlockTextFontModifier):
         max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()] / 2
         column_count = max(len(item.children) for item in items)
         self.pdf = pdf
         self.content_style = pdf.style(style_name)
+        self.modifier = modifier
         super().__init__(debug_name, bounds, len(items), column_count, max_width_combos)
 
         # Set default alignments
@@ -161,7 +166,7 @@ class BlockTablePacker(ColumnPacker):
         for r, row in enumerate(items):
             for c, item in enumerate(row):
                 self.item_map[(r, c)] = item
-                if c == len(row)-1:
+                if c == len(row) - 1:
                     # Last item fills to the end
                     self.span_map[(r, c)] = k - c
                 else:
@@ -174,7 +179,7 @@ class BlockTablePacker(ColumnPacker):
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
         item = self.item_map[idx]
         align = self.alignments[idx[1]]
-        return build_run.place_run(item, extent, self.content_style, self.pdf, align)
+        return build_run.place_run(item, extent, self.content_style, self.pdf, self.modifier, align)
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
         try:
@@ -189,3 +194,52 @@ def tiny_block() -> Block:
     options = BlockOptions(title='none', style=style.StyleDefaults.hidden.name)
     item = Item([build_run.tiny_run()])
     return Block(Item(), [item], options)
+
+
+class BlockTextFontModifier(TextFontModifier):
+    bold_font: Font or None
+    italic_Font: Font or None
+    bold_col: Color or None
+    italic_col: Color or None
+
+    def __init__(self, bold: str or None, italic: str or None, pdf: PDF):
+        self._set_bold(bold, pdf)
+        self._set_italic(italic, pdf)
+
+    def modify_font(self, font: Font, modifier: str) -> Font:
+        if modifier == 'italic' or modifier == 'emphasis':
+            return self.italic_font or font.modify(modifier)
+        if modifier == 'bold' or modifier == 'strong':
+            return self.bold_font or font.modify(modifier)
+        return font
+
+    def modify_color(self, c: Color, modifier: str) -> Color:
+        if modifier == 'italic' or modifier == 'emphasis':
+            return self.italic_col or c
+        if modifier == 'bold' or modifier == 'strong':
+            return self.bold_col or c
+        return c
+
+    def _set_bold(self, bold, pdf):
+        if bold:
+            try:
+                s = pdf.styles[bold]
+                self.bold_font = pdf.get_font(s)
+                self.bold_col = s.get_color()
+                return
+            except KeyError:
+                warnings.warn(f"Style '{bold}' was requested to be used for bold styling, but was not defined. ")
+        self.bold_font = None
+        self.bold_col = None
+
+    def _set_italic(self, italic, pdf):
+        if italic:
+            try:
+                s = pdf.styles[italic]
+                self.italic_font = pdf.get_font(s)
+                self.italic_col = s.get_color()
+                return
+            except KeyError:
+                warnings.warn(f"Style '{italic}' was requested to be used for bold styling, but was not defined. ")
+        self.italic_font = None
+        self.italic_col = None

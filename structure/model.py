@@ -48,15 +48,19 @@ class SheetOptions(CommonOptions):
 @dataclass
 class SectionOptions(CommonOptions):
     columns: int = 1
-    equal : bool = False
+    equal: bool = False
 
 
 @dataclass
 class BlockOptions(CommonOptions):
     method: str = 'table'
-    equal : bool = False
+    equal: bool = False
     title: str = None
     title_style: str = None
+    bold: str = None
+    italic: str = None
+    title_bold: str = None
+    title_italic: str = None
 
 
 @dataclass

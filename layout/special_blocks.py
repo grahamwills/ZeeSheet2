@@ -1,6 +1,8 @@
 from functools import lru_cache
 from typing import Iterable
 
+from reportlab.lib.colors import Color
+
 import layout
 from common import Extent, Rect, Spacing
 from drawing import Font
@@ -41,6 +43,8 @@ class AttributeTableBuilder:
 
         font = self.pdf.get_font(self.style)
         font2 = self.pdf.get_font(self.style2)
+        color = self.style.get_color()
+        color2 = self.style2.get_color()
 
         c_width, c_height, c_dy, c_widths = text_details(tuple(row[0] for row in rows), font)
         e_width, e_height, e_dy, e_widths = text_details(tuple(row[1] for row in rows), font2)
@@ -81,8 +85,8 @@ class AttributeTableBuilder:
             name_box = Rect(xa, xb, top + y1, top + y2)
             value_box = Rect(0, xa, top, top + y3)
 
-            name = self.text_in_box(row[0], name_box, c_pad, c_align, name_width, c_height, c_dy, font)
-            value = self.text_in_box(row[1], value_box, e_pad, e_align, value_width, e_height, e_dy, font2)
+            name = self.text_in_box(row[0], name_box, c_pad, c_align, name_width, c_height, c_dy, font, color)
+            value = self.text_in_box(row[1], value_box, e_pad, e_align, value_width, e_height, e_dy, font2, color2)
             attributes.append(name)
             values.append(value)
 
@@ -109,7 +113,7 @@ class AttributeTableBuilder:
         return rows
 
     def text_in_box(self, txt: str, box: Rect, pad: Spacing, align: str,
-                    width: float, height: float, dy: float, font: Font) -> TextSegment:
+                    width: float, height: float, dy: float, font: Font, color:Color) -> TextSegment:
         box = box - pad
         if align == 'left':
             dx = 0
@@ -121,4 +125,4 @@ class AttributeTableBuilder:
         # center in the box. The '0.75 * dy - 0.5' is a fudge factor, but does seem to make the results prettier
         y = box.center.y - font.ascent + height / 2 - 0.75 * dy - 0.5
 
-        return TextSegment(txt, box.left + dx, y, width, font)
+        return TextSegment(txt, box.left + dx, y, width, font, color)

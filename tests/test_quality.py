@@ -1,5 +1,7 @@
 import unittest
 
+from reportlab.lib.colors import Color
+
 import layout.quality as quality
 from common import Extent, Rect, Point
 from drawing import TextSegment, CheckboxSegment
@@ -11,9 +13,10 @@ POINT = Point(2, 3)
 EXTENT = Extent(1, 1)
 STYLE = Style('foo')
 BOUNDS = Rect(2, 3, 3, 4)
+COLOR = Color(0,0,0)
 
 IMAGE = ImageDetail(2, None, 100, 200)
-SEGMENTS = [TextSegment('hello', 2, 3, 12, None), CheckboxSegment(True, 15, 3, 10, None)]
+SEGMENTS = [TextSegment('hello', 2, 3, 12, None, COLOR), CheckboxSegment(True, 15, 3, 10, None,COLOR)]
 
 IM_DESIRED = Extent(100, 200)
 

@@ -17,7 +17,8 @@ LOGGER = configured_logger(__name__)
 _TRANSPARENT = colors.Color(1, 1, 1, 0)
 
 
-def to_color(txt: str) -> colors.Color or None:
+# noinspection PyArgumentList,PyUnresolvedReferences
+def to_color(txt: str, opacity: float or None = None) -> colors.Color or None:
     txt = txt.lower()
     if len(txt) == 4 and txt[0] == '#':
         txt = '#' + txt[1] + txt[1] + txt[2] + txt[2] + txt[3] + txt[3]
@@ -26,8 +27,11 @@ def to_color(txt: str) -> colors.Color or None:
     if txt == 'auto':
         # Not an error, but cannot be converted to a color
         return None
-    # noinspection PyArgumentList
-    return colors.toColor(txt)
+    color = colors.toColor(txt)
+    if opacity == 1.0 or opacity is None:
+        return color
+    else:
+        return colors.Color(color.red, color.green, color.blue, color.alpha * opacity)
 
 
 def _brightness(c: colors.Color) -> bool:
@@ -98,7 +102,6 @@ class Effects:
     ROUGH = Effect('rough', True, True)
     COGS = Effect('cogs', True, True)
     ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH, COGS)}
-
 
 @dataclass
 class FontStyle:
@@ -334,17 +337,7 @@ class Style:
         else:
             name = self.text.color
             opacity = self.text.opacity
-
-        if name.lower() == 'none':
-            return _TRANSPARENT
-        if name[0] == '#' and len(name) == 4:
-            # Also handle the '#RGB' format
-            name = '#' + name[1] + name[1] + name[2] + name[2] + name[3] + name[3]
-        c = to_color(name)
-        if opacity == 1.0 or opacity is None:
-            return c
-        else:
-            return colors.Color(c.red, c.green, c.blue, c.alpha * opacity)
+        return to_color(name, opacity)
 
     def get_effect(self) -> Effect:
         size = self.box.effect_size

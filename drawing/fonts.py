@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Dict, Any, Iterable, Tuple, List
 
 from reportlab.graphics.charts import textlabels
+from reportlab.lib.colors import Color
 from reportlab.pdfbase import pdfmetrics as metrics, pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 
 import common
 from common import Rect
 from common.textual import NGram
+from structure import TextStyle
 
 LOGGER = common.configured_logger(__name__)
 
@@ -272,6 +274,14 @@ class FontLibrary:
                     if _key(face) == face_key:
                         return family, face
         raise KeyError(font_name)
+
+
+class TextFontModifier:
+    def modify_font(self, font: Font, modifier: str) -> Font:
+        raise NotImplementedError()
+
+    def modify_color(self, c: Color, modifier: str) -> Color:
+        raise NotImplementedError()
 
 
 def register_single_font(family: FontFamily, full_name: str):

@@ -36,23 +36,25 @@ class Segment:
     y: float
     width: float
     font: Font
+    color: Color
 
     @property
     def right(self):
         return self.x + self.width
 
-    def __init__(self, x: float, y: float, width: float, font: Font):
+    def __init__(self, x: float, y: float, width: float, font: Font, color: Color):
         self.x = x
         self.y = y
         self.width = width
         self.font = font
+        self.color = color
 
 
 class TextSegment(Segment):
     text: str
 
-    def __init__(self, text: str, x: float, y: float, width: float, font: Font):
-        super().__init__(x, y, width, font)
+    def __init__(self, text: str, x: float, y: float, width: float, font: Font, color: Color):
+        super().__init__(x, y, width, font, color)
         self.text = text
 
     def __str__(self):
@@ -65,8 +67,8 @@ class TextSegment(Segment):
 class CheckboxSegment(Segment):
     state: bool
 
-    def __init__(self, state: bool, x: float, y: float, width: float, font: Font):
-        super().__init__(x, y, width, font)
+    def __init__(self, state: bool, x: float, y: float, width: float, font: Font, color: Color):
+        super().__init__(x, y, width, font, color)
         self.state = state
 
     def __str__(self):
@@ -79,8 +81,8 @@ class CheckboxSegment(Segment):
 class TextFieldSegment(Segment):
     text: str
 
-    def __init__(self, text: str, x: float, y: float, width: float, font: Font):
-        super().__init__(x, y, width, font)
+    def __init__(self, text: str, x: float, y: float, width: float, font: Font, color: Color):
+        super().__init__(x, y, width, font, color)
         self.text = text
 
     def __str__(self):
@@ -206,8 +208,7 @@ class PDF(canvas.Canvas):
         font = self.get_font(style)
         text = self.beginText()
         text.setTextOrigin(0, font.top_to_baseline)
-        text_color = style.get_color()
-        text.setFillColor(text_color)
+        text_color = None
         off = Point(0, 0)
         current_font = None
         for seg in segments:
@@ -218,13 +219,16 @@ class PDF(canvas.Canvas):
             off = Point(seg.x, seg.y)
             if isinstance(seg, TextSegment):
                 # It is text, so just output it
+                if seg.color != text_color:
+                    text_color = seg.color
+                    text.setFillColor(text_color)
                 text.textOut(seg.text)
             elif isinstance(seg, CheckboxSegment):
                 # Check Box
-                self._draw_checkbox(seg.x, seg.y, current_font, seg.state, text_color)
+                self._draw_checkbox(seg.x, seg.y, current_font, seg.state, seg.color)
             else:
                 # Text field
-                self._draw_textfield(seg.text.strip(), seg.x, seg.y, seg.width, current_font, text_color)
+                self._draw_textfield(seg.text.strip(), seg.x, seg.y, seg.width, current_font, seg.color)
 
         self.drawText(text)
 

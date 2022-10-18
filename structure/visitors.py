@@ -64,6 +64,15 @@ def _set_option(options, k, v):
         options.style = v
     elif k == 'title-style':
         options.title_style = v
+    elif k == 'bold' or k == 'strong':
+        options.bold = v
+    elif k == 'italic' or k == 'empahsis':
+        options.italic = v
+    elif k == 'title-bold' or k == 'title-strong':
+        options.title_bold = v
+    elif k == 'title-italic' or k == 'title-empahsis':
+        options.title_italic = v
+
     elif k == 'method':
         choices = ('table', 'attributes')
         if v.lower() in choices:

@@ -4,22 +4,21 @@ from typing import Tuple, Union
 import common
 import layout.quality
 from common import Extent
-from drawing import Font
-from drawing import TextSegment, CheckboxSegment, PDF, TextFieldSegment
-from drawing.pdf import Segment
+from drawing import Font, TextSegment, CheckboxSegment, PDF, TextFieldSegment, TextFontModifier, Segment
 from layout.content import PlacedRunContent, ExtentTooSmallError
 from structure import Run, Element
 from structure import Style
 
 LOGGER = common.configured_logger(__name__)
 
+
 @lru_cache(maxsize=10000)
-def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF) -> PlacedRunContent:
-    return RunBuilder(run, style, auto_align, width, pdf).build()
+def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF, modifier: TextFontModifier) -> PlacedRunContent:
+    return RunBuilder(run, style, auto_align, width, pdf, modifier).build()
 
 
-def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, auto_align: str = None) -> PlacedRunContent:
-    placed = _build_run(run, extent.width, style, auto_align, pdf)
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFontModifier, auto_align: str = None) -> PlacedRunContent:
+    placed = _build_run(run, extent.width, style, auto_align, pdf, modifier)
     if placed.extent.height > extent.height:
         raise ExtentTooSmallError()
 
@@ -103,22 +102,25 @@ def split_text(text: str,
 
 class RunBuilder:
 
-    def __init__(self, run: Run, style: Style, auto_align: str, width: float, pdf: PDF):
+    def __init__(self, run: Run, style: Style, auto_align: str, width: float, pdf: PDF, modifier: TextFontModifier):
         self.run = run
         self.width = width
         self.elements = run.children
         self.style = style
+        self.txt_style = style.text
         self.font = pdf.get_font(style)
         self.align = style.text.align
         if self.align == 'auto':
             self.align = auto_align
         self.lines = []
+        self.modifier = modifier
 
     def build(self) -> PlacedRunContent:
 
         segments = []
         width = self.width
         font = self.font
+        color = self.style.get_color()
         line_spacing = font.line_spacing
 
         bad_breaks = breaks = 0
@@ -135,7 +137,7 @@ class RunBuilder:
                     # Try to place checkbox on the line
                     w = line_spacing * 0.9
                     if x + w <= width:
-                        segments.append(CheckboxSegment(text == 'X', x, y, w, font))
+                        segments.append(CheckboxSegment(text == 'X', x, y, w, font, color))
                         x += w
                         text = None
                 elif modifier == 'textfield':
@@ -144,7 +146,7 @@ class RunBuilder:
                     w = min(font.width(text) + 4, 20)
                     if x + w <= width:
                         textfield_on_this_line = len(segments)
-                        segments.append(TextFieldSegment(text, x, y, w, font))
+                        segments.append(TextFieldSegment(text, x, y, w, font, color))
                         x += w
                         text = None
                 else:
@@ -153,21 +155,23 @@ class RunBuilder:
                         text = text.lstrip()
 
                     if modifier:
-                        fnt = font.modify(modifier)
+                        fnt = self.modifier.modify_font(font, modifier)
+                        col = self.modifier.modify_color(color, modifier)
                     else:
                         fnt = font
+                        col = color
 
                     w = fnt.width(text)
                     if x + w <= width:
                         # Happy path; it all fits
-                        segments.append(TextSegment(text, x, y, w, fnt))
+                        segments.append(TextSegment(text, x, y, w, fnt, col))
                         x += w
                         text = None
                     else:
                         # Need to split the line
                         p, w, is_bad = split_text(text, fnt, width - x, w, x > 0)
                         if p > 0:
-                            segments.append(TextSegment(text[:p], x, y, w, fnt))
+                            segments.append(TextSegment(text[:p], x, y, w, fnt, col))
                             x += w
                             text = text[p:]
                             if is_bad:
@@ -209,19 +213,19 @@ class RunBuilder:
         return PlacedRunContent(segments, self.style, outer, quality)
 
     @staticmethod
-    def expand_field_size(segments: list[Union[TextFieldSegment, CheckboxSegment, TextSegment]],
+    def expand_field_size(segments: list[Segment],
                           index: int, dx: float):
         segments[index].width += dx
         for s in segments[index + 1:]:
             s.x += dx
 
-    def align_segments(self, segments:list[Segment], left, width):
+    def align_segments(self, segments: list[Segment], left, width):
         if self.align == 'right':
             dx = width - segments[-1].right
         elif self.align == 'center':
-            dx = (width + left - segments[-1].right)/2
+            dx = (width + left - segments[-1].right) / 2
         else:
-            print('fooo')
+            dx = 0
         for s in segments:
             s.x += dx
 
