@@ -70,14 +70,20 @@ def cogs(points: list[Point], radius: float, _) -> list[tuple]:
 def roughen(points: list[Point], radius: float, rand: random.Random) -> list[tuple]:
     decay = 0.5
     result = []
-    d = Point(0, 0)
+    dx = 0
+    dy = 0
     for q in points:
         while True:
-            d1 = d * (1 - decay) + Point(rand.gauss(0, 0.5), rand.gauss(0, 0.5)) * decay
-            if abs(d1.x) <= 1 and abs(d1.y) <= radius:
+            dx1 = dx * (1 - decay) + rand.gauss(0, 0.5) * decay
+            if abs(dx1) <= 1:
+                dx = dx1
                 break
-        d = d1
-        result.append(q + radius * d)
+        while True:
+            dy1 = dy * (1 - decay) + rand.gauss(0, 0.5) * decay
+            if abs(dy1) <= 1:
+                dy = dy1
+                break
+        result.append(Point(q.x + radius * dx, q.y + radius * dy))
     return result
 
 

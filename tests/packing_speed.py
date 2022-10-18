@@ -41,15 +41,21 @@ def time_build(text: str) -> float:
     return t
 
 
+def read_apollo() -> str:
+    with open(f'samples/apollo.rst', 'rt') as f:
+        return f.read()
+
+
 if __name__ == '__main__':
     SECTION_COLUMNS = 3
     BLOCK_COUNT = 40
     TABLE_COLUMN = 2
     TABLE_ROWS = list(range(3, 9))
 
-    text = make_sheet(SECTION_COLUMNS, BLOCK_COUNT, TABLE_COLUMN, TABLE_ROWS)
+    # text = make_sheet(SECTION_COLUMNS, BLOCK_COUNT, TABLE_COLUMN, TABLE_ROWS)
+    text = read_apollo()
 
-    N = 3
+    N = 7
     times = [time_build(text) for _ in range(N)]
     median = times[N // 2]
     print(f"TIME = {median:>8.4f}s | section_cols={SECTION_COLUMNS}, blocks={BLOCK_COUNT}, "

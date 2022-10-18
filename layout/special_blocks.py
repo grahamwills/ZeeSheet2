@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Iterable
 
 import layout
@@ -6,6 +7,19 @@ from drawing import Font
 from drawing import PDF, TextSegment
 from layout import PlacedPathContent, PlacedGroupContent, PlacedRunContent, ExtentTooSmallError
 from structure import Block
+
+
+@lru_cache
+def text_details(texts: tuple[str], font: Font):
+    boxes = tuple(font.bbox(t) for t in texts)
+    overall = Rect.union(boxes)
+    widths = tuple(r.width for r in boxes)
+
+    # Heights are inverted -- top is the distance below the baseline,
+    height = overall.height
+    dy = -overall.top
+
+    return overall.width, height, dy, widths
 
 
 class AttributeTableBuilder:
@@ -17,16 +31,6 @@ class AttributeTableBuilder:
         self.style = pdf.style(block.options.style)
         self.style2 = pdf.style(block.options.title_style)
 
-    def text_details(self, texts: Iterable[str], font: Font):
-        boxes = tuple(font.bbox(t) for t in texts)
-        overall = Rect.union(boxes)
-        widths = tuple(r.width for r in boxes)
-
-        # Heights are inverted -- top is the distance below the baseline,
-        height = overall.height
-        dy = -overall.top
-
-        return overall.width, height, dy, widths
 
     def build(self) -> PlacedGroupContent:
         rows = self.make_rows()
@@ -38,8 +42,8 @@ class AttributeTableBuilder:
         font = self.pdf.get_font(self.style)
         font2 = self.pdf.get_font(self.style2)
 
-        c_width, c_height, c_dy, c_widths = self.text_details((row[0] for row in rows), font)
-        e_width, e_height, e_dy, e_widths = self.text_details((row[1] for row in rows), font2)
+        c_width, c_height, c_dy, c_widths = text_details(tuple(row[0] for row in rows), font)
+        e_width, e_height, e_dy, e_widths = text_details(tuple(row[1] for row in rows), font2)
 
         c_pad = self.style.box.padding
         e_pad = self.style2.box.padding

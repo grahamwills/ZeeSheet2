@@ -212,8 +212,10 @@ class ColumnPacker:
 
             col_width.append(w_max)
             col_to_end_width.append(w_to_end)
-        # If necessary, increase out the size of the columsn that are spanned by a single item
-        for c in range(0, self.k):
+        # If necessary, increase out the size of the columns that are spanned by a single item
+        # We start at column 1 because if an item spans all the columns in a table, then how we
+        # divide up those columns makes no difference.
+        for c in range(1, self.k):
             if col_to_end_width[c] > 0:
                 available = sum(col_width[c:])
                 extra_needed_per_column = (col_to_end_width[c] - available) / (self.k - c)
