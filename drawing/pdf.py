@@ -5,7 +5,7 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from io import BytesIO
-from typing import List, Tuple, Union, Dict, Optional
+from typing import List, Tuple, Dict, Optional
 
 import PIL.Image
 from PIL import ImageEnhance
@@ -160,7 +160,7 @@ class PDF(canvas.Canvas):
             self.rect(r.left, r.top, r.width, r.height, fill=filled, stroke=stroked)
 
     def _draw_checkbox(self, rx, ry, font: Font, state: bool, color: Color):
-        size = font.ascent + font.descent
+        size = (font.ascent + font.descent) * 0.8
         x, y = self.absolutePosition(rx, ry + font.line_spacing / 2 + size / 2)
         y = self._pagesize[1] - y
         self._name_index += 1

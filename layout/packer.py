@@ -179,9 +179,58 @@ class ColumnPacker:
         return fit, space_is_full
 
     def place_table(self, equal: bool) -> PlacedGroupContent:
-        """ Expect to have the table structure methods defined and use them for placement """
 
-        width_choices = self.choose_widths(need_gaps=True, equal_column_widths=equal)
+        # Padding between cells and on the far left and far right
+        available_space = self.bounds.width
+        col_gap = self.average_spacing.horizontal / 2
+        available_space -= col_gap * (self.k + 1)
+
+        if self.k == 1:
+            return self.place_table_given_widths([available_space], self.bounds)
+        if equal:
+            return self.place_table_given_widths([available_space / self.k] * self.k, self.bounds)
+
+        # Multiple columns, varying widths. We need to fit automatically
+        return self.fit_within_space(available_space) or self.find_best_compression()
+
+    def fit_within_space(self, available_space):
+        best = None
+        WID = 1e6
+        enormous = self.place_table_given_widths([WID] * self.k, self.bounds)
+        col_width = []
+        col_to_end_width = []
+        for c in range(0, self.k):
+            items = self.quality_table[c]
+            w_max = 0
+            w_to_end = 0
+            for r in range(self.n):
+                span = self.span_of_item((r, c))
+                if span == 1:
+                    w_max = max(w_max, WID - items[r].excess)
+                elif span > 1:
+                    # This must go all the way to the end
+                    w_to_end = max(w_to_end, WID - items[r].excess)
+
+            col_width.append(w_max)
+            col_to_end_width.append(w_to_end)
+        # If necessary, increase out the size of the columsn that are spanned by a single item
+        for c in range(0, self.k):
+            if col_to_end_width[c] > 0:
+                available = sum(col_width[c:])
+                extra_needed_per_column = (col_to_end_width[c] - available) / (self.k - c)
+                for c1 in range(c, self.k):
+                    col_width[c1] += extra_needed_per_column
+        total_widest = sum(col_width)
+        if total_widest <= available_space:
+            # The columns all fit!
+            extra_per_column = (available_space - total_widest) / self.k
+            column_widths = [w + extra_per_column for w in col_width]
+            # TODO: Can actually just move the created values to the right place
+            best = self.place_table_given_widths(column_widths, self.bounds)
+        return best
+
+    def find_best_compression(self) -> PlacedGroupContent:
+        width_choices = self.choose_widths(need_gaps=True, equal_column_widths=False)
 
         if len(width_choices) > 1:
             LOGGER.debug("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
@@ -191,22 +240,16 @@ class ColumnPacker:
                          common.to_str(width_choices[0], 0))
 
         best = None
-        best_widths = None
         for column_sizes in width_choices:
             try:
                 placed_children = self.place_table_given_widths(column_sizes, self.bounds)
                 if placed_children.better(best):
                     best = copy(placed_children)
-                    best_widths = column_sizes
             except ExtentTooSmallError:
                 # Skip this option
                 pass
         if best is None:
             raise ExtentTooSmallError('All width choices failed to produce a good fit')
-
-        if self.k > 3 and not equal:
-            best, best_widths = self.reduce_breaks(best, best_widths)
-            best = self.even_excesses(best, best_widths)
         return best
 
     def choose_widths(self, need_gaps: bool, equal_column_widths: bool):

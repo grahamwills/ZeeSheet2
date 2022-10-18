@@ -161,7 +161,7 @@ class BlockTablePacker(ColumnPacker):
         for r, row in enumerate(items):
             for c, item in enumerate(row):
                 self.item_map[(r, c)] = item
-                if item == row[-1]:
+                if c == len(row)-1:
                     # Last item fills to the end
                     self.span_map[(r, c)] = k - c
                 else:
