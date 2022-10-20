@@ -85,6 +85,7 @@ class Element:
     value: str
     modifier: Optional[str] = None
     generated: Generated = None
+    name: str = None
 
     def __post_init__(self):
         assert self.value is not None, 'Element must be created with valid content'
@@ -120,6 +121,9 @@ class Element:
     def as_simple_text(self):
         return self.value
 
+    def _name(self, index: list[int]):
+        self.name = 'Element\u00a7' + '.'.join(str(x) for x in index)
+
 
 # noinspection PyUnresolvedReferences,PyAttributeOutsideInit
 @dataclass
@@ -142,10 +146,18 @@ class StructureUnit:
         return hasattr(self, 'title')
 
     def __bool__(self) -> bool:
-        return bool(self.children) or (self._titled() and bool(self.title))
+        return any(s for s in self.children) or (self._titled() and bool(self.title))
 
     def tidy(self, index: list[int]) -> None:
         raise NotImplementedError('Must be implemented by descendents')
+
+    def _name(self, index: list[int]):
+        if index:
+            self.name = self.__class__.__name__ + '\u00a7' + '.'.join(str(x) for x in index)
+        else:
+            self.name = self.__class__.__name__
+        for i, s in enumerate(self.children):
+            s._name(index + [i + 1])
 
     def _tidy_children(self, index: list[int], keep_empty: bool = False):
         """ Tidy children, and optionally throw away children with no content"""
@@ -153,6 +165,8 @@ class StructureUnit:
             s.tidy(index + [i + 1])
         if not keep_empty:
             self.children = [s for s in self.children if s]
+        # Name children (must be done after removals)
+        self._name(index)
 
     def description(self, short: bool):
         start, sep, end = self.FMT
