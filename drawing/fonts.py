@@ -110,19 +110,21 @@ class Font:
         """Measures the width of the text"""
         return self._font.stringWidth(text, self.size)
 
-    def bbox(self, *texts: str) -> Rect:
+    def bbox(self, t: str) -> Rect:
         """
             Measures the bounding box of the drawn results.
 
             Rect returned is relative to the baseline, and is inverted, so
             bottom is the max height above the baseline and top is the max height below the baseline
         """
-        sizes = []
-        for t in texts:
+
+        try:
             # noinspection PyProtectedMember
             r = textlabels._text2Path(t, fontName=self.name, fontSize=self.size).getBounds()
-            sizes.append(Rect(r[0], r[2], r[1], r[3]))
-        return Rect.union(sizes)
+            return Rect(r[0], r[2], r[1], r[3])
+        except ValueError:
+            # Text did not have a path (probably all spaces)
+            return Rect(0,0,0,0)
 
     @property
     def top_to_baseline(self):
