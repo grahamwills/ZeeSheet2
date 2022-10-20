@@ -124,10 +124,11 @@ class RunBuilder:
         line_spacing = font.line_spacing
 
         bad_breaks = breaks = 0
+        any_expanding = False
 
         x = left = y = 0
         line_start = 0
-        textfield_on_this_line = None
+        field_to_expand = None
         for element in self.elements:
             text = element.value
             modifier = element.modifier
@@ -143,10 +144,13 @@ class RunBuilder:
                 elif modifier == 'textfield':
                     # Textfield has a minimum size based on content, plus a bit for the border
                     # When initially placing, we use the minimum size
-                    w = min(font.width(text) + 4, 20)
+                    w = min(font.width('X' + text.replace(' ','X')) + 4, 20)
                     if x + w <= width:
-                        textfield_on_this_line = len(segments)
-                        segments.append(TextFieldSegment(text, x, y, w, font, color))
+                        field_segment = TextFieldSegment(text, x, y, w, font, color)
+                        if field_segment.expands:
+                            field_to_expand = len(segments)
+                            any_expanding = True
+                        segments.append(field_segment)
                         x += w
                         text = None
                 else:
@@ -183,9 +187,9 @@ class RunBuilder:
                         raise ExtentTooSmallError()
 
                     # Handle any text fields on this line, expanding to fill line
-                    if textfield_on_this_line is not None:
-                        self.expand_field_size(segments, textfield_on_this_line, width - x)
-                        textfield_on_this_line = None
+                    if field_to_expand is not None:
+                        self.expand_field_size(segments, field_to_expand, width - x)
+                        field_to_expand = None
                     elif self.align != 'left':
                         self.align_segments(segments[line_start:], left, width)
 
@@ -196,17 +200,22 @@ class RunBuilder:
                     line_start = len(segments)
 
         # Handle any text fields on this line, expanding to fill line
-        if textfield_on_this_line is not None:
-            self.expand_field_size(segments, textfield_on_this_line, width - x)
+        if field_to_expand is not None:
+            self.expand_field_size(segments, field_to_expand, width - x)
         elif self.align != 'left':
             self.align_segments(segments[line_start:], left, width)
 
         # Set the extent to cover the whole space
-        right = max(s.right for s in segments)
+        right = max((s.right for s in segments), default=0)
         outer = Extent(right, y + line_spacing)
 
         # Only count excess for the last lines; not using 'right' which would be for all lines
-        excess = self.width - x
+        # If there was an expanding field, the excess is not as important
+
+        if any_expanding:
+            excess = 0
+        else:
+            excess = self.width - x
 
         # The good breaks equals all the breaks minus the bad ones
         quality = layout.quality.for_wrapping(excess, bad_breaks, breaks - bad_breaks)
@@ -220,6 +229,8 @@ class RunBuilder:
             s.x += dx
 
     def align_segments(self, segments: list[Segment], left, width):
+        if not segments:
+            return
         if self.align == 'right':
             dx = width - segments[-1].right
         elif self.align == 'center':

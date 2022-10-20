@@ -20,7 +20,8 @@ class TitleBuilder:
         self.block = block
         self.bleed_space = bleed_space  # Space to add to title to cover ragged borders
         self.pdf = pdf
-        self.style = pdf.style(block.options.title_style, 'default-title')
+        if block.options.title != 'none':
+            self.style = pdf.style(block.options.title_style, 'default-title')
         self.title_inside_clip = False
         self.content_spacing = NO_SPACING
         self.frame_spacing = NO_SPACING

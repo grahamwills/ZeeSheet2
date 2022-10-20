@@ -73,7 +73,7 @@ class PlacementQuality(Generic[T]):
     def _score_breaks(self) -> float:
         assert self.bad_breaks >= 0
         assert self.good_breaks >= 0
-        return 10 * self.bad_breaks + self.good_breaks
+        return 50 * self.bad_breaks + self.good_breaks
 
     def _score_height(self) -> float:
         return self.height_dev / 10

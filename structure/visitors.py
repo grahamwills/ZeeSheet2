@@ -15,17 +15,17 @@ LOGGER = configured_logger(__name__)
 
 # These tags will not  be recorded
 IGNORE_TAGS = {'document', 'system_message', 'literal', 'substitution_reference',
-               'problematic', 'settings', 'script', 'style_definitions'}
+               'problematic', 'settings', 'script', 'style_definitions', 'line_block'}
 
 # These tags will be recorded, but they are only used to identify where we are in the
 # processing tree; no action is taken when they are entered or departed from
 NO_ACTION_TAGS = {'title', 'bullet_list', 'list_item', 'definition_list', 'term', 'emphasis', 'strong', 'block_quote'}
 
 # These items as out ancestors determine that text is the title of a block
-BLOCK_TITLE_ANCESTRY = {'paragraph', 'section • paragraph', 'definition_list_item • term'}
+BLOCK_TITLE_ANCESTRY = {'paragraph', 'line', 'section • paragraph', 'definition_list_item • term'}
 
 # System messages we can ignore
-IGNORE_SYSTEM_MESSAGES = {'Unexpected indentation.'}
+IGNORE_SYSTEM_MESSAGES = {'Unexpected indentation.', 'Inline substitution_reference start-string without end-string.'}
 
 
 def _tag(node: docutils.nodes.Node):
@@ -246,6 +246,12 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         self.start(node)
         self._make_new_section()
 
+    def visit_line(self, node:docutils.nodes.line) ->None:
+        # Need to add the missing pipe from the line start
+        child = node.children[0]
+        node.children[0] = docutils.nodes.Text('|' + child.astext())
+        self.visit_paragraph(node)
+
     def visit_paragraph(self, node) -> None:
         p = self.start(node, n=1)
         if p == '' or p == 'section':
@@ -427,7 +433,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         elif p == 'section • title':
             warnings.warn(message_general('Titles for sections are not supported',
                                           text=node.astext(), ancestors=p, line=_line_of(node)))
-        elif p == 'list_item • paragraph':
+        elif p == 'list_item • paragraph' or p == 'list_item • line':
             self.current_run.children += elements
         else:
             self.error(node, 'Unexpected text encountered')

@@ -121,7 +121,9 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         modified_bounds = frame_bounds - Spacing(0, 0, 0, extra_space)
         result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration())
     if titler.title and not titler.title_inside_clip:
-        result = PlacedGroupContent.from_items([result, titler.title], block_quality, extent=block_extent)
+        # Inlcude title and content in the quality
+        quality = layout.quality.for_table([[titler.title.quality, block_quality]], 0)
+        result = PlacedGroupContent.from_items([result, titler.title], quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden
     if main_style.name == style.StyleDefaults.hidden.name:

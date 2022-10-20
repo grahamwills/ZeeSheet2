@@ -28,6 +28,7 @@ _WHITE = colors.Color(1, 1, 1)
 
 IMAGES_DIR = pathlib.Path(__file__).parent / 'resources' / 'images'
 _MISSING_IMAGE_DATA = PIL.Image.open(IMAGES_DIR / 'missing icon.jpg')
+_MISSING_IMAGE_DATA.load()
 _MISSING_IMAGE = ImageDetail(-1, _MISSING_IMAGE_DATA, _MISSING_IMAGE_DATA.width, _MISSING_IMAGE_DATA.height)
 
 
@@ -80,10 +81,17 @@ class CheckboxSegment(Segment):
 
 class TextFieldSegment(Segment):
     text: str
+    expands: bool
 
     def __init__(self, text: str, x: float, y: float, width: float, font: Font, color: Color):
         super().__init__(x, y, width, font, color)
-        self.text = text
+        c = text[0]
+        if c == text[-1] and c in '-=':
+            self.text = c.replace(c, '')
+            self.expands = True
+        else:
+            self.text = text
+            self.expands = False
 
     def __str__(self):
         return 'TEXTFIELD' + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"

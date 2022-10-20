@@ -164,7 +164,7 @@ class Prettify:
 
         if len(item.children) > 1:
             for run in item.children[1:]:
-                txt = '  | ' + run.to_rst(self.width, indent=4)
+                txt = ' | ' + run.to_rst(self.width, indent=4)
                 self.append(txt.rstrip())
 
     def append_block_rst(self, block: model.Block, is_first: bool):
@@ -225,7 +225,8 @@ class Prettify:
                             # Need to wrap the text onto the next line
                             txt = item.children[i].to_rst(space_for_last, indent=2).strip()
                             row_parts.append(txt)
-                    self.append((prefix + ' | '.join(row_parts).rstrip()))
+                    txt = (prefix + ' | '.join(row_parts).rstrip())
+                    self.append(txt)
                 self.ensure_blank()
                 return
         # Could not fit onto one line; need to use the simple method

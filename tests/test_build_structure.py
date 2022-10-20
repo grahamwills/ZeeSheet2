@@ -26,6 +26,11 @@ class BasicBlocks(unittest.TestCase):
         sheet = main.Document(source).sheet()
         self.assertEqual('', description(sheet))
 
+    def test_empty_first_columns(self):
+        source = self.items['Tables empty columns'][0]
+        sheet = main.Document(source).sheet()
+        self.assertEqual('❮[Test] ~ [⬩ a ⬩ b] [⬩  ⬩]❯', description(sheet))
+
     def test_one_line(self):
         source = self.items['One Line'][0]
         sheet = main.Document(source).sheet()
