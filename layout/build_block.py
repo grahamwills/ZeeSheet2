@@ -181,7 +181,9 @@ class BlockTablePacker(ColumnPacker):
     def place_item(self, idx: Tuple[int, int], extent: Extent) -> PlacedContent:
         item = self.item_map[idx]
         align = self.alignments[idx[1]]
-        return build_run.place_run(item, extent, self.content_style, self.pdf, self.modifier, align)
+
+        return build_run.place_run(item, extent, self.content_style, self.pdf, self.modifier, align,
+                                   keep_minimum_sizes=self.keep_minimum_sizes)
 
     def span_of_item(self, idx: Union[int, Tuple[int, int]]) -> int:
         try:

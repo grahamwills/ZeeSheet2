@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Tuple, Union
+from typing import Tuple
 
 import common
 import layout.quality
@@ -13,12 +13,14 @@ LOGGER = common.configured_logger(__name__)
 
 
 @lru_cache(maxsize=10000)
-def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF, modifier: TextFontModifier) -> PlacedRunContent:
-    return RunBuilder(run, style, auto_align, width, pdf, modifier).build()
+def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF, modifier: TextFontModifier,
+               keep_minimum_sizes: bool) -> PlacedRunContent:
+    return RunBuilder(run, style, auto_align, width, pdf, modifier, keep_minimum_sizes).build()
 
 
-def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFontModifier, auto_align: str = None) -> PlacedRunContent:
-    placed = _build_run(run, extent.width, style, auto_align, pdf, modifier)
+def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFontModifier, auto_align: str = None,
+              keep_minimum_sizes: bool = False) -> PlacedRunContent:
+    placed = _build_run(run, extent.width, style, auto_align, pdf, modifier, keep_minimum_sizes)
     if placed.extent.height > extent.height:
         raise ExtentTooSmallError()
 
@@ -102,7 +104,8 @@ def split_text(text: str,
 
 class RunBuilder:
 
-    def __init__(self, run: Run, style: Style, auto_align: str, width: float, pdf: PDF, modifier: TextFontModifier):
+    def __init__(self, run: Run, style: Style, auto_align: str, width: float, pdf: PDF,
+                 modifier: TextFontModifier, keep_minimum_sizes: bool):
         self.run = run
         self.width = width
         self.elements = run.children
@@ -114,6 +117,7 @@ class RunBuilder:
             self.align = auto_align
         self.lines = []
         self.modifier = modifier
+        self.keep_minimum_sizes = keep_minimum_sizes
 
     def build(self) -> PlacedRunContent:
 
@@ -144,10 +148,10 @@ class RunBuilder:
                 elif modifier == 'textfield':
                     # Textfield has a minimum size based on content, plus a bit for the border
                     # When initially placing, we use the minimum size
-                    w = min(font.width('X' + text.replace(' ','X')) + 4, 20)
+                    w = min(font.width('X' + text.replace(' ', 'X')) + 4, 20)
                     if x + w <= width:
                         field_segment = TextFieldSegment(text, x, y, w, font, color)
-                        if field_segment.expands:
+                        if field_segment.expands and not self.keep_minimum_sizes:
                             field_to_expand = len(segments)
                             any_expanding = True
                         segments.append(field_segment)

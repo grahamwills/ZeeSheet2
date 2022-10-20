@@ -51,6 +51,10 @@ class ColumnPacker:
         self.column_left = [0.0] * self.k
         self.column_right = [0.0] * self.k
 
+        # Used temporarily to make sure that we don't expand textfields when tryign to measure tables size
+        self.keep_minimum_sizes = False
+
+
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
         raise NotImplementedError('This method must be defined by an inheriting class')
@@ -195,9 +199,17 @@ class ColumnPacker:
 
     def fit_within_space(self, available_space):
         WID = 1e6
+
+        per_cell_padding = (self.bounds.width - available_space) / self.k
+
+        # Ensure we do not expand text fields to fill the area
+        self.keep_minimum_sizes = True
         self.place_table_given_widths([WID] * self.k, self.bounds)
+        self.keep_minimum_sizes = False
         col_width = []
         col_to_end_width = []
+
+        WID -= per_cell_padding # Reduce the actual amoutn of space that was available
         for c in range(0, self.k):
             items = self.quality_table[c]
             w_max = 0
@@ -226,8 +238,13 @@ class ColumnPacker:
             # The columns all fit!
             extra_per_column = (available_space - total_widest) / self.k
             column_widths = [w + extra_per_column for w in col_width]
-            # TODO: Can actually just move the created values to the right place
+            LOGGER.debug("[{}] Table fits: table width {} ≤ {}",
+                        self.debug_name, total_widest, available_space)
             return self.place_table_given_widths(column_widths, self.bounds)
+        else:
+            LOGGER.debug("[{}] Table does not fit: table width {} > {}",
+                         self.debug_name, total_widest, available_space)
+            return None
 
     def find_best_compression(self) -> PlacedGroupContent:
         width_choices = self.choose_widths(need_gaps=True, equal_column_widths=False)
@@ -289,6 +306,7 @@ class ColumnPacker:
         return results
 
     def place_table_given_widths(self, column_sizes: List[float], bounds: Rect) -> PlacedGroupContent:
+        """ Place tabel. If no_expanding is set, do not let textfields expand to maximum size"""
         col_gap = self.col_gap
         row_gap = self.row_gap
         bottom = top = self.average_spacing.top
@@ -323,9 +341,11 @@ class ColumnPacker:
         table_bottom = bottom + self.average_spacing.bottom
         extent = Extent(bounds.extent.width, table_bottom)
         table_quality = layout.quality.for_table(self.quality_table, 0)
-        placed_children = PlacedGroupContent.from_items(placed_items, table_quality, extent)
-        placed_children.location = bounds.top_left
-        return placed_children
+        result = PlacedGroupContent.from_items(placed_items, table_quality, extent)
+        result.location = bounds.top_left
+        LOGGER.debug("[{}] Placed table with widths={}: Quality={}",
+                    self.debug_name, column_sizes, result.quality)
+        return result
 
     def place_in_columns(self, equal: bool = False) -> PlacedGroupContent:
         width_choices = self.choose_widths(need_gaps=False, equal_column_widths=equal)
