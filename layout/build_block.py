@@ -26,17 +26,15 @@ NO_SPACING = Spacing(0, 0, 0, 0)
 
 
 class BlockTitleBuilder(TitleBuilder):
-    def __init__(self, block: Block, pdf: PDF, bleed_space: float, layout_quality: str):
+    def __init__(self, block: Block, pdf: PDF, bleed_space: float):
         super().__init__(block, bleed_space, pdf)
-        self.layout_quality = layout_quality
 
     def place_block_title(self, bounds: Rect) -> PlacedGroupContent:
         block = self.block
         debug_name = common.name_of(block)
         k = len(block.title.children)
         modifier = BlockTextFontModifier(block.options.title_bold, block.options.title_italic, self.pdf)
-        packer = BlockTablePacker(debug_name, bounds, [block.title], k,
-                                  block.options.title_style, self.layout_quality, self.pdf, modifier)
+        packer = BlockTablePacker(debug_name, bounds, [block.title], k, block.options.title_style, self.pdf, modifier)
         return packer.place_table(equal=block.options.equal)
 
 
@@ -65,7 +63,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         # Half the padding lies inside the frame
         outer = outer.pad(-extra_space / 2)
 
-    titler = _build_title(block, extra_space, outer, quality, pdf)
+    titler = _build_title(block, extra_space, outer, pdf)
 
     if not block.children and not image:
         if not titler.title:
@@ -131,8 +129,8 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     return result
 
 @lru_cache
-def _build_title(block, extra_space, outer, quality, pdf):
-    titler = BlockTitleBuilder(block, pdf, extra_space * 2, quality)
+def _build_title(block, extra_space, outer, pdf):
+    titler = BlockTitleBuilder(block, pdf, extra_space * 2)
     titler.build_for(outer)
     return titler
 
@@ -142,8 +140,8 @@ def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> 
     if block.children:
         debug_name = common.name_of(block)
         modifier = BlockTextFontModifier(block.options.bold, block.options.italic, pdf)
-        packer = BlockTablePacker(debug_name, item_bounds, block.children,
-                                  block.column_count(), block.options.style, quality, pdf, modifier)
+        packer = BlockTablePacker(debug_name, item_bounds, block.children, block.column_count(), block.options.style,
+                                  pdf, modifier)
         return packer.place_table(equal=block.options.equal)
     else:
         return None
@@ -153,9 +151,9 @@ class BlockTablePacker(ColumnPacker):
     item_map: dict[Tuple[int, int], Run]
     span_map: dict[Tuple[int, int], int]
 
-    def __init__(self, debug_name: str, bounds: Rect, items: list[Item], k: int, style_name: str, quality: str,
-                 pdf: PDF, modifier:BlockTextFontModifier):
-        max_width_combos = self.QUALITY_TO_COMBOS[quality.lower()] / 2
+    def __init__(self, debug_name: str, bounds: Rect, items: list[Item], k: int, style_name: str, pdf: PDF,
+                 modifier: BlockTextFontModifier):
+        max_width_combos = self.QUALITY_TO_COMBOS[pdf.layout_quality] / 2
         column_count = max(len(item.children) for item in items)
         self.pdf = pdf
         self.content_style = pdf.style(style_name)

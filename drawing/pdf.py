@@ -95,7 +95,6 @@ class TextFieldSegment(Segment):
         # Add a bit for the spacing around the field
         self.width = max(font.width(self.text.replace(' ', 'X')) + 4, 20)
 
-
     def __str__(self):
         return 'TEXTFIELD' + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
@@ -113,7 +112,8 @@ class PDF(canvas.Canvas):
                  font_lib: FontLibrary,
                  styles: Dict[str, Style],
                  images: Dict[str, ImageDetail] = None,
-                 debug: bool = False) -> None:
+                 debug: bool = False,
+                 quality: str = 'medium'):
         self.buffer = BytesIO()
         super().__init__(self.buffer, pagesize=pagesize, bottomup=0)
         self.font_lib = font_lib
@@ -122,6 +122,7 @@ class PDF(canvas.Canvas):
         self.styles = styles
         self.images = images or {}
         self.debug = debug
+        self.layout_quality = quality.lower()
 
         # Caching of built objects.
         self.caches = defaultdict(lambda: None)

@@ -82,7 +82,8 @@ class Document:
             # Define default inheritance and use inheritance to make the values all defined
 
             page_size = (int(sheet.options.width), int(sheet.options.height))
-            self._pdf = PDF(page_size, FONT_LIB, styles=styles, images=self.images, debug=sheet.options.debug)
+            self._pdf = PDF(page_size, FONT_LIB, styles=styles, images=self.images,
+                            debug=sheet.options.debug, quality=sheet.options.quality)
         return self._pdf
 
     def pages(self) -> list[PlacedGroupContent]:
