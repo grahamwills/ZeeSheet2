@@ -115,7 +115,7 @@ class ColumnPacker:
 
             trial_result, trial_counts = self._shuffle_down(idx, fits, widths, counts, result)
             if trial_result:
-                LOGGER.debug("[{}]      ... Shuffle improvement {} -> {}: {} -> {}", self.debug_name, counts,
+                LOGGER.fine("[{}]      ... Shuffle improvement {} -> {}: {} -> {}", self.debug_name, counts,
                              trial_counts,
                              result.quality, trial_result.quality)
                 result, counts = trial_result, trial_counts
@@ -157,7 +157,7 @@ class ColumnPacker:
                 raise ExtentTooSmallError(self.debug_name, 'Block cannot be placed in small area')
 
             try:
-                LOGGER.debug("[{}] Placing item {} in extent {}", self.debug_name, i, r.extent)
+                LOGGER.fine("[{}] Placing item {} in extent {}", self.debug_name, i, r.extent)
 
                 placed = self.place_item(i, r.extent)
             except ExtentTooSmallError:
@@ -231,17 +231,17 @@ class ColumnPacker:
                         col_width[c1] += extra_needed_per_column
         total_widest = sum(col_width)
 
-        LOGGER.debug("[{}] Widths={}, total={}", self.debug_name, col_width, total_widest)
+        LOGGER.fine("[{}] Widths={}, total={}", self.debug_name, col_width, total_widest)
 
         if total_widest <= available_space:
             # The columns all fit!
             extra_per_column = (available_space - total_widest) / self.k
             column_widths = [w + extra_per_column for w in col_width]
-            LOGGER.debug("[{}] Table fits: table width {} ≤ {}",
+            LOGGER.fine("[{}] Table fits: table width {} ≤ {}",
                          self.debug_name, total_widest, available_space)
             return self.place_table_given_widths(column_widths, self.bounds)
         else:
-            LOGGER.debug("[{}] Table does not fit: table width {} > {}",
+            LOGGER.fine("[{}] Table does not fit: table width {} > {}",
                          self.debug_name, total_widest, available_space)
             return None
 
@@ -249,10 +249,10 @@ class ColumnPacker:
         width_choices = self.choose_widths(need_gaps=True, equal_column_widths=False)
 
         if len(width_choices) > 1:
-            LOGGER.debug("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
+            LOGGER.fine("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
                          len(width_choices))
         else:
-            LOGGER.debug("[{}] Fitting {}\u2a2f{} table using widths={}", self.debug_name, self.n, self.k,
+            LOGGER.fine("[{}] Fitting {}\u2a2f{} table using widths={}", self.debug_name, self.n, self.k,
                          common.to_str(width_choices[0], 0))
 
         best = None
@@ -262,7 +262,7 @@ class ColumnPacker:
                 if placed_children.better(best):
                     best = copy(placed_children)
             except ExtentTooSmallError as ex:
-                LOGGER.debug(f"Could not place children with widths {common.to_str(column_sizes, 0)}: {ex}")
+                LOGGER.fine(f"Could not place children with widths {common.to_str(column_sizes, 0)}: {ex}")
                 pass
         if best is None:
             raise ExtentTooSmallError(self.debug_name, 'All width choices failed to produce a good fit')
@@ -343,7 +343,7 @@ class ColumnPacker:
         table_quality = layout.quality.for_table(self.quality_table, 0)
         result = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         result.location = bounds.top_left
-        LOGGER.debug("[{}] Placed table with widths={}: Quality={}",
+        LOGGER.fine("[{}] Placed table with widths={}: Quality={}",
                      self.debug_name, column_sizes, result.quality)
         return result
 
@@ -365,20 +365,20 @@ class ColumnPacker:
         least_unplaced = 999999
         for widths in width_choices:
             try:
-                LOGGER.debug("[{}] Attempting to place table with widths={}", self.debug_name, widths, )
+                LOGGER.fine("[{}] Attempting to place table with widths={}", self.debug_name, widths, )
                 trial, counts = self._place_in_sized_columns(widths, least_unplaced)
                 if trial:
-                    LOGGER.debug("[{}] Placed table with widths={}: counts={}, quality={}",
+                    LOGGER.fine("[{}] Placed table with widths={}: counts={}, quality={}",
                              self.debug_name, widths, counts, trial.quality)
                 if trial and trial.better(best):
                     best = copy(trial)
                     least_unplaced = best.quality.unplaced
                     best_combo = widths, counts
-                    LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
+                    LOGGER.fine("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
                                  self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
                                  best.quality.unplaced, best.quality.minor_score())
             except ExtentTooSmallError as ex:
-                LOGGER.debug(f"Could not place children with widths {common.to_str(widths, 0)}: {ex}")
+                LOGGER.fine(f"Could not place children with widths {common.to_str(widths, 0)}: {ex}")
                 pass
 
         if not best:

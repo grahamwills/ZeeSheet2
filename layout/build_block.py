@@ -65,8 +65,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         # Half the padding lies inside the frame
         outer = outer.pad(-extra_space / 2)
 
-    titler = BlockTitleBuilder(block, pdf, extra_space * 2, quality)
-    titler.build_for(outer)
+    titler = _build_title(block, extra_space, outer, quality, pdf)
 
     if not block.children and not image:
         if not titler.title:
@@ -130,6 +129,12 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
         result.hidden = True
 
     return result
+
+@lru_cache
+def _build_title(block, extra_space, outer, quality, pdf):
+    titler = BlockTitleBuilder(block, pdf, extra_space * 2, quality)
+    titler.build_for(outer)
+    return titler
 
 
 @lru_cache

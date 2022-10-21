@@ -46,7 +46,7 @@ loggers:
 
   layout:
     level: DEBUG
-    handlers: [ all, file ]
+    handlers: [ important, file ]
     propagate: no
 
   generate:
