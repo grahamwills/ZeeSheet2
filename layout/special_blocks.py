@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Iterable
 
 from reportlab.lib.colors import Color
 
@@ -33,7 +32,6 @@ class AttributeTableBuilder:
         self.style = pdf.style(block.options.style)
         self.style2 = pdf.style(block.options.title_style)
 
-
     def build(self) -> PlacedGroupContent:
         rows = self.make_rows()
 
@@ -59,7 +57,7 @@ class AttributeTableBuilder:
         xb = xa + c_width + c_pad.horizontal
 
         if xb > self.extent.width:
-            raise ExtentTooSmallError()
+            raise ExtentTooSmallError(self.block, f"Width of {self.extent.width} could not fit central text")
 
         excess = self.extent.width - xb
         xb = self.extent.width
@@ -113,7 +111,7 @@ class AttributeTableBuilder:
         return rows
 
     def text_in_box(self, txt: str, box: Rect, pad: Spacing, align: str,
-                    width: float, height: float, dy: float, font: Font, color:Color) -> TextSegment:
+                    width: float, height: float, dy: float, font: Font, color: Color) -> TextSegment:
         box = box - pad
         if align == 'left':
             dx = 0

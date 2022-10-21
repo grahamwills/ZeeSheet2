@@ -22,7 +22,8 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFo
               keep_minimum_sizes: bool = False) -> PlacedRunContent:
     placed = _build_run(run, extent.width, style, auto_align, pdf, modifier, keep_minimum_sizes)
     if placed.extent.height > extent.height:
-        raise ExtentTooSmallError()
+        raise ExtentTooSmallError(run, f"Run height exceeded available space "
+                                       f"({placed.extent.height} > {placed.extent.height}")
 
     # After alignment, it fills the width. Any unused space is captured in the quality
     placed.extent = Extent(extent.width, placed.extent.height)
@@ -146,17 +147,23 @@ class RunBuilder:
                         x += w
                         text = None
                 elif modifier == 'textfield':
-                    # Textfield has a minimum size based on content, plus a bit for the border
-                    # When initially placing, we use the minimum size
-                    w = min(font.width('X' + text.replace(' ', 'X')) + 4, 20)
-                    if x + w <= width:
-                        field_segment = TextFieldSegment(text, x, y, w, font, color)
+                    # Make sure the minimum size can fit -- about 3 characters
+                    min_size = font.ascent * 3
+                    if width < min_size:
+                        raise ExtentTooSmallError(self.run, f"Could not fit min size for textfield ({element})")
+
+                    field_segment = TextFieldSegment(text, x, y, font, color)
+
+                    # If it wants to be too big, tough. Shrink it to fit
+                    field_segment.width = min(field_segment.width, width - 1)
+
+                    if x + field_segment.width <= width:
                         if field_segment.expands:
                             any_expanding = True
                             if not self.keep_minimum_sizes:
                                 field_to_expand = len(segments)
                         segments.append(field_segment)
-                        x += w
+                        x += field_segment.width
                         text = None
                 else:
                     if y > 0:
@@ -189,7 +196,7 @@ class RunBuilder:
                 if text:
                     if x == left:
                         # We were unable to place it and had the whole space to place into
-                        raise ExtentTooSmallError()
+                        raise ExtentTooSmallError(self.run, f"Size of {element} was wider than available space")
 
                     # Handle any text fields on this line, expanding to fill line
                     if field_to_expand is not None:

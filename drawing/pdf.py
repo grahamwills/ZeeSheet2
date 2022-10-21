@@ -83,21 +83,27 @@ class TextFieldSegment(Segment):
     text: str
     expands: bool
 
-    def __init__(self, text: str, x: float, y: float, width: float, font: Font, color: Color):
-        super().__init__(x, y, width, font, color)
+    def __init__(self, text: str, x: float, y: float, font: Font, color: Color):
+        super().__init__(x, y, 0, font, color)
         c = text[0]
         if c == text[-1] and c in '-=':
-            self.text = c.replace(c, '')
+            self.text = text.strip(c)
             self.expands = True
         else:
             self.text = text
             self.expands = False
+        # Add a bit for the spacing around the field
+        self.width = font.width(self.text) + 4
+
 
     def __str__(self):
         return 'TEXTFIELD' + f"@{round(self.x)},{round(self.y)}-{round(self.width)}"
 
     def to_text(self):
-        return '[[ ' + self.text + ' ]]'
+        if self.expands:
+            return '[[--' + self.text + '--]]'
+        else:
+            return '[[ ' + self.text + ' ]]'
 
 
 class PDF(canvas.Canvas):

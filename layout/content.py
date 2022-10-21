@@ -4,7 +4,7 @@ import abc
 import reprlib
 from copy import copy
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from reportlab.graphics.shapes import Path
 
@@ -13,7 +13,7 @@ import layout.quality
 from common import Extent, Point, Rect, Spacing
 from common import configured_logger, to_str
 from drawing import PDF, coords_to_path
-from drawing.pdf import Segment
+from drawing.pdf import Segment, TextFieldSegment
 from layout.quality import PlacementQuality
 from structure import CommonOptions, to_color
 from structure import ImageDetail
@@ -56,6 +56,10 @@ class PlacedContent(abc.ABC):
         raise NotImplementedError('Must be defined in subclass')
 
     def as_path(self) -> Path:
+        raise NotImplementedError('Must be defined in subclass')
+
+    def contains_expandable(self) -> bool:
+        """ True if this content contains an expandable text field"""
         raise NotImplementedError('Must be defined in subclass')
 
     def better(self, other: type(PlacedContent)):
@@ -203,7 +207,12 @@ class PlacedRunContent(PlacedContent):
     def _draw(self, pdf: PDF):
         pdf.draw_text(self.style, self.segments)
 
+    def contains_expandable(self) -> bool:
+        return any(isinstance(s, TextFieldSegment) and s.expands for s in self.segments)
+
     def drawn_bounds(self) -> Rect:
+        if not self.segments:
+            return Rect(self.location.x, self.location.x, self.location.y, self.location.y)
         left = min(s.x for s in self.segments)
         right = max(s.x + s.width for s in self.segments)
         return Rect(left + self.location.x, right + self.location.x,
@@ -247,6 +256,9 @@ class PlacedRectContent(PlacedContent):
             self._asPath = coords_to_path(coords, effect, hash(self.bounds))
         return self._asPath
 
+    def contains_expandable(self) -> bool:
+        return False
+
     def drawn_bounds(self) -> Rect:
         return self.bounds
 
@@ -282,6 +294,9 @@ class PlacedPathContent(PlacedContent):
             effect = self.style.get_effect()
             self._asPath = coords_to_path(self.coords, effect, hash(self.bounds))
         return self._asPath
+
+    def contains_expandable(self) -> bool:
+        return False
 
     def _draw(self, pdf: PDF):
         pdf.draw_path(self.as_path(), self.style)
@@ -361,6 +376,10 @@ class PlacedImageContent(PlacedContent):
 
         return Rect(x, x + width, y, y + height)
 
+    def contains_expandable(self) -> bool:
+        # TODO: Should this be true for images that can expand?
+        return False
+
     def drawn_bounds(self) -> Rect:
         return self.image_bounds() + self.location
 
@@ -436,8 +455,10 @@ def make_image(image: ImageDetail, bounds: Rect, mode: str, width: float, height
     return content
 
 
-class ExtentTooSmallError(RuntimeError):
+class ExtentTooSmallError(Exception):
     """ The space is too small to fit anything """
 
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)
+    def __init__(self, target: Any, info: str) -> None:
+        super().__init__(f"Extent too small to fit {common.name_of(target)}: {info}")
+        self.target = target
+        self.info = info

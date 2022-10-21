@@ -16,12 +16,6 @@ LOGGER = configured_logger(__name__)
 MIN_BLOCK_DIMENSION = 8
 
 
-class ColumnOverfullError(RuntimeError):
-    def __init__(self, column: int, max_items: int):
-        self.column = column
-        self.max_items = max_items
-
-
 @dataclass
 class ColumnFit:
     height: float = 0
@@ -48,6 +42,7 @@ class ColumnPacker:
         self.col_gap = self.average_spacing.horizontal / 2
         self.row_gap = self.average_spacing.vertical / 2
         self.quality_table: list[list[PlacementQuality or None]] = [[None] * self.n for _ in range(0, self.k)]
+        self.placed_table: list[list[PlacedContent or None]] = [[None] * self.n for _ in range(0, self.k)]
         self.column_left = [0.0] * self.k
         self.column_right = [0.0] * self.k
 
@@ -98,7 +93,7 @@ class ColumnPacker:
             fitted = len(fit.items)
             if fitted == 0:
                 # Nothing went into this column -- which we cannot tolerate
-                raise ExtentTooSmallError()
+                raise ExtentTooSmallError(self.debug_name, f"Could not fit any of the items {indices} int {span}")
             if fitted < count:
                 # Not everything fitted
                 if c < self.k - 1:
@@ -163,7 +158,7 @@ class ColumnPacker:
             r = r - margins
 
             if r.width < MIN_BLOCK_DIMENSION:
-                raise ExtentTooSmallError('Block cannot be placed in small area')
+                raise ExtentTooSmallError(self.debug_name, 'Block cannot be placed in small area')
 
             try:
                 placed = self.place_item(i, r.extent)
@@ -209,18 +204,20 @@ class ColumnPacker:
         col_width = []
         col_to_end_width = []
 
-        WID -= per_cell_padding # Reduce the actual amount of space that was available
+        WID -= per_cell_padding  # Reduce the actual amount of space that was available
         for c in range(0, self.k):
-            items = self.quality_table[c]
             w_max = 0
             w_to_end = 0
             for r in range(self.n):
-                span = self.span_of_item((r, c))
-                if span == 1:
-                    w_max = max(w_max, WID - items[r].excess)
-                elif span > 1:
-                    # This must go all the way to the end
-                    w_to_end = max(w_to_end, WID - items[r].excess)
+                item = self.placed_table[c][r]
+                if item:
+                    w = item.drawn_bounds().width + per_cell_padding
+                    span = self.span_of_item((r, c))
+                    if span == 1:
+                        w_max = max(w_max, w)
+                    elif span > 1:
+                        # This must go all the way to the end
+                        w_to_end = max(w_to_end, w)
 
             col_width.append(w_max)
             col_to_end_width.append(w_to_end)
@@ -239,7 +236,7 @@ class ColumnPacker:
             extra_per_column = (available_space - total_widest) / self.k
             column_widths = [w + extra_per_column for w in col_width]
             LOGGER.debug("[{}] Table fits: table width {} ≤ {}",
-                        self.debug_name, total_widest, available_space)
+                         self.debug_name, total_widest, available_space)
             return self.place_table_given_widths(column_widths, self.bounds)
         else:
             LOGGER.debug("[{}] Table does not fit: table width {} > {}",
@@ -262,11 +259,11 @@ class ColumnPacker:
                 placed_children = self.place_table_given_widths(column_sizes, self.bounds)
                 if placed_children.better(best):
                     best = copy(placed_children)
-            except ExtentTooSmallError:
-                # Skip this option
+            except ExtentTooSmallError as ex:
+                LOGGER.debug(f"Could not place children with widths {common.to_str(column_sizes, 0)}: {ex}")
                 pass
         if best is None:
-            raise ExtentTooSmallError('All width choices failed to produce a good fit')
+            raise ExtentTooSmallError(self.debug_name, 'All width choices failed to produce a good fit')
         return best
 
     def choose_widths(self, need_gaps: bool, equal_column_widths: bool):
@@ -333,6 +330,7 @@ class ColumnPacker:
                     placed_items.append(placed_cell)
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
+                    self.placed_table[col][row] = placed_cell
                     self.quality_table[col][row] = placed_cell.quality
 
             # Update the top for the next row
@@ -367,13 +365,13 @@ class ColumnPacker:
                     LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
                                  self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
                                  best.quality.unplaced, best.quality.minor_score())
-            except (ColumnOverfullError, ExtentTooSmallError):
-                # Just ignore failures
+            except ExtentTooSmallError as ex:
+                LOGGER.debug(f"Could not place children with widths {common.to_str(widths, 0)}: {ex}")
                 pass
 
         if not best:
             LOGGER.warn("[{}] No placement with widths {}", self.debug_name, common.to_str(width_choices, 0))
-            raise ExtentTooSmallError()
+            raise ExtentTooSmallError(self.debug_name, f"All {len(width_choices)} failed to ")
         self.report(best_combo[0], best_combo[1], best, final=True)
         LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
                     self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
@@ -421,7 +419,7 @@ class ColumnPacker:
                     LOGGER.error('This is weird. Placing fewer items caused overflow')
                     return results
 
-            except (ExtentTooSmallError, ColumnOverfullError):
+            except ExtentTooSmallError:
                 LOGGER.error('This is weird. Placing fewer items caused an exception.')
                 return results
 
@@ -438,7 +436,7 @@ class ColumnPacker:
                 if overflow2:
                     # We could not shuffle any further, so we are done
                     return results
-            except (ExtentTooSmallError, ColumnOverfullError):
+            except ExtentTooSmallError:
                 # We could not shuffle any further, so we are done
                 return results
 
@@ -453,63 +451,6 @@ class ColumnPacker:
 
         # Finished shuffling
         return results
-
-    def reduce_breaks(self, best, column_sizes):
-        """ Try to make it better by moving space to the column with the most breaks"""
-        while True:
-            cols = list(range(self.k))
-
-            col_breaks = [sum(q.good_breaks + 10 * q.bad_breaks for q in col if q is not None) for col in
-                          self.quality_table]
-            col_excess = [min(q.excess for q in col if q is not None) for col in self.quality_table]
-
-            saddest = max(cols, key=lambda i: 1e6 * col_breaks[i] - col_excess[i] * 1e-6)
-            if col_breaks[saddest] <= 0:
-                # Not really sad, actually
-                break
-
-            trial_widths = copy(column_sizes)
-            for c in cols:
-                if col_breaks[c] == 0:
-                    excess = col_excess[c] * 0.5
-                    trial_widths[c] -= excess
-                    trial_widths[saddest] += excess
-            try:
-                trial = self.place_table_given_widths(trial_widths, self.bounds)
-                if trial.better(best):
-                    best = trial
-                    column_sizes = trial_widths
-                else:
-                    break
-            except ExtentTooSmallError:
-                break
-        return best, column_sizes
-
-    def even_excesses(self, best, column_sizes):
-        """ Try to even out the excess space between all columns"""
-        while True:
-            cols = list(range(self.k))
-
-            col_excess = [min(q.excess for q in col if q is not None) for col in self.quality_table]
-            most_excess = max(cols, key=lambda i: col_excess[i])
-            least_excess = min(cols, key=lambda i: col_excess[i])
-
-            amount = (col_excess[most_excess] - col_excess[least_excess]) / 2
-
-            trial_widths = copy(column_sizes)
-            trial_widths[most_excess] -= amount
-            trial_widths[least_excess] += amount
-
-            try:
-                trial = self.place_table_given_widths(trial_widths, self.bounds)
-                if trial.better(best):
-                    best = trial
-                    column_sizes = trial_widths
-                else:
-                    break
-            except ExtentTooSmallError:
-                break
-        return best
 
     def __str__(self):
         return f"{self.debug_name}[n={self.n}, k={self.k}, bounds={round(self.bounds)}, " \

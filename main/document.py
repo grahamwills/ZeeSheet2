@@ -12,7 +12,7 @@ import common
 import structure
 from common import prettify_username
 from drawing import PDF
-from layout import PlacedGroupContent
+from layout import PlacedGroupContent, ExtentTooSmallError
 from layout.build_sheet import FONT_LIB, sheet_to_pages
 from structure import visitors, Sheet, ImageDetail, Prettify, prepare_for_visit, Style, StyleDefaults, style, Block
 
@@ -96,7 +96,11 @@ class Document:
 
     def data(self) -> bytes:
         if not self._data:
-            pages = self.pages()
+            try:
+                pages = self.pages()
+            except ExtentTooSmallError as ex:
+                LOGGER.error(str(ex))
+                raise
             pdf = self.pdf()
             LOGGER.info('Drawing pages into pdf document')
             for page in pages:
