@@ -29,7 +29,7 @@ class BasicBlocks(unittest.TestCase):
     def test_empty_first_columns(self):
         source = self.items['Tables empty columns'][0]
         sheet = main.Document(source).sheet()
-        self.assertEqual('❮[Test] ~ [⬩ a ⬩ b] [⬩  ⬩]❯', description(sheet))
+        self.assertEqual('❮[Test] ~ [⬩ a ⬩ b] [⬩  ⬩ c]❯', description(sheet))
 
     def test_one_line(self):
         source = self.items['One Line'][0]

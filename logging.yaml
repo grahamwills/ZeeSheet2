@@ -54,7 +54,22 @@ loggers:
     handlers: [ important, file ]
     propagate: no
 
+  drawing:
+    level: INFO
+    handlers: [ important, file ]
+    propagate: no
+
   PIL.rst:
+    level: ERROR
+    handlers: [ important, file ]
+    propagate: no
+
+  PIL.PngImagePlugin:
+    level: ERROR
+    handlers: [ important, file ]
+    propagate: no
+
+  PIL.TiffImagePlugin:
     level: ERROR
     handlers: [ important, file ]
     propagate: no

@@ -140,6 +140,9 @@ class PlacedGroupContent(PlacedContent):
     def children(self) -> List[PlacedContent]:
         return self.items
 
+    def contains_expandable(self) -> bool:
+        return any(s.contains_expandable() for s in self.items)
+
     @classmethod
     def from_items(cls, items: List[PlacedContent], quality: PlacementQuality,
                    extent: Extent = None) -> PlacedGroupContent:

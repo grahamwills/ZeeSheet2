@@ -116,8 +116,8 @@ class ColumnPacker:
             trial_result, trial_counts = self._shuffle_down(idx, fits, widths, counts, result)
             if trial_result:
                 LOGGER.fine("[{}]      ... Shuffle improvement {} -> {}: {} -> {}", self.debug_name, counts,
-                             trial_counts,
-                             result.quality, trial_result.quality)
+                            trial_counts,
+                            result.quality, trial_result.quality)
                 result, counts = trial_result, trial_counts
             else:
                 # No improvement
@@ -201,14 +201,16 @@ class ColumnPacker:
         self.keep_minimum_sizes = False
         col_width = []
         col_to_end_width = []
-
+        expandable = []
         WID -= per_cell_padding  # Reduce the actual amount of space that was available
         for c in range(0, self.k):
             w_max = 0
             w_to_end = 0
+            expand = False
             for r in range(self.n):
                 item = self.placed_table[c][r]
                 if item:
+                    expand = expand or item.contains_expandable()
                     w = item.drawn_bounds().width + per_cell_padding
                     span = self.span_of_item((r, c))
                     if span == 1:
@@ -219,6 +221,7 @@ class ColumnPacker:
 
             col_width.append(w_max)
             col_to_end_width.append(w_to_end)
+            expandable.append(expand)
         # If necessary, increase out the size of the columns that are spanned by a single item
         # We start at column 1 because if an item spans all the columns in a table, then how we
         # divide up those columns makes no difference.
@@ -233,16 +236,24 @@ class ColumnPacker:
 
         LOGGER.fine("[{}] Widths={}, total={}", self.debug_name, col_width, total_widest)
 
-        if total_widest <= available_space:
+        extra_space = available_space - total_widest
+        if extra_space >= 0:
             # The columns all fit!
-            extra_per_column = (available_space - total_widest) / self.k
-            column_widths = [w + extra_per_column for w in col_width]
+            n_expandable = sum(expandable)
+            if n_expandable:
+                # Split extra space among the columns with expandable items
+                per_column = extra_space / n_expandable
+                column_widths = [w + (per_column if e else 0) for w, e in zip(col_width, expandable)]
+            else:
+                # Split among all columns
+                per_column = (extra_space) / self.k
+                column_widths = [w + per_column for w in col_width]
             LOGGER.fine("[{}] Table fits: table width {} ≤ {}",
-                         self.debug_name, total_widest, available_space)
+                        self.debug_name, total_widest, available_space)
             return self.place_table_given_widths(column_widths, self.bounds)
         else:
             LOGGER.fine("[{}] Table does not fit: table width {} > {}",
-                         self.debug_name, total_widest, available_space)
+                        self.debug_name, total_widest, available_space)
             return None
 
     def find_best_compression(self) -> PlacedGroupContent:
@@ -250,10 +261,10 @@ class ColumnPacker:
 
         if len(width_choices) > 1:
             LOGGER.fine("[{}] Fitting {}\u2a2f{} table using {} width options", self.debug_name, self.n, self.k,
-                         len(width_choices))
+                        len(width_choices))
         else:
             LOGGER.fine("[{}] Fitting {}\u2a2f{} table using widths={}", self.debug_name, self.n, self.k,
-                         common.to_str(width_choices[0], 0))
+                        common.to_str(width_choices[0], 0))
 
         best = None
         for column_sizes in width_choices:
@@ -344,7 +355,7 @@ class ColumnPacker:
         result = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         result.location = bounds.top_left
         LOGGER.fine("[{}] Placed table with widths={}: Quality={}",
-                     self.debug_name, column_sizes, result.quality)
+                    self.debug_name, column_sizes, result.quality)
         return result
 
     def place_in_columns(self, equal: bool = False) -> PlacedGroupContent:
@@ -352,7 +363,6 @@ class ColumnPacker:
             # Lay out as a kx1 table instead
             self.n = 1
             return self.place_table(equal)
-
 
         width_choices = self.choose_widths(need_gaps=False, equal_column_widths=equal)
 
@@ -369,14 +379,14 @@ class ColumnPacker:
                 trial, counts = self._place_in_sized_columns(widths, least_unplaced)
                 if trial:
                     LOGGER.fine("[{}] Placed table with widths={}: counts={}, quality={}",
-                             self.debug_name, widths, counts, trial.quality)
+                                self.debug_name, widths, counts, trial.quality)
                 if trial and trial.better(best):
                     best = copy(trial)
                     least_unplaced = best.quality.unplaced
                     best_combo = widths, counts
-                    LOGGER.fine("[{}] ... Best so far has widths={}, counts={}: unplaced={}, score={:g}",
-                                 self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
-                                 best.quality.unplaced, best.quality.minor_score())
+                    LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, quality={}",
+                                self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
+                                best.quality.unplaced, best.quality )
             except ExtentTooSmallError as ex:
                 LOGGER.fine(f"Could not place children with widths {common.to_str(widths, 0)}: {ex}")
                 pass

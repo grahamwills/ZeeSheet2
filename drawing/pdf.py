@@ -182,7 +182,7 @@ class PDF(canvas.Canvas):
         y = self._pagesize[1] - y
         self._name_index += 1
         name = 'f' + str(self._name_index)
-        LOGGER.debug("Adding checkbox name='%s' with state=%s ", name, state)
+        LOGGER.fine("Adding checkbox name='%s' with state=%s ", name, state)
         self.acroForm.checkbox(name=name, x=x, y=y, size=size,
                                fillColor=_WHITE, borderColor=color,
                                buttonStyle='cross', borderWidth=0.5, checked=state)
