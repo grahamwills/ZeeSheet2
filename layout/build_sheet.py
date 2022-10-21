@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Union, Tuple, Optional
+from typing import Union, Optional
 
 import common
 from common import Extent, Rect
@@ -15,7 +15,11 @@ FONT_LIB = FontLibrary()
 
 class SheetPacker(SectionPacker):
 
-    def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+    def place_item(self, item_index: Union[int, tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+        if isinstance(item_index, tuple):
+            # This should be a simple table -- only one row
+            assert item_index[0] == 0
+            item_index = item_index[1]
         section = self.items[item_index]
         return build_section.place_section(section, extent, self.pdf, self.quality)
 

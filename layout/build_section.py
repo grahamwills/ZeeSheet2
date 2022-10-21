@@ -50,6 +50,11 @@ class SectionPacker(ColumnPacker):
         return 1
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
+        if isinstance(item_index, tuple):
+            # This should be a simple table -- only one row
+            if item_index[0] != 0:
+                print('eeef')
+            item_index = item_index[1]
         return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:

@@ -348,6 +348,12 @@ class ColumnPacker:
         return result
 
     def place_in_columns(self, equal: bool = False) -> PlacedGroupContent:
+        if self.n == self.k:
+            # Lay out as a kx1 table instead
+            self.n = 1
+            return self.place_table(equal)
+
+
         width_choices = self.choose_widths(need_gaps=False, equal_column_widths=equal)
 
         LOGGER.info("[{}] Placing {} items in {} columns using {} width options",
