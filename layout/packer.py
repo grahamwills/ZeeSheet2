@@ -209,7 +209,7 @@ class ColumnPacker:
         col_width = []
         col_to_end_width = []
 
-        WID -= per_cell_padding # Reduce the actual amoutn of space that was available
+        WID -= per_cell_padding # Reduce the actual amount of space that was available
         for c in range(0, self.k):
             items = self.quality_table[c]
             w_max = 0

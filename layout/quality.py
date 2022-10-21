@@ -190,7 +190,7 @@ def for_table(cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> 
 
 
 def for_columns(actual_heights: list[int], cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> \
-PlacementQuality[T]:
+        PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
     q = for_table(cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS

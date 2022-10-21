@@ -11,11 +11,18 @@ from layout.build_run import place_run
 from main.document import StyleResolver
 from structure import Element, Run, Block, Item, Sheet
 from structure import Style
-from structure.style import FontStyle, TextStyle
+from structure.style import FontStyle, TextStyle, StyleDefaults
 
 
-def _make_item(txt: str) -> Item:
+def _text_item(txt: str) -> Item:
     item = Item([Run([Element(txt, None)])])
+    item.tidy(['test'])
+    return item
+
+
+def _row(*args) -> Item:
+    runs = [Run([a]) for a in args]
+    item = Item(runs)
     item.tidy(['test'])
     return item
 
@@ -44,7 +51,7 @@ class TestRunPlacement(unittest.TestCase):
     E2A = Element('brave new', 'strong')
     E3 = Element(' world')
     EX = Element('supercalifragilisticexpialidocious')
-    pdf = PDF((1000, 1000), font_lib=FontLibrary(), styles={})
+    pdf = PDF((1000, 1000), font_lib=FontLibrary(), styles={'default': StyleDefaults.default})
 
     def test_split_with_checkboxes(self):
         e = Element('X', 'checkbox')
@@ -147,7 +154,7 @@ class TestRunPlacement(unittest.TestCase):
         self.assertRaises(ExtentTooSmallError, lambda: place_run(run, Extent(80, 60), STYLE, self.pdf, MOD))
 
     def test_split_item_into_cells(self):
-        item = _make_item('a | b         \t| c | d ')
+        item = _text_item('a | b         \t| c | d ')
         item.tidy(['test'])
         self.assertEqual(4, len(item.children))
         self.assertEqual('a', item.children[0].to_rst())
@@ -189,9 +196,9 @@ class TestBlockPlacement(unittest.TestCase):
     def test_table(self):
         # Title with 5 cells defined by 3 items
         items = [
-            _make_item('hello|this is me'),
-            _make_item('goodbye     | thanks'),
-            _make_item('for all the fish')
+            _text_item('hello|this is me'),
+            _text_item('goodbye     | thanks'),
+            _text_item('for all the fish')
         ]
         block = Block(self.title, items)
         block.options.title = 'banner'
@@ -211,3 +218,20 @@ class TestBlockPlacement(unittest.TestCase):
         self.assertEqual(Point(2, 17), round(placed.child(0).child(2).location))
         self.assertEqual(Point(149, 17), round(placed.child(0).child(3).location))
         self.assertEqual(Point(2, 33), round(placed.child(0).child(4).location))
+
+    def test_expandable_text_fields(self):
+        items = [
+            _row(Element('---', 'textfield'), Element('abc')),
+        ]
+        block = Block(self.title, items)
+        block.options.title = 'none'
+        block.options.style = 'default'
+        placed = place_block(block, Extent(300, 100), 'medium', self.pdf)
+        group = placed.children()[0].children()
+        self.assertEqual(2, len(group))
+
+        textfield_box = group[0].bounds
+        abc_box = group[1].bounds
+
+        self.assertLess(abc_box.width, 70)
+        self.assertGreater(textfield_box.width, 230)

@@ -151,9 +151,10 @@ class RunBuilder:
                     w = min(font.width('X' + text.replace(' ', 'X')) + 4, 20)
                     if x + w <= width:
                         field_segment = TextFieldSegment(text, x, y, w, font, color)
-                        if field_segment.expands and not self.keep_minimum_sizes:
-                            field_to_expand = len(segments)
+                        if field_segment.expands:
                             any_expanding = True
+                            if not self.keep_minimum_sizes:
+                                field_to_expand = len(segments)
                         segments.append(field_segment)
                         x += w
                         text = None
