@@ -21,7 +21,7 @@ class SheetPacker(SectionPacker):
             assert item_index[0] == 0
             item_index = item_index[1]
         section = self.items[item_index]
-        return build_section.place_section(section, extent, self.pdf, self.quality)
+        return build_section.place_section(section, extent, self.pdf)
 
 
 def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
@@ -59,7 +59,7 @@ def create_page(sheet, sections, pdf):
     page = Rect(0, extent.width, 0, extent.height)
     content_bounds = sheet_style.box.inset_within_padding(page)
     # Make the content
-    sp = SheetPacker(common.name_of(sheet), content_bounds, sections, sheet.options.columns, pdf, sheet.options.quality)
+    sp = SheetPacker(common.name_of(sheet), content_bounds, sections, sheet.options.columns, pdf)
     content = sp.place_in_columns()
     content.extent = extent
     # Make the frame

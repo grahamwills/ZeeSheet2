@@ -188,7 +188,7 @@ class TestBlockPlacement(unittest.TestCase):
         # Title by itself
         block = Block(self.title, [])
         block.options.title = 'banner'
-        placed = place_block(block, Extent(200, 100), 'medium', self.pdf)
+        placed = place_block(block, Extent(200, 100), self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))
         self.assertEqual(Point(1, 1), group[1].location)
@@ -202,7 +202,7 @@ class TestBlockPlacement(unittest.TestCase):
         ]
         block = Block(self.title, items)
         block.options.title = 'banner'
-        placed = place_block(block, Extent(300, 100), 'medium', self.pdf)
+        placed = place_block(block, Extent(300, 100), self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))
 
@@ -226,7 +226,7 @@ class TestBlockPlacement(unittest.TestCase):
         block = Block(self.title, items)
         block.options.title = 'none'
         block.options.style = 'default'
-        placed = place_block(block, Extent(300, 100), 'medium', self.pdf)
+        placed = place_block(block, Extent(300, 100), self.pdf)
         group = placed.children()[0].children()
         self.assertEqual(2, len(group))
 

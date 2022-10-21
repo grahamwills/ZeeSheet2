@@ -38,7 +38,7 @@ class BlockTitleBuilder(TitleBuilder):
         return packer.place_table(equal=block.options.equal)
 
 
-def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[PlacedContent]:
+def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]:
     """ Margins have already been inset when we get into here"""
 
     main_style = pdf.style(block.options.style, 'default-block')
@@ -76,7 +76,7 @@ def place_block(block: Block, size: Extent, quality: str, pdf: PDF) -> Optional[
     # Inset for padding and border
     item_bounds = outer - titler.content_spacing
     if block.children:
-        placed_children = place_block_children(block, item_bounds, quality, pdf)
+        placed_children = place_block_children(block, item_bounds, pdf)
     else:
         # The image is the only content in the block -- always put it at the top
         opt = block.options
@@ -136,7 +136,7 @@ def _build_title(block, extra_space, outer, pdf):
 
 
 @lru_cache
-def place_block_children(block: Block, item_bounds: Rect, quality: str, pdf) -> Optional[PlacedGroupContent]:
+def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[PlacedGroupContent]:
     if block.children:
         debug_name = common.name_of(block)
         modifier = BlockTextFontModifier(block.options.bold, block.options.italic, pdf)

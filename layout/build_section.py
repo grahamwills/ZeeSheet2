@@ -11,7 +11,7 @@ from structure import StructureUnit, Section
 LOGGER = common.configured_logger(__name__)
 
 
-def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> PlacedGroupContent:
+def place_section(section: Section, extent: Extent, pdf: PDF) -> PlacedGroupContent:
     section_style = pdf.style(section.options.style, 'default-section')
     bounds = Rect(0, extent.width, 0, extent.height)
     content_bounds = section_style.box.inset_from_margin_within_padding(bounds)
@@ -22,7 +22,7 @@ def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> P
     while len(blocks) < k:
         blocks = blocks + [build_block.tiny_block()]
 
-    sp = SectionPacker(common.name_of(section), content_bounds, blocks, k, pdf, quality=quality)
+    sp = SectionPacker(common.name_of(section), content_bounds, blocks, k, pdf)
 
     content = sp.place_in_columns(equal=section.options.equal)
 
@@ -38,12 +38,10 @@ def place_section(section: Section, extent: Extent, pdf: PDF, quality: str) -> P
 
 class SectionPacker(ColumnPacker):
 
-    def __init__(self, debug_name: str, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf,
-                 quality: str):
+    def __init__(self, debug_name: str, bounds: Rect, items: List[type(StructureUnit)], column_count: int, pdf):
         self.items = items
         self.pdf = pdf
-        self.quality = quality
-        max_combos = self.QUALITY_TO_COMBOS[quality.lower()]
+        max_combos = self.QUALITY_TO_COMBOS[pdf.layout_quality]
         super().__init__(debug_name, bounds, len(items), column_count, max_combos)
 
     def span_of_item(self, item_index: Union[int, Tuple[int, int]]) -> int:
@@ -52,10 +50,9 @@ class SectionPacker(ColumnPacker):
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         if isinstance(item_index, tuple):
             # This should be a simple table -- only one row
-            if item_index[0] != 0:
-                print('eeef')
+            assert item_index[0] == 0
             item_index = item_index[1]
-        return build_block.place_block(self.items[item_index], extent, self.quality, self.pdf)
+        return build_block.place_block(self.items[item_index], extent, self.pdf)
 
     def margins_of_item(self, item_index: Union[int, Tuple[int, int]]) -> Optional[Spacing]:
         style_name = self.items[item_index].options.style
