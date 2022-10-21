@@ -30,7 +30,7 @@ IMPROVES = 0
 
 
 class ColumnPacker:
-    QUALITY_TO_COMBOS = {'low': 8, 'medium': 24, 'high': 100, 'extreme': 500}
+    QUALITY_TO_COMBOS = {'low': 10, 'medium': 40, 'high': 200, 'extreme': 800}
 
     def __init__(self, debug_name: str, bounds: Rect, item_count: int, column_count: int, max_width_combos: int):
         self.debug_name = debug_name
@@ -48,7 +48,6 @@ class ColumnPacker:
 
         # Used temporarily to make sure that we don't expand textfields when tryign to measure tables size
         self.keep_minimum_sizes = False
-
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
         """ Place an item indexed by a list index, or table-wise by (row, count)"""
@@ -93,7 +92,7 @@ class ColumnPacker:
             fitted = len(fit.items)
             if fitted == 0:
                 # Nothing went into this column -- which we cannot tolerate
-                raise ExtentTooSmallError(self.debug_name, f"Could not fit any of the items {indices} int {span}")
+                raise ExtentTooSmallError(self.debug_name, f"Items with indices={indices} did not fit into {span}")
             if fitted < count:
                 # Not everything fitted
                 if c < self.k - 1:
@@ -123,9 +122,6 @@ class ColumnPacker:
             else:
                 # No improvement
                 break
-
-        self.report(widths, counts, result)
-
         return result, counts
 
     def fits_to_content(self, fits):
@@ -161,6 +157,8 @@ class ColumnPacker:
                 raise ExtentTooSmallError(self.debug_name, 'Block cannot be placed in small area')
 
             try:
+                LOGGER.debug("[{}] Placing item {} in extent {}", self.debug_name, i, r.extent)
+
                 placed = self.place_item(i, r.extent)
             except ExtentTooSmallError:
                 # No room for this block
@@ -228,9 +226,13 @@ class ColumnPacker:
             if col_to_end_width[c] > 0:
                 available = sum(col_width[c:])
                 extra_needed_per_column = (col_to_end_width[c] - available) / (self.k - c)
-                for c1 in range(c, self.k):
-                    col_width[c1] += extra_needed_per_column
+                if extra_needed_per_column > 0:
+                    for c1 in range(c, self.k):
+                        col_width[c1] += extra_needed_per_column
         total_widest = sum(col_width)
+
+        LOGGER.debug("[{}] Widths={}, total={}", self.debug_name, col_width, total_widest)
+
         if total_widest <= available_space:
             # The columns all fit!
             extra_per_column = (available_space - total_widest) / self.k
@@ -342,7 +344,7 @@ class ColumnPacker:
         result = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         result.location = bounds.top_left
         LOGGER.debug("[{}] Placed table with widths={}: Quality={}",
-                    self.debug_name, column_sizes, result.quality)
+                     self.debug_name, column_sizes, result.quality)
         return result
 
     def place_in_columns(self, equal: bool = False) -> PlacedGroupContent:
@@ -357,7 +359,11 @@ class ColumnPacker:
         least_unplaced = 999999
         for widths in width_choices:
             try:
+                LOGGER.debug("[{}] Attempting to place table with widths={}", self.debug_name, widths, )
                 trial, counts = self._place_in_sized_columns(widths, least_unplaced)
+                if trial:
+                    LOGGER.debug("[{}] Placed table with widths={}: counts={}, quality={}",
+                             self.debug_name, widths, counts, trial.quality)
                 if trial and trial.better(best):
                     best = copy(trial)
                     least_unplaced = best.quality.unplaced
@@ -371,8 +377,7 @@ class ColumnPacker:
 
         if not best:
             LOGGER.warn("[{}] No placement with widths {}", self.debug_name, common.to_str(width_choices, 0))
-            raise ExtentTooSmallError(self.debug_name, f"All {len(width_choices)} failed to ")
-        self.report(best_combo[0], best_combo[1], best, final=True)
+            raise ExtentTooSmallError(self.debug_name, f"Could not fit using {len(width_choices)} choices")
         LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
                     self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
                     best.quality.unplaced, best.quality.minor_score())
@@ -382,10 +387,6 @@ class ColumnPacker:
     def post_placement_modifications(self, columns: list[ColumnFit]) -> list[ColumnFit]:
         # Do nothing by default
         return columns
-
-    def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
-        # Do nothing by default
-        pass
 
     def _shuffle_down(self, idx: int, fits: list[ColumnFit], widths: list[float], counts: list[int],
                       best: PlacedGroupContent) -> tuple[PlacedGroupContent or None, list[int] or None]:

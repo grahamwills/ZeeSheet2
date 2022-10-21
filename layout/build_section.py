@@ -76,9 +76,3 @@ class SectionPacker(ColumnPacker):
                     fit.height -= s.shrink_to_fit(bottom=lowest_other)
 
         return columns
-
-    def report(self, widths: List[float], counts: List[int], placed: PlacedGroupContent, final: bool = False):
-        q = placed.quality
-        text = 'Best Placement' if final else 'Trial Placement'
-        LOGGER.debug("{}: counts={}, widths={}, quality={:g}/{:g}/{:g}",
-                     text, counts, common.to_str(widths, 0), q.unplaced, q.unplaced_descendants, q.minor_score())

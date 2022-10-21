@@ -93,7 +93,7 @@ class TextFieldSegment(Segment):
             self.text = text
             self.expands = False
         # Add a bit for the spacing around the field
-        self.width = font.width(self.text) + 4
+        self.width = max(font.width(self.text.replace(' ', 'X')) + 4, 20)
 
 
     def __str__(self):

@@ -128,7 +128,7 @@ class StyleResolver:
         if len(self.undefined) == 1:
             warnings.warn(f"Style {list(self.undefined)[0]}. Using a default instead of it")
         if len(self.undefined) > 1:
-            warnings.warn(f"Styles {', '.join(self.undefined)}. Using defautls instead of them")
+            warnings.warn(f"Styles {', '.join(self.undefined)}. Using defaults instead of them")
 
         # Set the parents to the most common usage, if the parent has not been defined
         for style in self.styles.values():

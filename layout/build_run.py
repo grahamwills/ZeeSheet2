@@ -147,8 +147,8 @@ class RunBuilder:
                         x += w
                         text = None
                 elif modifier == 'textfield':
-                    # Make sure the minimum size can fit -- about 3 characters
-                    min_size = font.ascent * 3
+                    # Make sure the minimum size can fit -- about 2 characters
+                    min_size = font.ascent * 2
                     if width < min_size:
                         raise ExtentTooSmallError(self.run, f"Could not fit min size for textfield ({element})")
 

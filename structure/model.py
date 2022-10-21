@@ -124,6 +124,9 @@ class Element:
     def _name(self, index: list[int]):
         self.name = 'Element\u00a7' + '.'.join(str(x) for x in index)
 
+    def __str__(self):
+        return f"Element({self.to_rst()})"
+
 
 # noinspection PyUnresolvedReferences,PyAttributeOutsideInit
 @dataclass
