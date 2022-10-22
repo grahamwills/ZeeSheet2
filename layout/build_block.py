@@ -75,6 +75,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     # Reduce space for the items to account for the title.
     # Inset for padding and border
     item_bounds = outer - titler.content_spacing
+    if block.options.spacing:
+        item_bounds = item_bounds - Spacing.balanced(block.options.spacing)
     if block.children:
         placed_children = place_block_children(block, item_bounds, pdf)
     else:
@@ -86,6 +88,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
                                      force_to_top=True)
     # Frame everything
     total_height = placed_children.bounds.bottom
+    if block.options.spacing:
+        total_height += block.options.spacing
     if titler.title_inside_clip:
         total_height = max(total_height, titler.title.bounds.bottom)
     if main_style.box.has_border():
@@ -128,6 +132,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
 
     return result
 
+
 @lru_cache
 def _build_title(block, extra_space, outer, pdf):
     titler = BlockTitleBuilder(block, pdf, extra_space * 2)
@@ -142,7 +147,8 @@ def place_block_children(block: Block, item_bounds: Rect, pdf) -> Optional[Place
         modifier = BlockTextFontModifier(block.options.bold, block.options.italic, pdf)
         packer = BlockTablePacker(debug_name, item_bounds, block.children, block.column_count(), block.options.style,
                                   pdf, modifier)
-        return packer.place_table(equal=block.options.equal)
+        table = packer.place_table(equal=block.options.equal)
+        return table
     else:
         return None
 

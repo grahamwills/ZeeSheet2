@@ -135,7 +135,7 @@ class Prettify:
                 if v is True:
                     parts.append(k)
                 else:
-                    if k in {'width', 'height', 'image-width', 'image-height'}:
+                    if k in {'width', 'height', 'image-width', 'image-height', 'spacing'}:
                         v = style.len2str(v)
                     if k in {'image-brightness', 'image-contrast', }:
                         v = f"{round(v * 100)}%"

@@ -122,6 +122,8 @@ class ColumnPacker:
             else:
                 # No improvement
                 break
+
+
         return result, counts
 
     def fits_to_content(self, fits):
@@ -176,9 +178,6 @@ class ColumnPacker:
                 space_is_full = True
                 break
         fit.height = y
-        if fit.height > self.bounds.height:
-            print('bad')
-
         return fit, space_is_full
 
     def place_table(self, equal: bool) -> PlacedGroupContent:
@@ -199,7 +198,8 @@ class ColumnPacker:
     def fit_within_space(self, available_space):
         WID = 1e6
 
-        per_cell_padding = (self.bounds.width - available_space) / self.k
+        # We need to add a small amoutn extra so the cells will definitely fit when placed later
+        per_cell_padding = (self.bounds.width - available_space) / self.k + 2
 
         # Ensure we do not expand text fields to fill the area
         self.keep_minimum_sizes = True
@@ -208,7 +208,6 @@ class ColumnPacker:
         col_width = []
         col_to_end_width = []
         expandable = []
-        WID -= per_cell_padding  # Reduce the actual amount of space that was available
         for c in range(0, self.k):
             w_max = 0
             w_to_end = 0

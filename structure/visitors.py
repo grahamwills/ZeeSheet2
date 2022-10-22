@@ -66,7 +66,7 @@ def _set_option(options, k, v):
         options.title_style = v
     elif k == 'bold' or k == 'strong':
         options.bold = v
-    elif k == 'italic' or k == 'empahsis':
+    elif k == 'italic' or k == 'emphasis':
         options.italic = v
     elif k == 'title-bold' or k == 'title-strong':
         options.title_bold = v
@@ -113,6 +113,9 @@ def _set_option(options, k, v):
         else:
             message = f"'{v}' is not a legal value for {k}. Should be one of {choices}"
             raise RuntimeError(message)
+
+    elif k == 'cell-spacing' or k == 'spacing':
+        options.spacing = units.toLength(v)
 
     elif k == 'width':
         options.width = units.toLength(v)
