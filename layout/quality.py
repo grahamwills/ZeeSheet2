@@ -167,14 +167,15 @@ def for_decoration() -> PlacementQuality[T]:
     return _DECORATION_QUALITY
 
 
-def for_table(cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> PlacementQuality[T]:
+def for_table(cells_columnwise: list[list], unplaced: int) -> PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
 
     q = PlacementQuality(LayoutMethod.TABLE, excess_ss=0, unplaced=unplaced)
     for row in cells_columnwise:
         min_excess2 = None
-        for cell in row:
-            if cell is not None:
+        for item in row:
+            if item is not None:
+                cell = item.quality
                 if cell.method != LayoutMethod.NONE:
                     q.count += 1
                 q.unplaced_descendants += cell.unplaced
@@ -189,8 +190,7 @@ def for_table(cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> 
     return q
 
 
-def for_columns(actual_heights: list[int], cells_columnwise: list[list[PlacementQuality]], unplaced: int) -> \
-        PlacementQuality[T]:
+def for_columns(actual_heights: list[int], cells_columnwise: list[list], unplaced: int) ->  PlacementQuality[T]:
     """ Define a quality for a table layout by aggregating the cell qualities"""
     q = for_table(cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS

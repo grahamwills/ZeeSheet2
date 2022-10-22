@@ -113,8 +113,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
         items.append(titler.title)
 
     block_extent = Extent(size.width, total_height)
-    cell_qualities = [i.quality for i in items]
-    block_quality = layout.quality.for_columns([total_height], [cell_qualities], 0)
+    block_quality = layout.quality.for_columns([total_height], [items], 0)
     result = PlacedGroupContent.from_items(items, block_quality, extent=block_extent)
     result.clip_item = frame.items[0] if isinstance(frame, PlacedGroupContent) else frame
     if not result.clip_item:
@@ -123,7 +122,7 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
         result.clip_item = PlacedRectContent(modified_bounds, main_style, layout.quality.for_decoration())
     if titler.title and not titler.title_inside_clip:
         # Inlcude title and content in the quality
-        quality = layout.quality.for_table([[titler.title.quality, block_quality]], 0)
+        quality = layout.quality.for_table([[titler.title, result]], 0)
         result = PlacedGroupContent.from_items([result, titler.title], quality, extent=block_extent)
 
     # Mark as hidden if our style indicated it was to be hidden

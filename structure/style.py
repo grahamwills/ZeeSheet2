@@ -3,6 +3,7 @@ from __future__ import annotations
 import colorsys
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import List, Iterable, Optional, Union
 from warnings import warn
 
@@ -18,6 +19,7 @@ _TRANSPARENT = colors.Color(1, 1, 1, 0)
 
 
 # noinspection PyArgumentList,PyUnresolvedReferences
+@lru_cache
 def to_color(txt: str, opacity: float or None = None) -> colors.Color or None:
     txt = txt.lower()
     if len(txt) == 4 and txt[0] == '#':
@@ -102,6 +104,7 @@ class Effects:
     ROUGH = Effect('rough', True, True)
     COGS = Effect('cogs', True, True)
     ALL = {e.name: e for e in (NONE, ROUNDED, ROUGH, COGS)}
+
 
 @dataclass
 class FontStyle:

@@ -41,7 +41,6 @@ class ColumnPacker:
         self.average_spacing = self._average_spacing()
         self.col_gap = self.average_spacing.horizontal / 2
         self.row_gap = self.average_spacing.vertical / 2
-        self.quality_table: list[list[PlacementQuality or None]] = [[None] * self.n for _ in range(0, self.k)]
         self.placed_table: list[list[PlacedContent or None]] = [[None] * self.n for _ in range(0, self.k)]
         self.column_left = [0.0] * self.k
         self.column_right = [0.0] * self.k
@@ -129,10 +128,10 @@ class ColumnPacker:
         height = max(fit.height for fit in fits)
         ext = Extent(self.bounds.width, height)
         all_items = [placed for fit in fits for placed in fit.items]
-        cell_qualities = [[cell.quality for cell in column.items] for column in fits]
+        items_as_table = [column.items for column in fits]
         heights = [column.height for column in fits]
         unplaced_count = self.n - len(all_items)
-        q = layout.quality.for_columns(heights, cell_qualities, unplaced=unplaced_count)
+        q = layout.quality.for_columns(heights, items_as_table, unplaced=unplaced_count)
         return PlacedGroupContent.from_items(all_items, q, extent=ext)
 
     @lru_cache
@@ -348,14 +347,13 @@ class ColumnPacker:
                     placed_cell.location = Point(left, top)
                     bottom = max(bottom, placed_cell.bounds.bottom)
                     self.placed_table[col][row] = placed_cell
-                    self.quality_table[col][row] = placed_cell.quality
 
             # Update the top for the next row
             top = bottom + row_gap
         # We added an extra gap that we now remove to give the true bottom, and then add bottom margin
         table_bottom = bottom + self.average_spacing.bottom
         extent = Extent(bounds.extent.width, table_bottom)
-        table_quality = layout.quality.for_table(self.quality_table, 0)
+        table_quality = layout.quality.for_table(self.placed_table, 0)
         result = PlacedGroupContent.from_items(placed_items, table_quality, extent)
         result.location = bounds.top_left
         LOGGER.fine("[{}] Placed table with widths={}: Quality={}",
