@@ -205,6 +205,10 @@ class RunBuilder:
                     elif self.align != 'left':
                         self.align_segments(segments[line_start:], left, width)
 
+                    # Checkboxes by themselves are not a good thing
+                    if line_start == len(segments) - 1 and isinstance(segments[-1], CheckboxSegment):
+                        bad_breaks += 1
+
                     # Start a new line, indenting as per the style
                     x = left = self.style.text.indent
                     y += line_spacing

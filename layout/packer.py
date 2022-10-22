@@ -166,6 +166,9 @@ class ColumnPacker:
                 break
             placed.location = r.top_left
             y = placed.bounds.bottom + margins.bottom
+            if y > height:
+                space_is_full = True
+                break
             previous_margin_bottom = margins.bottom
             fit.right_margin = max(fit.right_margin, margins.right)
             fit.items.append(placed)

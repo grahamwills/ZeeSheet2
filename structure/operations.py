@@ -164,7 +164,7 @@ class Prettify:
 
         if len(item.children) > 1:
             for run in item.children[1:]:
-                txt = ' | ' + run.to_rst(self.width, indent=4)
+                txt = '  | ' + run.to_rst(self.width, indent=4)
                 self.append(txt.rstrip())
 
     def append_block_rst(self, block: model.Block, is_first: bool):

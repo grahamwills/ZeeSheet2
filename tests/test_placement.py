@@ -118,6 +118,18 @@ class TestRunPlacement(unittest.TestCase):
         self.assertEqual('(0, 0)|(0, 16)|(0, 31)|(0, 47)|(0, 62)', locs)
         self.assertEqual("excess=17, breaks=0•4", placed.quality.str_parts())
 
+    def test_checkboxes_wrapping_is_bad(self):
+        E1 = Element('X', 'checkbox')
+        E2 = Element(' fun')
+        run = Run([E1, E2])
+        placed = place_run(run, Extent(30, 200), STYLE, self.pdf, MOD)
+        locs = '|'.join(str((round(s.x), round(s.y))) for s in placed.segments)
+        texts = '|'.join(s.to_text() for s in placed.segments)
+        self.assertEqual('☒|fun', texts)
+        self.assertEqual('(0, 0)|(0, 16)', locs)
+        self.assertEqual(1, placed.quality.bad_breaks)
+        self.assertEqual(0, placed.quality.good_breaks)
+
     def test_wrapping_not_between_items(self):
         E1 = Element('this is a sentence')
         E2 = Element(': and this comes after')

@@ -96,7 +96,8 @@ class AttributeTableBuilder:
         placed_attributes = PlacedRunContent(attributes, self.style, bounds.extent, q_decoration, bounds.top_left)
         placed_values = PlacedRunContent(values, self.style2, bounds.extent, q_decoration, bounds.top_left)
 
-        quality = layout.quality.for_wrapping(excess, 0, 0)
+        # The excess is really minor -- downgrade it a lot
+        quality = layout.quality.for_wrapping(excess * 0.5, 0, 0)
         path = PlacedPathContent(coords, bounds, self.style, quality)
 
         return PlacedGroupContent.from_items([path, placed_attributes, placed_values], quality, bounds.extent)
