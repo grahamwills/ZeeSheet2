@@ -123,7 +123,6 @@ class ColumnPacker:
                 # No improvement
                 break
 
-
         return result, counts
 
     def fits_to_content(self, fits):
