@@ -11,16 +11,11 @@ from structure import Style
 
 LOGGER = common.configured_logger(__name__)
 
-
-@lru_cache(maxsize=10000)
-def _build_run(run: Run, width: float, style: Style, auto_align: str, pdf: PDF, modifier: TextFontModifier,
-               keep_minimum_sizes: bool) -> PlacedRunContent:
-    return RunBuilder(run, style, auto_align, width, pdf, modifier, keep_minimum_sizes).build()
-
-
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFontModifier, auto_align: str = None,
               keep_minimum_sizes: bool = False) -> PlacedRunContent:
-    placed = _build_run(run, extent.width, style, auto_align, pdf, modifier, keep_minimum_sizes)
+
+    placed = _cache_build_run(auto_align, extent.width, keep_minimum_sizes, modifier, pdf, run, style)
+
     if placed.extent.height > extent.height:
         raise ExtentTooSmallError(run, f"Run height exceeded available space "
                                        f"({placed.extent.height} > {placed.extent.height}")
@@ -30,7 +25,12 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFo
     return placed
 
 
-@lru_cache(maxsize=10000)
+@lru_cache(maxsize=1000)
+def _cache_build_run(auto_align, width, keep_minimum_sizes, modifier, pdf, run, style):
+    return RunBuilder(run, style, auto_align, width, pdf, modifier, keep_minimum_sizes).build()
+
+
+@lru_cache(maxsize=1000)
 def split_text(text: str,
                font: Font,
                width: float,

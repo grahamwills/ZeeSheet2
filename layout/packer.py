@@ -8,7 +8,6 @@ from typing import Optional, Tuple, Union, List
 import common
 import layout
 from common import Extent, Spacing, Rect, configured_logger, Point, items_in_bins_combinations, items_in_bins_counts
-from layout import PlacementQuality
 from layout.content import ExtentTooSmallError, PlacedGroupContent, PlacedContent
 
 LOGGER = configured_logger(__name__)
@@ -45,7 +44,7 @@ class ColumnPacker:
         self.column_left = [0.0] * self.k
         self.column_right = [0.0] * self.k
 
-        # Used temporarily to make sure that we don't expand textfields when tryign to measure tables size
+        # Used temporarily to make sure that we don't expand textfields when trying to measure tables size
         self.keep_minimum_sizes = False
 
     def place_item(self, item_index: Union[int, Tuple[int, int]], extent: Extent) -> Optional[PlacedContent]:
@@ -194,37 +193,38 @@ class ColumnPacker:
         return self.fit_within_space(available_space) or self.find_best_compression()
 
     def fit_within_space(self, available_space):
-        WID = 1e6
+        # We need to add a small amount extra so the cells will definitely fit when placed later
+        per_cell_padding = max((self.bounds.width - available_space) / self.k, 2)
 
-        # We need to add a small amoutn extra so the cells will definitely fit when placed later
-        per_cell_padding = (self.bounds.width - available_space) / self.k + 2
-
-        # Ensure we do not expand text fields to fill the area
         self.keep_minimum_sizes = True
-        self.place_table_given_widths([WID] * self.k, self.bounds)
-        self.keep_minimum_sizes = False
+
         col_width = []
         col_to_end_width = []
         expandable = []
+        big = Extent(1e6, 1e6)
         for c in range(0, self.k):
             w_max = 0
             w_to_end = 0
             expand = False
             for r in range(self.n):
-                item = self.placed_table[c][r]
-                if item:
+                key = (r, c)
+                span = self.span_of_item(key)
+                if span:
+                    item = self.place_item(key, big)
                     expand = expand or item.contains_expandable()
                     w = item.drawn_bounds().width + per_cell_padding
-                    span = self.span_of_item((r, c))
                     if span == 1:
                         w_max = max(w_max, w)
                     elif span > 1:
                         # This must go all the way to the end
                         w_to_end = max(w_to_end, w)
-
             col_width.append(w_max)
             col_to_end_width.append(w_to_end)
             expandable.append(expand)
+
+        self.keep_minimum_sizes = False
+
+
         # If necessary, increase out the size of the columns that are spanned by a single item
         # We start at column 1 because if an item spans all the columns in a table, then how we
         # divide up those columns makes no difference.
@@ -387,14 +387,15 @@ class ColumnPacker:
                     least_unplaced = best.quality.unplaced
                     best_combo = widths, counts
                     LOGGER.debug("[{}] ... Best so far has widths={}, counts={}: unplaced={}, quality={}",
-                                self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
-                                best.quality.unplaced, best.quality )
+                                 self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],
+                                 best.quality.unplaced, best.quality)
             except ExtentTooSmallError as ex:
                 LOGGER.fine(f"Could not place children with widths {common.to_str(widths, 0)}: {ex}")
                 pass
 
         if not best:
-            LOGGER.warn("[{}] No placement for {} items with widths {}", self.debug_name, self.n, common.to_str(width_choices, 0))
+            LOGGER.warn("[{}] No placement for {} items with widths {}", self.debug_name, self.n,
+                        common.to_str(width_choices, 0))
             raise ExtentTooSmallError(self.debug_name, f"Could not fit using {len(width_choices)} choices")
         LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
                     self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],

@@ -147,6 +147,7 @@ class Font:
         return hash(self.name) + 13 * int(100 * self.size)
 
 
+
 def read_font_info() -> List[FontFamily]:
     out = []
     with open(FONT_DIR / '_INDEX.txt') as f:

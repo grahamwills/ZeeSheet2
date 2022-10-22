@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Tuple, Optional, Union
 
@@ -208,9 +209,10 @@ def tiny_block() -> Block:
     return Block(Item(), [item], options)
 
 
+@dataclass
 class BlockTextFontModifier(TextFontModifier):
     bold_font: Font or None
-    italic_Font: Font or None
+    italic_font: Font or None
     bold_col: Color or None
     italic_col: Color or None
 
@@ -255,3 +257,6 @@ class BlockTextFontModifier(TextFontModifier):
                 warnings.warn(f"Style '{italic}' was requested to be used for bold styling, but was not defined. ")
         self.italic_font = None
         self.italic_col = None
+
+    def __hash__(self):
+        return hash((self.bold_font, self.italic_font, self.bold_col, self.italic_col))
