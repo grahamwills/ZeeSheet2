@@ -13,6 +13,8 @@ from structure import Block
 @lru_cache
 def text_details(texts: tuple[str], font: Font):
     boxes = tuple(font.bbox(t) for t in texts)
+    if not boxes:
+        return 0, 0, 0, tuple()
     overall = Rect.union(boxes)
     widths = tuple(r.width for r in boxes)
 
@@ -97,7 +99,7 @@ class AttributeTableBuilder:
         placed_values = PlacedRunContent(values, self.style2, bounds.extent, q_decoration, bounds.top_left)
 
         # The excess is really minor -- downgrade it a lot
-        quality = layout.quality.for_wrapping(excess * 0.5, 0, 0)
+        quality = layout.quality.for_wrapping(excess * 0.1, 0, 0)
         path = PlacedPathContent(coords, bounds, self.style, quality)
 
         return PlacedGroupContent.from_items([path, placed_attributes, placed_values], quality, bounds.extent)

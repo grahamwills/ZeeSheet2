@@ -193,12 +193,10 @@ def action_dispatcher(request, sheet_id):
                 pdf_file = path[7:]  # remove the 'sheets/' prefix
                 for w in warning_messages:
                     messages.warning(request, str(w.message))
-            except ExtentTooSmallError:
-                messages.error(request,
-                               'Could not find any suitable placement. Try reducing number of columns or margin sizes')
-            # except Exception as ex:
-            #     messages.error(request,
-            #                    f'An internal error prevented the PDF from being generated: {ex}')
+            except ExtentTooSmallError as ex:
+                where = str(ex.target)
+                what = ex.info
+                messages.error(request, f"Failed to make a valid placement while handling {where}: {what}")
 
     return show_sheet(request, sheet_id, edit_content, pdf_file)
 

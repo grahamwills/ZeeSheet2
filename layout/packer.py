@@ -165,10 +165,10 @@ class ColumnPacker:
                 space_is_full = True
                 break
             placed.location = r.top_left
-            y = placed.bounds.bottom + margins.bottom
-            if y > height:
+            if placed.bounds.bottom + margins.bottom > height:
                 space_is_full = True
                 break
+            y = placed.bounds.bottom + margins.bottom
             previous_margin_bottom = margins.bottom
             fit.right_margin = max(fit.right_margin, margins.right)
             fit.items.append(placed)
@@ -176,6 +176,9 @@ class ColumnPacker:
                 space_is_full = True
                 break
         fit.height = y
+        if fit.height > self.bounds.height:
+            print('bad')
+
         return fit, space_is_full
 
     def place_table(self, equal: bool) -> PlacedGroupContent:
@@ -395,7 +398,7 @@ class ColumnPacker:
                 pass
 
         if not best:
-            LOGGER.warn("[{}] No placement with widths {}", self.debug_name, common.to_str(width_choices, 0))
+            LOGGER.warn("[{}] No placement for {} items with widths {}", self.debug_name, self.n, common.to_str(width_choices, 0))
             raise ExtentTooSmallError(self.debug_name, f"Could not fit using {len(width_choices)} choices")
         LOGGER.info("[{}] Best packing has widths={}, counts={}: unplaced={}, score={:g}",
                     self.debug_name, common.to_str(best_combo[0], 0), best_combo[1],

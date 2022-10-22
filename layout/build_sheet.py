@@ -1,3 +1,4 @@
+import warnings
 from copy import copy
 from typing import Union, Optional
 
@@ -7,7 +8,7 @@ from drawing import FontLibrary
 from drawing import PDF
 from layout import build_section
 from layout.build_section import SectionPacker
-from layout.content import PlacedContent, PlacedGroupContent, make_frame
+from layout.content import PlacedContent, PlacedGroupContent, make_frame, ExtentTooSmallError
 from structure import Sheet
 
 FONT_LIB = FontLibrary()
@@ -29,26 +30,31 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
     results = []
     last_unplaced = (-1, -1)
     while sections:
-        content = create_page(sheet, sections, pdf)
-        results.append(content)
-        unplaced_sections = content.quality.unplaced
-        unplaced_blocks = content.quality.unplaced_descendants
+        try:
+            content = create_page(sheet, sections, pdf)
+            results.append(content)
+            unplaced_sections = content.quality.unplaced
+            unplaced_blocks = content.quality.unplaced_descendants
 
-        # Guard against failure to place anything
-        unplaced = (unplaced_sections, unplaced_blocks)
-        if unplaced == last_unplaced:
-            raise RuntimeError('Could not place an item even with an empty page')
-        last_unplaced = unplaced
-        sections_for_next_page = []
-        if unplaced_blocks:
-            # Need to include blocks from the last section that were not placed
-            last_section = copy(sections[-unplaced_sections - 1])
-            last_section.children = last_section.children[-unplaced_blocks:]
-            sections_for_next_page.append(last_section)
-        if unplaced_sections:
-            sections_for_next_page += sections[-unplaced_sections:]
-
-        sections = sections_for_next_page
+            # Guard against failure to place anything
+            unplaced = (unplaced_sections, unplaced_blocks)
+            if unplaced == last_unplaced:
+                raise ExtentTooSmallError('Could not place an item even with an empty page')
+            last_unplaced = unplaced
+            sections_for_next_page = []
+            if unplaced_blocks:
+                # Need to include blocks from the last section that were not placed
+                last_section = copy(sections[-unplaced_sections - 1])
+                last_section.children = last_section.children[-unplaced_blocks:]
+                sections_for_next_page.append(last_section)
+            if unplaced_sections:
+                sections_for_next_page += sections[-unplaced_sections:]
+            sections = sections_for_next_page
+        except ExtentTooSmallError as ex:
+            warnings.warn(f"Unable to place a section ({common.name_of(sections[0])}) -- try reducing the number"
+                          f" of columns or decreasing the width of blocks inside it.")
+            sections = sections[1:]
+            pass
 
     return results
 

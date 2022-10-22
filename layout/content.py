@@ -305,7 +305,7 @@ class PlacedPathContent(PlacedContent):
         pdf.draw_path(self.as_path(), self.style)
 
     def drawn_bounds(self) -> Rect:
-        l, t, r, b = self._asPath.getBounds()
+        l, t, r, b = self.as_path().getBounds()
         return Rect(l, r, t, b) + self.location
 
     def __copy__(self):
