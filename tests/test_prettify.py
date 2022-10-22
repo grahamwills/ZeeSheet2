@@ -19,7 +19,7 @@ class PrettifyTests(unittest.TestCase):
                          "image=0, image_mode='normal', image_width=None, "
                          "image_height=None, image_anchor=None, image_brightness=1.0, image_contrast=1.0, "
                          "method='table', equal=False, title='T', title_style=None, bold=None, "
-                         "italic=None, title_bold=None, title_italic=None)",
+                         "italic=None, title_bold=None, title_italic=None, spacing=2)",
                          str(c))
 
     def test_prettify(self):

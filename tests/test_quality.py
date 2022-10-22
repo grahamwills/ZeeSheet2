@@ -59,7 +59,7 @@ class TestQuality(unittest.TestCase):
         q = quality.for_columns([20, 90], [[a, b, c, c], [a, None, c]], 7)
 
         # Max height is 90, standard deviation = 35
-        self.assertEqual('⟨COLUMNS(3), excess=1, unplaced=7, breaks=8•7, ∆height=70⟩', str(q))
+        self.assertEqual('⟨COLUMNS(3), excess=1, unplaced=7, breaks=8•7, ∆height=35⟩', str(q))
 
     def test_compatibility(self):
         a = quality.for_wrapping(1, 4, 1)
@@ -156,7 +156,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(12, q.bad_breaks)
         self.assertEqual(8, q.good_breaks)
         self.assertEqual(3, q.unplaced)
-        self.assertEqual(20.0, q.height_dev)
+        self.assertEqual(10.0, q.height_dev)
 
     def test_aggregation_of_aggregations(self):
         a = quality.for_wrapping(1, 7, 1)
@@ -175,7 +175,7 @@ class TestQualityComparisonForGroups(unittest.TestCase):
         self.assertEqual(6 * 1 + 5 * 5, q.good_breaks)
         self.assertEqual(3, q.unplaced)
         self.assertEqual(3 * 3 + 7, q.unplaced_descendants)
-        self.assertEqual(20.0, q.height_dev)
+        self.assertEqual(10.0, q.height_dev)
 
     def test_image_versus_wrapping(self):
         perfect_text = quality.for_wrapping(0, 0, 0)
@@ -207,11 +207,10 @@ class TestQualityComparisonForGroups(unittest.TestCase):
     def test_column_sizes_versus_wrapping(self):
         none = quality.for_wrapping(10, 0, 0)
         one = quality.for_wrapping(10, 0, 1)
-        ten = quality.for_wrapping(10, 0, 10)
 
         no_breaks_5_height_difference = quality.for_columns([100, 105], [[none], [none, none]], 0)
-        no_breaks_20_height_difference = quality.for_columns([120, 100], [[none], [none, none]], 0)
+        no_breaks_40_height_difference = quality.for_columns([140, 100], [[none], [none, none]], 0)
         one_break_0_height_difference = quality.for_columns([105, 105], [[none], [none, one]], 0)
 
         self.assertTrue(no_breaks_5_height_difference.better(one_break_0_height_difference))
-        self.assertTrue(one_break_0_height_difference.better(no_breaks_20_height_difference))
+        self.assertTrue(one_break_0_height_difference.better(no_breaks_40_height_difference))

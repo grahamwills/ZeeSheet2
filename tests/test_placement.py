@@ -214,6 +214,7 @@ class TestBlockPlacement(unittest.TestCase):
         ]
         block = Block(self.title, items)
         block.options.title = 'banner'
+        block.options.spacing = 0
         placed = place_block(block, Extent(300, 100), self.pdf)
         group = placed.children()
         self.assertEqual(2, len(group))
