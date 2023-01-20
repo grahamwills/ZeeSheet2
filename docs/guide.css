@@ -39,7 +39,7 @@ div.important, div.note, div.tip, div.warning {
 
 div.admonition p.admonition-title, div.hint p.admonition-title,
 div.important p.admonition-title, div.note p.admonition-title,
-div.tip p.admonition-title  {
+div.tip p.admonition-title {
     text-align: center;
     background-color: #999999;
     display: block;
@@ -112,8 +112,9 @@ pre.literal-block, pre.doctest-block {
     padding: 5px;
 }
 
-.image img { border-style : solid;
-    border-width : 2px;
+.image img {
+    border-style: solid;
+    border-width: 2px;
 }
 
 h1 tt, h2 tt, h3 tt, h4 tt, h5 tt, h6 tt {
@@ -132,8 +133,8 @@ dt {
 }
 
 th, td {
-    padding:2px;
-    font-size:80%;
+    padding: 2px;
+    font-size: 80%;
     text-align: left;
 }
 

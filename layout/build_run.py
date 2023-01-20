@@ -11,9 +11,9 @@ from structure import Style
 
 LOGGER = common.configured_logger(__name__)
 
+
 def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFontModifier, auto_align: str = None,
               keep_minimum_sizes: bool = False) -> PlacedRunContent:
-
     placed = _cache_build_run(auto_align, extent.width, keep_minimum_sizes, modifier, pdf, run, style)
 
     if placed.extent.height > extent.height:
@@ -25,7 +25,6 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFo
     return placed
 
 
-@lru_cache(maxsize=1000)
 def _cache_build_run(auto_align, width, keep_minimum_sizes, modifier, pdf, run, style):
     return RunBuilder(run, style, auto_align, width, pdf, modifier, keep_minimum_sizes).build()
 

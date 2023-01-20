@@ -36,7 +36,7 @@ class BraceString(str):
     def __mod__(self, other):
         try:
             return self.format(*other)
-        except Exception as ex:
+        except Exception:
             pass
 
     def __str__(self):

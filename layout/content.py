@@ -6,7 +6,7 @@ from copy import copy
 from dataclasses import dataclass
 from typing import List, Optional, Any
 
-from reportlab.graphics.shapes import Path
+from reportlab.pdfgen.pathobject import PDFPathObject
 
 import common
 import layout.quality
@@ -55,7 +55,7 @@ class PlacedContent(abc.ABC):
         """ The bounds of objects actually drawn, as opposed to theoretical bounds """
         raise NotImplementedError('Must be defined in subclass')
 
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         raise NotImplementedError('Must be defined in subclass')
 
     def contains_expandable(self) -> bool:
@@ -134,7 +134,7 @@ class PlacedGroupContent(PlacedContent):
     def drawn_bounds(self) -> Rect:
         return Rect.union(p.drawn_bounds() for p in self.items) + self.location
 
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         raise NotImplementedError('Grouped content does not provide a path')
 
     def children(self) -> List[PlacedContent]:
@@ -156,7 +156,8 @@ class PlacedGroupContent(PlacedContent):
         clip = self.clip_item
         if clip:
             pdf.saveState()
-            pdf.clipPath(clip.as_path(), 0, 0)
+            cp = clip.as_path()
+            pdf.clipPath(cp, 0, 0)
             box: BoxStyle = clip.style.box
             original_border = box.border_color
             box.border_color = 'none'
@@ -193,7 +194,7 @@ class PlacedGroupContent(PlacedContent):
 
 @dataclass
 class PlacedRunContent(PlacedContent):
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         raise NotImplementedError('Run content does not provide a path')
 
     DEBUG_STYLE = ('#590696', 0.75, 0.1, 1, None)
@@ -221,9 +222,6 @@ class PlacedRunContent(PlacedContent):
         return Rect(left + self.location.x, right + self.location.x,
                     self.location.y, self.location.y + self.extent.height)
 
-    def as_path(self) -> Path:
-        raise NotImplementedError('Grouped content does not provide a path')
-
     def offset_content(self, dx: float):
         for s in self.segments:
             s.x += dx
@@ -246,13 +244,13 @@ class PlacedRectContent(PlacedContent):
     DEBUG_STYLE = None
 
     style: Style  # Style for this item
-    _asPath: Path = None
+    _asPath: PDFPathObject = None
 
     def __init__(self, bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.style = style
 
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         if not self._asPath:
             effect = self.style.get_effect()
             coords = self.bounds.path_coords()
@@ -285,14 +283,14 @@ class PlacedPathContent(PlacedContent):
 
     coords: list[tuple]
     style: Style  # Style for this item
-    _asPath: Path = None
+    _asPath: PDFPathObject = None
 
     def __init__(self, coords: list[tuple[float, ...]], bounds: Rect, style: Style, quality: PlacementQuality):
         super().__init__(bounds.extent, quality, bounds.top_left)
         self.coords = coords
         self.style = style
 
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         if not self._asPath:
             effect = self.style.get_effect()
             self._asPath = coords_to_path(self.coords, effect, hash(self.bounds))
@@ -305,7 +303,21 @@ class PlacedPathContent(PlacedContent):
         pdf.draw_path(self.as_path(), self.style)
 
     def drawn_bounds(self) -> Rect:
-        l, t, r, b = self.as_path().getBounds()
+        path = self.as_path()
+        # The following is not exact as the curves may go outside the range of the coordinates
+        l = t = 9e99
+        r = b = -9e99
+        for code in path._code:
+            parts = code.split()
+            for s in parts[0:-1:2]:
+                x = float(s)
+                l = min(x, l)
+                r = max(x, r)
+            for s in parts[1:-1:2]:
+                y = float(s)
+                t = min(y, t)
+                b = max(y, b)
+
         return Rect(l, r, t, b) + self.location
 
     def __copy__(self):
@@ -325,7 +337,7 @@ class PlacedImageContent(PlacedContent):
     brightness: float
     contrast: float
 
-    def as_path(self) -> Path:
+    def as_path(self) -> PDFPathObject:
         raise NotImplementedError('Image content does not provide a path')
 
     def __init__(self, image: ImageDetail, desired: Extent, mode: str, anchor: str, bounds: Rect,

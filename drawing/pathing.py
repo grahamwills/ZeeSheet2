@@ -4,13 +4,13 @@ import random
 from typing import Generator, Callable
 
 import reportlab.pdfgen.pathobject
-from reportlab.graphics.shapes import Path
+from reportlab.pdfgen.pathobject import PDFPathObject
 
 from common import Point
 from structure import Effect, Effects
 
 
-def coords_to_path(coords: list[tuple], effect: Effect, seed: int) -> Path:
+def coords_to_path(coords: list[tuple], effect: Effect, seed: int) -> PDFPathObject:
     if effect.name == Effects.NONE.name:
         transformed = coords
     elif effect.name == Effects.ROUNDED.name:
@@ -31,7 +31,7 @@ def round_edges(coords: list[tuple], radius) -> list[tuple]:
     result = []
     for shape in closed_shapes(coords):
         result += round_closed_shape(shape, radius)
-        result += tuple()  # close indicator
+        result.append(tuple())  # close indicator
     return result
 
 
@@ -145,7 +145,6 @@ def round_closed_shape(coords: list[tuple], radius) -> list[tuple]:
             d2 = distance(q, r)
 
             # Curve the corner
-            result.append(q)
             rad = min(radius, d1 * 0.5, d2 * 0.5)
             θ1 = rad / d1
             θ2 = rad / d2
@@ -196,24 +195,26 @@ def flatten(coords: list[tuple], step: float) -> list[Point]:
 
 
 # noinspection PyTypeChecker
-def to_path(coords: list[tuple]) -> Path:
+def to_path(coords: list[tuple]) -> PDFPathObject:
     p = reportlab.pdfgen.pathobject.PDFPathObject()
     need_move = True
     for c in coords:
         m = len(c)
         if m == 0:
-            p.close()
-            need_move = True
-        elif m == 2:
-            if need_move:
-                p.moveTo(*c)
-                need_move = False
-            else:
+            if not need_move:
+                p.close()
+                need_move = True
+            continue
+
+        if need_move:
+            p.moveTo(c[0], c[1])
+            need_move = False
+
+        if m == 2:
                 p.lineTo(*c)
         elif m == 6:
             p.curveTo(*c)
         else:
             raise RuntimeError('Bad path specification')
-    if not need_move:
-        p.close()
+    p.close()
     return p

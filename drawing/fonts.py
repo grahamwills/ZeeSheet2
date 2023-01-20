@@ -16,7 +16,6 @@ from reportlab.pdfbase.ttfonts import TTFont, TTFNameBytes
 import common
 from common import Rect
 from common.textual import NGram
-from structure import TextStyle
 
 LOGGER = common.configured_logger(__name__)
 
@@ -124,7 +123,7 @@ class Font:
             return Rect(r[0], r[2], r[1], r[3])
         except ValueError:
             # Text did not have a path (probably all spaces)
-            return Rect(0,0,0,0)
+            return Rect(0, 0, 0, 0)
 
     @property
     def top_to_baseline(self):
@@ -145,7 +144,6 @@ class Font:
     def __hash__(self):
         # A slight speed improvement over the default
         return hash(self.name) + 13 * int(100 * self.size)
-
 
 
 def read_font_info() -> List[FontFamily]:

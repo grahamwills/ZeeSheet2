@@ -224,7 +224,6 @@ class ColumnPacker:
 
         self.keep_minimum_sizes = False
 
-
         # If necessary, increase out the size of the columns that are spanned by a single item
         # We start at column 1 because if an item spans all the columns in a table, then how we
         # divide up those columns makes no difference.

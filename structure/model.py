@@ -61,7 +61,7 @@ class BlockOptions(CommonOptions):
     italic: str = None
     title_bold: str = None
     title_italic: str = None
-    spacing:float = 2
+    spacing: float = 2
 
 
 @dataclass

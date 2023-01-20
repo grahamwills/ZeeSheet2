@@ -15,6 +15,7 @@ from reportlab.lib import colors
 from reportlab.lib.colors import Color
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
+from reportlab.pdfgen.pathobject import PDFPathObject
 
 from common import Rect, Point
 from common import configured_logger
@@ -143,7 +144,7 @@ class PDF(canvas.Canvas):
             font.line_spacing *= style.font.spacing
         return font
 
-    def draw_path(self, path: Path, style: Style):
+    def draw_path(self, path: PDFPathObject, style: Style):
         LOGGER.debug("Drawing path")
         stroke_color = style.get_color(border=True)
         stroke_width = style.box.width

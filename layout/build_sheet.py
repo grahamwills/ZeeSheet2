@@ -58,6 +58,7 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
 
     return results
 
+
 def create_page(sheet, sections, pdf):
     extent = Extent(sheet.options.width, sheet.options.height)
     sheet_style = pdf.style(sheet.options.style, 'default-sheet')

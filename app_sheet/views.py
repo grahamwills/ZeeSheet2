@@ -6,8 +6,6 @@ from PIL import Image
 from django.contrib import messages
 from django.contrib.auth import login
 from django.core.files.base import ContentFile
-
-
 from django.core.files.storage import default_storage, FileSystemStorage
 from django.http import HttpRequest, FileResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
@@ -15,7 +13,6 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
-
 
 import main
 from layout.content import ExtentTooSmallError

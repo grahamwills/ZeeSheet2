@@ -193,9 +193,7 @@ class CalcParser(Parser):
     def factor(self, p):
         # Return a qualifier like "+2', '-4' or '' for no qualifier
         v = float(p.expression)
-        if v == 0:
-            return Variable('')
-        elif v > 0:
+        if v >= 0:
             return Variable('+' + str(p.expression))
         else:
             return Variable(str(p.expression))

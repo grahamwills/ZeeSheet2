@@ -4,7 +4,6 @@ from typing import List
 import common
 
 LOGGER = common.configured_logger(__name__)
-
 _r_i = 0
 _r_array = [0.5, 0.64285714, 0.35714286, 0.07142857, 0.78571429, 0.21428571]
 

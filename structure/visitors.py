@@ -249,7 +249,7 @@ class StructureBuilder(docutils.nodes.NodeVisitor):
         self.start(node)
         self._make_new_section()
 
-    def visit_line(self, node:docutils.nodes.line) ->None:
+    def visit_line(self, node: docutils.nodes.line) -> None:
         # Need to add the missing pipe from the line start
         child = node.children[0]
         node.children[0] = docutils.nodes.Text('|' + child.astext())
