@@ -47,7 +47,8 @@ def place_block(block: Block, size: Extent, pdf: PDF) -> Optional[PlacedContent]
     container = Rect(0, size.width, 0, size.height)
 
     if block.options.method == 'attributes':
-        builder = AttributeTableBuilder(block, size, pdf)
+        modifier = BlockTextFontModifier(block.options.title_bold, block.options.title_italic, pdf)
+        builder = AttributeTableBuilder(block, size, modifier, pdf)
         return builder.build()
 
     image = pdf.get_image(block.options.image)

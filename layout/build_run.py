@@ -16,7 +16,7 @@ def place_run(run: Run, extent: Extent, style: Style, pdf: PDF, modifier: TextFo
               keep_minimum_sizes: bool = False) -> PlacedRunContent:
     placed = _cache_build_run(auto_align, extent.width, keep_minimum_sizes, modifier, pdf, run, style)
 
-    if placed.extent.height > extent.height:
+    if placed.extent.height - extent.height > 0.1:
         raise ExtentTooSmallError(run, f"Run height exceeded available space "
                                        f"({placed.extent.height} > {placed.extent.height}")
 

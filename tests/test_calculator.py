@@ -237,7 +237,7 @@ class CalculatorTests(unittest.TestCase):
             'level_d6': '2d6',
             'magic_vs_md': '+6 vs. MD',
             'melee_vs_ac': '+2 vs. AC',
-            'melee_damage': '',
+            'melee_damage': '+0',
             'magic_damage': '+4',
 
         }
@@ -256,7 +256,7 @@ class CalculatorTests(unittest.TestCase):
             'level_d6': '10d6',
             'magic_vs_md': '+16 vs. MD',
             'melee_vs_ac': '+10 vs. AC',
-            'melee_damage': '',
+            'melee_damage': '+0',
             'magic_damage': '+14',
         }
         self.calc.evaluate(base)

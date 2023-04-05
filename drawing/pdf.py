@@ -209,13 +209,18 @@ class PDF(canvas.Canvas):
         name = 'f' + str(self._name_index)
         LOGGER.debug("Adding text field name='%s'", name)
 
-        bg = _adapt_color_value(color, 0.9, alpha=0.25)
-        border = _adapt_color_value(color, 0.2, alpha=0.8)
+        bg = _adapt_color_value(color, 0.9, alpha=0.125)
+        border = _adapt_color_value(color, 0.2, alpha=0.75)
 
         self.acroForm.textfield(name=name, value=content, x=x, y=y - 1, relative=False,
                                 width=width, height=height + 2,
                                 fontName=fname, fontSize=font.size, textColor=color,
-                                fillColor=bg, borderWidth=0.3333, borderColor=border)
+                                fillColor=bg, borderWidth=0.25, borderColor=border)
+
+        # Hack to center short text fields
+        if width < 5 * height:
+            last_name = self._annotationrefs[-1].name
+            self._doc.idToObject[last_name]['Q'] = 1
 
     def draw_text(self, style: Style, segments: List[Segment]):
         ss = ', '.join([str(s) for s in segments])
