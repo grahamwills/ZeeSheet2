@@ -243,6 +243,8 @@ class PDF(canvas.Canvas):
                 if seg.color != text_color:
                     text_color = seg.color
                     text.setFillColor(text_color)
+                if not seg.font.supports(seg.text):
+                    text.setFont('Symbola', current_font.size*1.2, current_font.line_spacing)
                 text.textOut(seg.text)
             elif isinstance(seg, CheckboxSegment):
                 # Check Box

@@ -58,15 +58,15 @@ USAGE_TYPE = {
 }
 
 ACTION_TYPE = {
-    'Standard': (0, '●', 'Std'),
-    'Move': (1, '◐', 'Move'),
-    'Movement': (1, '◐', 'Move'),
-    'Minor': (2, '○', 'Minor'),
-    'Free': (3, '◌', 'Free'),
-    'No': (4, '◌', 'No'),
-    'Opportunity': (5, '⚡', 'Opp'),
-    'Immediate Interrupt': (6, '⚡', 'Int'),
-    'Immediate Reaction': (7, '⚡', 'React'),
+    'Standard': (0, '❖ ', 'Std'),
+    'Move': (1, '→', 'Move'),
+    'Movement': (1, '→', 'Move'),
+    'Minor': (2, '☉ ', 'Minor'),
+    'Free': (3, '∅ ', 'Free'),
+    'No': (4, '∅ ', 'No'),
+    'Opportunity': (5, '☇', 'Opp'),
+    'Immediate Interrupt': (6, '☇', 'Int'),
+    'Immediate Reaction': (7, '☇', 'React'),
     '': (8, '', '--')
 }
 

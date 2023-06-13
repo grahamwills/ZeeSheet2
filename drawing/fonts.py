@@ -21,6 +21,9 @@ LOGGER = common.configured_logger(__name__)
 
 FONT_DIR = Path(__file__).parent / 'resources' / 'google-fonts'
 
+SYMBOLA = TTFont('Symbola', (Path(__file__).parent / 'resources' / 'Symbola-Regular.ttf').resolve())
+pdfmetrics.registerFont(SYMBOLA)
+
 
 def _key(txt: str) -> str:
     return txt.lower().replace('-', '').replace('_', '').replace(' ', '')
@@ -144,6 +147,13 @@ class Font:
     def __hash__(self):
         # A slight speed improvement over the default
         return hash(self.name) + 13 * int(100 * self.size)
+
+    def supports(self, text) -> bool:
+        """ Return true if all the characters have known glyphs """
+        for u in text:
+            if self._font.face.charWidths.get(ord(u), -1) == -1:
+                return False
+        return True
 
 
 def read_font_info() -> List[FontFamily]:
