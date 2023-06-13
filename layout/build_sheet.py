@@ -50,7 +50,7 @@ def sheet_to_pages(sheet: Sheet, pdf: PDF) -> list[PlacedGroupContent]:
             if unplaced_sections:
                 sections_for_next_page += sections[-unplaced_sections:]
             sections = sections_for_next_page
-        except ExtentTooSmallError as ex:
+        except ExtentTooSmallError:
             warnings.warn(f"Unable to place a section ({common.name_of(sections[0])}) -- try reducing the number"
                           f" of columns or decreasing the width of blocks inside it.")
             sections = sections[1:]

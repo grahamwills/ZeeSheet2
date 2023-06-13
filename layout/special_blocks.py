@@ -50,8 +50,6 @@ class AttributeTableBuilder:
         if self.style.box.has_border():
             v_gap += self.style.box.width
 
-        font = self.pdf.get_font(self.style)
-        font2 = self.pdf.get_font(self.style2)
         color = self.style.get_color()
         color2 = self.style2.get_color()
 
@@ -89,8 +87,8 @@ class AttributeTableBuilder:
         xc += excess
 
         # The bulb height is ha; the center height is hb
-        ha = e_height + max(0, e_dy)
-        hb = c_height + max(0, c_dy)
+        ha = e_height + max(0, e_dy) + e_pad.vertical
+        hb = c_height + max(0, c_dy) + c_pad.vertical
 
         # So the vertical offsets are
         y1 = (ha - hb) / 2
@@ -166,8 +164,8 @@ class AttributeTableBuilder:
             dx = (box.width - width) / 2
 
         # # center in the box. The '0.75 * dy - 0.5' is a fudge factor, but does seem to make the results prettier
-        # y = box.center.y - height / 2
+        y = box.center.y - height / 2
 
         placed = place_run(run, box.extent, style, self.pdf, self.modifier, keep_minimum_sizes=True)
-        placed.location = Point(box.left + dx, box.top)
+        placed.location = Point(box.left + dx, y)
         return placed

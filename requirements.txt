@@ -3,12 +3,13 @@ whitenoise
 django-bootstrap-v5
 djangocodemirror
 docutils
-# sphinx
+xmltodict
 crispy-bootstrap5
 reportlab
 pyyaml
-# numpy
-# scipy
 sly
 Pillow
+# sphinx
+# numpy
+# scipy
 # fonttools
