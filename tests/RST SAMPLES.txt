@@ -445,7 +445,17 @@ foo
   | world
 #################################################
 - hello | world
-- brave | new   | world
+- brave | new | world
 #################################################
 
+
+# Prettify wrapping #############################
+- a | bbbbbbbb | cccccccccccc
+- aaaaa | b | c
+- aaaaaaaaaaaaaa
+#################################################
+- a     | bbbbbbbb | cccccccccccc
+- aaaaa | b        | c
+- aaaaaaaaaaaaaa
+#################################################
 

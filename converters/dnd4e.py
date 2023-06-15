@@ -795,7 +795,8 @@ class DnD4E:
             ".. section:: columns=1",
             self.hits(),
 
-            ".. section:: columns=2",
+            ".. section:: columns=3",
+            ".. block:: image=1",
             ".. block::   method=attributes style=attributes-blue title-style=attributes-title",
 
             self.stat_block(),
@@ -887,7 +888,7 @@ class DnD4E:
 
 def read_dnd4e(f, rules: Dict) -> DnD4E:
     dict = xml_file_to_dict(f)
-    return DnD4E(dict, rules, f)
+    return DnD4E(dict, rules)
 
 
 def xml_file_to_dict(filename):

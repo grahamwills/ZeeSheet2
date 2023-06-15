@@ -76,7 +76,7 @@ class PlacementQuality(Generic[T]):
         return 10 * self.bad_breaks + self.good_breaks
 
     def _score_height(self) -> float:
-        return self.height_dev / 10
+        return self.height_dev / 3
 
     def _score_excess_space(self) -> float:
         return (self.excess_ss / 100) ** 0.5
@@ -194,6 +194,6 @@ def for_columns(actual_heights: list[int], cells_columnwise: list[list], unplace
     """ Define a quality for a table layout by aggregating the cell qualities"""
     q = for_table(cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
-    # Averaeg column difference from the maximum height column
+    # Average column difference from the maximum height column
     q.height_dev = (max(actual_heights) * len(cells_columnwise) - sum(actual_heights)) / len(actual_heights)
     return q

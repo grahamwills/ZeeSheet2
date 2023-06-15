@@ -204,9 +204,11 @@ class Prettify:
             # Create a table of simple text representations and calculate the maximum widths of each column
             table = [[run.to_rst().strip() for run in item.children] for item in items]
             col_widths = [0] * ncols
+            ncol = max(len(r) for r in table)
             for row in table:
-                for c, txt in enumerate(row):
-                    col_widths[c] = max(col_widths[c], len(txt))
+                if len(row) == ncol:
+                    for c, txt in enumerate(row):
+                        col_widths[c] = max(col_widths[c], len(txt))
             col_widths[-1] = 0  # stops it being left justified with trailing spaces
 
             column_widths_except_last = sum(col_widths[:1])
