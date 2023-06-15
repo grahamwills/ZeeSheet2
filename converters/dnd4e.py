@@ -2,20 +2,166 @@ from __future__ import annotations
 
 import json
 import re
-from collections import defaultdict, namedtuple
-from io import StringIO
+from collections import defaultdict, namedtuple, OrderedDict
+from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 import xmltodict
+
+
+def pretty_power(txt: str) -> List[str]:
+    # Power (Encounter * Teleportation): Free Action. Trigger: You hit an adjacent enemy with an attack using this
+    # weapon. Effect: You teleport to a different square adjacent to the enemy.'
+
+    result = []
+    for part in txt.split('. '):
+        part = part.strip()
+        pps = part.split(':')
+        if len(pps) > 2:
+            raise RuntimeError("Cannot handle item/power syntax")
+        if len(pps) == 2:
+            part = f"**{pps[0].strip()}**: {pps[1].strip()}"
+        result.append(part)
+    return result
+
+
+@dataclass
+class Item:
+    names: List[str]
+    types: List[str]
+    consumable: bool
+    level: int
+    count: int
+    equipped: int
+    range: str
+    slot: str
+    gold: int
+    group: str
+    powers: List[str] = field(default_factory=list)
+    descriptions: List[str] = field(default_factory=list)
+    general: List[Tuple[str, str]] = field(default_factory=list)
+    properties: List[str] = field(default_factory=list)
+    flavor: List[str] = field(default_factory=list)
+
+    def to_rst(self) -> str:
+
+        color = USAGE_TYPE['Item'][1]
+
+        name = self.name
+        if self.equipped:
+            name += '| ✓'
+        elif self.count > 1 or self.consumable:
+            name += '| ' + '[ ]' * self.count
+
+        header_line = self.slot or self.type
+        if self.properties:
+            header_line += ': ' + ', '.join(self.properties)
+        header_line += f" | {self.gold}g"
+        if self.level:
+            header_line += f" (lvl {self.level})"
+
+        lines = [
+            ".. block:: style=%s\n\n" % color,
+            name + '\n',
+            '- ' + header_line
+        ]
+
+        if not (self.powers or self.general):
+            for line in self.descriptions:
+                lines.append('- ' + line)
+        for k, v in self.general:
+            lines.append(f"- **{k}**: {v}")
+        for line in self.powers:
+            lines.append('- ' + line)
+        for flavor in self.flavor:
+            lines.append(f"- *{flavor}*")
+
+        return '\n'.join(line for line in lines if line)
+
+    @property
+    def name(self) -> str:
+        n = self.names[-1]
+        if len(self.names) == 1:
+            return n
+        for v in ('Weapon', 'Armor'):
+            if v in n:
+                return n.replace(v, self.names[0])
+        return f"{self.names[-1]} ({self.names[0]})"
+
+    @property
+    def type(self) -> str:
+        n = self.types[-1]
+        if len(self.types) == 1:
+            return n
+        if 'Item' in n:
+            return n.replace('Item', self.names[0])
+        return f"{self.names[-1]} ({self.names[0]})"
+
+    @classmethod
+    def make(cls, item: Dict, rules: Dict) -> Item:
+        # Grab the information from the rules definitions
+        elements = item['RulesElement']
+        if isinstance(elements, dict):
+            elements = [elements]
+        defs = [rules[i['@internal-id']] for i in elements]
+        if len(defs) > 2:
+            raise RuntimeError("Cannot handle >2 rules for an item")
+        names = [d['@name'].replace(' (heroic tier)', '').strip() for d in defs]
+        types = [d['@type'] for d in defs]
+        count = int(item['@count'])
+        equipped = int(item['@equip-count'])
+        range = None
+        slot = None
+        level = None
+        gold = 0
+        group = None
+        consumable = False
+        for d in defs:
+            range = range or _find('range', d)
+            slot = slot or _find('Item Slot', d)
+            group = group or _find('Group', d)
+            level = level or _find('Level', d)
+            if _find('Magic Item Type', d) in {'Potion', 'Whetstone'}:
+                consumable = True
+            g = _find('Gold', d)
+            if g:
+                gold = max(gold, int(g))
+
+        result = Item(names, types, consumable, level, count, equipped, range, slot, gold, group)
+        for d in defs:
+            t = d.get('#text')
+            if t:
+                for txt in t.split('\n'):
+                    if txt.strip():
+                        result.descriptions.append(txt.strip())
+            f = d.get('Flavor')
+            if f:
+                for t in f.split('\n'):
+                    if t.strip():
+                        result.flavor.append(t.strip())
+            p = _find('Properties', d)
+            if p:
+                result.properties.append(p)
+
+            for key in "Enhancement Property Critical".split():
+                txt = _find(key, d)
+                if txt:
+                    result.general.append((key, txt))
+
+            power = _find('Power', d)
+            if power:
+                result.powers += pretty_power(power)
+
+        return result
 
 
 def style_definitions():
     return dedent("""
         .. styles::
             default
-              font-family:'Montserrat' font-size:9
+              font-family:'Montserrat' font-size:9 spacing:90%
             default-block
               border:none effect:none margin:8 text-align:left background:#cdf
             skills-block
@@ -32,7 +178,10 @@ def style_definitions():
               margin:8 effect:rounded
             default-title
               font-size:11
-            
+            flavor:
+              opacity:0.6 color:black
+            key:
+              color:navy font-face:bold opacity:0.7
             title
              text-color:#b00 font-family:Almendra font-size:40 background:none
             blue
@@ -58,15 +207,15 @@ USAGE_TYPE = {
 }
 
 ACTION_TYPE = {
-    'Standard': (0, '❖ ', 'Std'),
+    'Standard': (0, '❖', 'Standard'),
     'Move': (1, '→', 'Move'),
     'Movement': (1, '→', 'Move'),
-    'Minor': (2, '☉ ', 'Minor'),
-    'Free': (3, '∅ ', 'Free'),
-    'No': (4, '∅ ', 'No'),
-    'Opportunity': (5, '☇', 'Opp'),
-    'Immediate Interrupt': (6, '☇', 'Int'),
-    'Immediate Reaction': (7, '☇', 'React'),
+    'Minor': (2, '☉', 'Minor'),
+    'Free': (3, '∅', 'Free'),
+    'No': (4, '∅', 'No'),
+    'Opportunity': (5, '☇', 'Opportunity'),
+    'Immediate Interrupt': (6, '☇', 'Interrupt'),
+    'Immediate Reaction': (7, '☇', 'Reaction'),
     '': (8, '', '--')
 }
 
@@ -86,17 +235,23 @@ def _find(txt: str, rule: Dict) -> Optional[str]:
     return None
 
 
-def _find_extras(rule: Dict) -> List[(str, str)]:
-    pair = []
-    prefix = ''
+def _find_extras(rule: Dict, replacements: Dict) -> List[tuple]:
+    extras = OrderedDict()
+    reason = '????'
     for item in rule['specific']:
-        if item['@name'] == 'Augment':
-            prefix = '[Augment ' + item['#text'] + '] '
-        elif item['@name'].startswith(' '):
-            pair.append((prefix + item['@name'].strip(), item['#text'].strip()))
+        if not '#text' in item:
+            continue
+        text = item['@name'].strip() + ': ' + item['#text'].strip()
+        for k, v in replacements:
+            text = text.replace(k, v)
+        if item['@name'].startswith(' '):
+            if reason in extras:
+                extras[reason] = extras[reason] + ' • ' + text
+            else:
+                extras[reason] = text
         else:
-            prefix = ''
-    return pair
+            reason = text.replace(':', '')
+    return [(k, v) for k, v in extras.items()]
 
 
 def _combine(target, range):
@@ -112,12 +267,13 @@ def _combine(target, range):
     if not target and range:
         return range
 
-    if range == 'Melee Weapon':
+    if range.lower() == 'melee weapon':
         return "%s (melee)" % target
-    if range.startswith('Ranged'):
+    if range.lower().startswith('ranged'):
         return "%s within %s" % (target, range[7:].strip())
     if 'burst' in target:
         return target.replace('burst', range.lower())
+    return range
 
 
 def _rollify(txt, mult):
@@ -154,15 +310,11 @@ class Power(NamedTuple):
     def is_skippable(self):
         return self.name in {'Bull Rush Attack', 'Opportunity Attack', 'Grab Attack'}
 
-    def to_rst(self, rule: Dict, replacements: List[(str, str)]) -> str:
-        components = self.to_components(replacements, rule)
+    def to_rst(self, rule: Dict, replacements: List[(str, str)], rule_elements) -> str:
+        components = self.to_components(replacements, rule, rule_elements)
         return self.components_to_rst(components)
 
-    def to_roll20(self, rule: Dict, replacements: List[(str, str)]) -> str:
-        components = self.to_components(replacements, rule)
-        return self.components_to_roll20(components)
-
-    def to_components(self, replacements, rule):
+    def to_components(self, replacements, rule, rule_elements):
         components = defaultdict(lambda: '')
         components['source'] = rule['@source'].replace("Player's Handbook ", 'PHB').replace(" Magazine", '')
         disp = _find('Display', rule)
@@ -173,12 +325,13 @@ class Power(NamedTuple):
         keys = _find('Keywords', rule)
         if keys:
             components['keywords'] = keys.replace(',', ' • ')
-        extras = _find_extras(rule)
+        extras = _find_extras(rule, replacements)
         atk_target = _combine(target, attack_type)
         if atk_target:
             atk_target = atk_target.replace("One, two, or three", "Up to three")
         if self.weapons:
             wpn = self.weapons[0]
+            components['wpn_name'] = wpn.name
             components['wpn_bonus'] = wpn.bonus
             components['wpn_defense'] = wpn.defense
             if atk_target:
@@ -199,48 +352,73 @@ class Power(NamedTuple):
         lines_main += extras
 
         if 'Flavor' in rule:
-            components['flavor'] = rule['Flavor']
+            # Just the first sentence
+            components['flavor'] = rule['Flavor'].split('.')[0]
         components['action_icon'] = ACTION_TYPE[self.action][1]
         components['usage'] = self.usage
         components['name'] = self.name
         components['action_type'] = self.action
+        components['attack_type'] = _find('Attack Type', rule)
+        power_class = _find('Class', rule)
+        if power_class:
+            components['class'] = rule_elements[power_class]['@name']
+        lvl = _find('Level', rule)
+        if lvl:
+            components['class_level'] = lvl
         components['action_type_short'] = ACTION_TYPE[self.action][2]
         components['main_as_list'] = lines_main
         return components
 
     def components_to_rst(self, components):
-        if len(components['name']) + len(components['action_type']) > 28:
-            act_type = components['action_type_short']
-        else:
-            act_type = components['action_type']
-        box = '' if components['usage'] == 'At-Will' else ' [ ]'
-        line_title = (components['action_icon'], components['name'], act_type, box)
         color = USAGE_TYPE[components['usage']][1]
+        line_title = components['action_icon'] + ' ' + components['name']
+        if components['usage'] != 'At-Will':
+            line_title += ' | [ ]'
+
+        source = components['class']
+        if 'class_level' in components and source[-1] not in "0123456789":
+            source += f" {components['class_level']}"
+
+        act = components['action_type']
+        if ' ' not in act:
+            act += ' Action'
+
         lines = [
-            ".. block:: style=%s\n" % color,
-            "%s **%s** | %s%s\n" % line_title
+            ".. block:: style=%s italic=flavor bold=key\n" % color,
+            line_title + '\n',
+            f"- {act} | {source}",
         ]
-        if 'wpn_bonus' in components and 'atk_target' in components:
-            lines.append("- **+%s** vs. **%s** | %s" % (
-                components['wpn_bonus'], components['wpn_defense'], components['atk_target']))
-        elif 'wpn_bonus' in components:
-            lines.append("- **+%s** vs. **%s**" % (components['wpn_bonus'], components['wpn_defense']))
-        elif 'atk_target' in components and components['atk_target'] != 'Personal':
-            lines.append("- | %s" % components['atk_target'])
+
+        if 'wpn_bonus' in components:
+            bonus = "**+%s** vs **%s**" % (components['wpn_bonus'], components['wpn_defense'])
+        else:
+            bonus = None
+
+        if 'wpn_name' in components:
+            lines.append(f"-  *{components['wpn_name']}:*")
+
+        if 'atk_target' in components and components['atk_target'] != 'Personal':
+            target = components['atk_target']
+        else:
+            target = None
+
+        if target and bonus:
+            lines.append(f"- {bonus} • {target}")
+        elif target:
+            lines.append(f"- {target}")
+        elif bonus:
+            lines.append(f"- {bonus}")
+
         for line in components['main_as_list']:
             lines.append("- **%s**: %s" % line)
+
         if 'conditions' in components:
             lines.append("- %s" % components['conditions'])
         if components['flavor']:
             lines.append("- *%s*" % components['flavor'])
 
         if 'keywords' in components:
-            lines.append(
-                "- %s • %s • %s" % (
-                    components['keywords'], components.get('class', ''), components['source']))
-        else:
-            lines.append("- %s • %s" % (
-                components.get('class', ''), components['source']))
+            lines.append("- " + components['keywords'])
         result = '\n'.join(line for line in lines if line)
         return result
 
@@ -298,7 +476,8 @@ class Power(NamedTuple):
         return "\n".join(lines)
 
     def order(self):
-        return str(USAGE_TYPE[self.usage][0] * 10 + ACTION_TYPE[self.action][0]) + '_' + self.name
+        return str(USAGE_TYPE[self.usage][0] * 10 + ACTION_TYPE[self.action][0]) \
+               + f"_ "
 
     def further_tidying(self, txt):
         """ Make common phrases cleaner to read"""
@@ -418,8 +597,7 @@ class DnD4E:
     half_level: int
     stats: Dict
 
-    def __init__(self, base: Dict, rule_elements, file):
-        self.directory = Path(file).parent
+    def __init__(self, base: Dict, rule_elements):
         self.rule_elements = rule_elements
         base = base['D20Character']
         self.character = base['CharacterSheet']
@@ -534,13 +712,16 @@ class DnD4E:
         if hybrids:
             for h in hybrids:
                 tuples.append(('Class', h[0], h[1]))
-        elif self.rules('CountsAsClass'):
-            self.add_detailed_descriptions(tuples, 'CountsAsClass', 'Class')
         else:
             v1, v2 = self.rule('Class')
             tuples.append(('Class', v1, v2))
 
         name = '/'.join(t[1] for t in tuples)
+
+        if self.rules('CountsAsClass'):
+            counts_as = ', '.join(r[0] for r in self.rules('CountsAsClass'))
+            tuples.append(('Multiclass', counts_as))
+
         rules = self.rules('Class Feature')
         return f'Class: {name}\n\n' + "\n".join(["- " + display(s) for s in tuples + rules])
 
@@ -590,17 +771,14 @@ class DnD4E:
         powers = [p for p in powers if not p.is_skippable()]
         powers.sort(key=lambda p: p.order())
 
-        items = [p.to_rst(power_mapping.get(p.name), self.make_replacements(p)) for p in powers]
-        file = self.directory.joinpath('_powers.rst')
-        if file.exists():
-            items.append(file.read_text())
+        cards = [p.to_rst(power_mapping.get(p.name), self.make_replacements(p), self.rule_elements) for p in powers]
 
-        items += [self.item_to_rst(item) for item in self.item_list()]
-        file = self.directory.joinpath('_items.rst')
-        if file.exists():
-            items.append(file.read_text())
+        items = [Item.make(d, self.rule_elements) for d in self.character['LootTally']['loot']]
+        items.sort(key= lambda x: -x.gold)
+        cards += [r.to_rst() for r in items if r.count > 0]
 
-        return items
+
+        return cards
 
     def to_rst(self) -> str:
 
@@ -629,7 +807,7 @@ class DnD4E:
             self.racial_features(),
             self.feats(),
 
-            ".. section:: columns=3",
+            ".. section:: columns=3 equal",
             ".. block:: style=default",
 
         ]
@@ -655,7 +833,7 @@ class DnD4E:
         items = self.character['RulesElementTally']['RulesElement']
         return dict([(t['@name'], self.rule_elements[t['@internal-id']]) for t in items if t['@type'] == 'Power'])
 
-    def item_list(self) -> [List[str]]:
+    def item_list(self) -> List[List[str]]:
         items = self.character['LootTally']['loot']
         result = []
         for item in items:
@@ -705,83 +883,6 @@ class DnD4E:
     def stat_bonus(self, attack_stat):
         return (self.val(attack_stat) - 10) // 2
 
-    def item_to_rst(self, ids: List[str]):
-
-        # Merge rules for each ID
-        rule = dict()
-        for id in ids:
-            rule.update(self.rule_elements[id])
-
-        name = rule['@name'].replace(' (heroic tier)', '').strip()
-        item_type = _find('Magic Item Type', rule)
-        slot = _find('Item Slot', rule)
-        line_flavor = rule.get('Flavor', rule.get('#text', None))
-        price = _find('Gold', rule)
-        rarity = _find('Rarity', rule)
-
-        # Power needs special care, example:
-        #   Power (Daily): Free Action. Trigger: You miss with a melee attack using this staff. Effect:
-        #   Reroll the attack roll and use the second result, even if it is lower than the first.
-        power = _find('Power', rule)
-        if power:
-            rparen = power.index('):')
-            usage = power[7:rparen].strip()
-            txt = power[rparen + 2:].strip()
-            dot = txt.index('.')
-            action = txt[:dot].strip().replace(' Action', '')
-            power = (action, txt[dot + 1:])
-            box = '' if usage == 'At-Will' else ' [ ]'
-            info = ACTION_TYPE[action]
-            line_title = "**%s** | %s%s" % (name, info[2], box)
-        else:
-            line_title = "**%s** | %s" % (name, slot or item_type)
-
-        if '@source' in rule:
-            source = rule['@source'].replace("Player's Handbook", 'PHB').replace(" Magazine", '') \
-                .replace("Mordenkainen's Magnificent Emporium", 'Mordenkainen')
-        else:
-            source = ''
-
-        line_info = (rarity, price, slot or item_type)
-
-        lines_main = []
-        for key in "Enhancement Property Critical".split():
-            txt = _find(key, rule)
-            if txt:
-                lines_main.append((key, txt))
-        if power:
-            lines_main.append(power)
-
-        color = USAGE_TYPE['Item'][1]
-
-        lines = [
-            ".. block:: style=%s\n\n" % color,
-            line_title,
-            "\n- %s • %sgp | %s" % line_info,
-        ]
-
-        for line in lines_main:
-            lines.append("- **%s**: %s" % line)
-        lines.append("- *%s*" % line_flavor)
-
-        if source:
-            lines.append("- | %s" % source)
-
-        return '\n'.join(line for line in lines if line)
-
-    def to_roll20(self):
-        power_mapping = self.power_mappings()
-
-        powers = [_to_power(s) for s in self.character['PowerStats']['Power']]
-        powers.sort(key=lambda p: p.order())
-
-        out = StringIO()
-        for p in powers:
-            p.to_components(self.make_replacements(p), power_mapping.get(p.name))
-            out.write(p.to_roll20(power_mapping.get(p.name), self.make_replacements(p)))
-            out.write('\n')
-
-        return out.getvalue()
 
 
 def read_dnd4e(f, rules: Dict) -> DnD4E:
@@ -812,7 +913,6 @@ if __name__ == '__main__':
 
     dnd = read_dnd4e('../data/characters/Grumph/grumph-6.dnd4e', rules)
 
-    out = dnd.to_roll20()
 
     with open('../data/characters/Grumph/grumph_roll20.txt', 'w') as file:
         file.write(out)

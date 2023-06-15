@@ -148,12 +148,22 @@ class Font:
         # A slight speed improvement over the default
         return hash(self.name) + 13 * int(100 * self.size)
 
+    def supports_char(self, u) -> bool:
+        return self._font.face.charWidths.get(ord(u), -1) != -1
+
     def supports(self, text) -> bool:
         """ Return true if all the characters have known glyphs """
-        for u in text:
-            if self._font.face.charWidths.get(ord(u), -1) == -1:
-                return False
-        return True
+        return all(self.supports_char(u) for u in text)
+
+    def break_up(self, text: str) -> tuple:
+        results = []
+        run_start = 0
+        for i in range(0, len(text)):
+            if self.supports_char(text[i]) != self.supports_char(text[run_start]):
+                results.append((text[run_start:i], self.supports_char(text[run_start])))
+                run_start = i
+        results.append((text[run_start:], self.supports_char(text[run_start])))
+        return results
 
 
 def read_font_info() -> List[FontFamily]:

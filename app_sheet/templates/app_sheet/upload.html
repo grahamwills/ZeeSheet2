@@ -1,0 +1,24 @@
+{% extends "app_sheet/layout.html" %}
+{% block content %}
+    {% load crispy_forms_filters %}
+
+    <div class="container" style="margin-top:40px">
+        <h2>{{ sheet.name }} • {{ sheet.system }}</h2>
+
+        <p>Select a file to upload and convert to ZeeSheet format</p>
+
+        <p>
+            The current content of the editor will be replaced by the imported content,
+            but that content will not be saved. You can revert to get the old content back,
+            or save to accept the imported content.
+        </p>
+
+        {% include 'app_sheet/messages.html' %}
+
+        <form action="" method="post" enctype="multipart/form-data" class="form">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <input type="submit" class="btn btn-primary" value="Submit"/>
+        </form>
+    </div>
+{% endblock %}

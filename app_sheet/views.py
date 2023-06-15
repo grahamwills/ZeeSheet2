@@ -7,16 +7,17 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage, FileSystemStorage
-from django.http import HttpRequest, FileResponse, HttpResponseForbidden
+from django.http import HttpRequest, FileResponse, HttpResponseForbidden, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.views.generic import UpdateView
 
+from converters import convert
 import main
 from layout.content import ExtentTooSmallError
-from .forms import NewUserForm
+from .forms import NewUserForm, UploadFileForm
 from .models import Sheet
 
 
@@ -130,11 +131,31 @@ def images_info(csd: Sheet) -> Dict[str, main.ImageDetail]:
     return result
 
 
+def upload_file(request, sheet_id):
+    csd = get_object_or_404(Sheet, pk=sheet_id)
+    if request.method == "POST":
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            data = request.FILES["file"].read()
+            text = data.decode('utf-8')
+            result, errs = convert.convert(text)
+            for w in errs:
+                messages.error(request, w)
+            return show_sheet(request, sheet_id, result, None)
+    else:
+        form = UploadFileForm()
+    return render(request, "app_sheet/upload.html", {"form": form, "sheet":csd})
+
+
 def action_dispatcher(request, sheet_id):
     # No matter what we do after, we need to store the text from the form as the current content
     csd = get_object_or_404(Sheet, pk=sheet_id)
     edit_content = request.POST['sheet']
     pdf_file = None
+
+    if 'import' in request.POST:
+        form = UploadFileForm()
+        return redirect('upload', sheet_id=sheet_id)
 
     if 'clone' in request.POST:
         if request.user.is_authenticated:
