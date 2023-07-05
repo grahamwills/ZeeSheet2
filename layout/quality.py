@@ -60,11 +60,12 @@ class PlacementQuality(Generic[T]):
         if other is None:
             return True
         self.check_compatible(other)
-        if self.unplaced != other.unplaced:
-            return self.unplaced < other.unplaced
-        if self.unplaced_descendants != other.unplaced_descendants:
-            return self.unplaced_descendants < other.unplaced_descendants
-        return self.minor_score() < other.minor_score()
+
+        dd = self.major_score() - other.major_score()
+        if dd == 0:
+            return self.minor_score() < other.minor_score()
+        else:
+            return dd < 0
 
     @property
     def excess(self):
@@ -76,13 +77,17 @@ class PlacementQuality(Generic[T]):
         return 10 * self.bad_breaks + self.good_breaks
 
     def _score_height(self) -> float:
-        return self.height_dev / 3
+        return self.height_dev
 
     def _score_excess_space(self) -> float:
-        return (self.excess_ss / 100) ** 0.5
+        return (self.excess_ss / 100)
 
     def _score_image(self) -> float:
         return self.image_shrinkage * 15
+
+    def major_score(self) -> float:
+        unplaced = self.unplaced * 2 + self.unplaced_descendants
+        return unplaced + self.bad_breaks / 2.5
 
     def minor_score(self) -> float:
         """ Score ignoring unplaced and clipped items; lower is better """
@@ -155,8 +160,8 @@ def for_wrapping(excess_width: float, bad_breaks: int, good_breaks: int) -> Plac
 
 def for_image(mode, desired: Extent, drawn: Rect, outer: Rect) -> PlacementQuality[T]:
     shrinkage = max(desired.area / drawn.area - 1, 0) if mode == 'normal' else 0
-    excess = outer.width - drawn.width
-    return PlacementQuality(LayoutMethod.IMAGE, count=1, excess_ss=excess ** 2, image_shrinkage=shrinkage)
+    excess = outer.area - drawn.area
+    return PlacementQuality(LayoutMethod.IMAGE, count=1, excess_ss=excess, image_shrinkage=shrinkage)
 
 
 _DECORATION_QUALITY = PlacementQuality(LayoutMethod.NONE)
@@ -195,5 +200,8 @@ def for_columns(actual_heights: list[int], cells_columnwise: list[list], unplace
     q = for_table(cells_columnwise, unplaced)
     q.method = LayoutMethod.COLUMNS
     # Average column difference from the maximum height column
-    q.height_dev = (max(actual_heights) * len(cells_columnwise) - sum(actual_heights)) / len(actual_heights)
+    n = len(actual_heights)
+    mid = sum(actual_heights) / n
+    dev = sum((h - mid) ** 2 for h in actual_heights) / n
+    q.height_dev = max(actual_heights) + dev / 10
     return q
