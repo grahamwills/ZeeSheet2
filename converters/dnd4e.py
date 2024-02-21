@@ -32,6 +32,86 @@ def pretty_power(txt: str) -> List[str]:
     return result
 
 
+def _maybe_multiple_lines(name, lines: List[str]) -> List[str]:
+    if len(lines) == 1:
+        line = lines[0]
+        idx = line.find(':')
+        if idx > 0:
+            return [f"- **{name}**: *{line[:idx].strip().upper()}*: {line[idx + 1:].strip()}"]
+        else:
+            return [f"- **{name}**: {line.strip()}"]
+
+    else:
+        txt = [f"- **{name}**"]
+        for line in lines:
+            idx = line.find(':')
+            if idx > 0:
+                txt.append(f"  *{line[:idx].strip().upper()}*: {line[idx + 1:].strip()} ")
+            else:
+                txt.append(f"  {line.strip()} ")
+        return txt
+
+
+@dataclass
+class Companion:
+    type: str
+    name: str
+    description: str
+    attributes: List[Tuple[str, str]]
+    powers: List[Tuple[str, str]]
+    hit_points: str
+
+    def to_rst(self) -> str:
+        color = USAGE_TYPE['Familiar'][1]
+
+        lines = [
+            ".. block:: style=%s\n" % color,
+            self.name + '\n',
+            f'- | **{self.type}**',
+            '- *' + self.description + '*',
+        ]
+
+        for i, (name, value) in enumerate(self.attributes):
+            if i%2 == 0:
+                lines.append(f"- **{name}:** {value}")
+            else:
+                lines[-1] += f" | **{name}:** {value}"
+
+        for name, value in self.powers:
+            lines += _maybe_multiple_lines(name, value.split('\n'))
+
+        if self.hit_points:
+            lines.append(f"- **Hits ({self.hit_points})**: ????")
+
+        return '\n'.join(line for line in lines if line)
+
+    @classmethod
+    def make(cls, type: str, item: Dict, rules: Dict) -> Companion:
+        # Grab the information from the rules definitions
+        if 'Name' in item:
+            name = item['Name']
+            description = item['Description']
+        else:
+            id = item['ID'].split('-')
+            name = id[0].strip()
+            description = id[1].strip()
+
+        attributes = []
+        for p in ['Size', 'Speed', 'Senses']:
+            v = item.get(p.replace(' ', ''), None)
+            if v:
+                attributes.append((p, v))
+
+        powers = []
+        for p in ['Constant Benefits', 'Active Benefits', 'Beast Power', 'Defenses', 'Surges', 'Basic Attack', 'Trained Skills',
+                  'Ability Scores']:
+            v = item.get(p.replace(' ', ''), None)
+            if v:
+                powers.append((p, v))
+
+        return Companion(type, name, description, attributes, powers, item.get('HitPoints', None))
+
+
 @dataclass
 class Item:
     names: List[str]
@@ -110,9 +190,17 @@ class Item:
         elements = item['RulesElement']
         if isinstance(elements, dict):
             elements = [elements]
-        defs = [rules[i['@internal-id']] for i in elements]
+        ids = [i['@internal-id'] for i in elements]
+        defs = [rules[i] for i in ids if i in rules]
         if len(defs) > 2:
             raise RuntimeError("Cannot handle >2 rules for an item")
+        if len(defs) == 0:
+            # Could not find the rule
+            return Item(
+                [item['RulesElement']['@name']],
+                [item['RulesElement']['@type']],
+                False, 0, 1, 1, '', '', 0, 'unknown'
+                )
         names = [d['@name'].replace(' (heroic tier)', '').strip() for d in defs]
         types = [d['@type'] for d in defs]
         count = int(item['@count'])
@@ -162,14 +250,14 @@ class Item:
         return result
 
 
-
 Weapon = namedtuple('Weapon', 'name bonus damage attack_stat defense conditions')
 
 USAGE_TYPE = {
     'At-Will': (1, 'green'),
     'Encounter': (2, 'red'),
     'Daily': (3, 'black'),
-    'Item': (4, 'orange')
+    'Familiar': (4, 'purple'),
+    'Item': (5, 'orange')
 }
 
 ACTION_TYPE = {
@@ -285,7 +373,8 @@ class Power(NamedTuple):
     weapons: List[Weapon]
 
     def is_skippable(self):
-        return self.name in {'Bull Rush Attack', 'Opportunity Attack', 'Grab Attack'}
+        return self.name in {'Bull Rush Attack', 'Opportunity Attack', 'Grab Attack'} or self.name.startswith(
+            'Familiar:')
 
     def to_rst(self, rule: Dict, replacements: List[(str, str)], rule_elements) -> str:
         components = self.to_components(replacements, rule, rule_elements)
@@ -318,7 +407,8 @@ class Power(NamedTuple):
         elif atk_target:
             components['atk_target'] = atk_target
         lines_main = []
-        for key in "Requirement Trigger Hit Miss Effect".split():
+        for key in ['Requirement', 'Trigger', 'Hit', 'Miss', 'Effect', 'Sustain Standard', 'Sustain Move',
+                    'Sustain Minor']:
             txt = _find(key, rule)
             if txt:
                 txt = str(txt)
@@ -619,6 +709,14 @@ class DnD4E:
         name = self.character['Details']['name']
         return f"{name} | *{self.clss} {self.level}*"
 
+    def character_backgrounds(self) -> str:
+        rules = self.character['RulesElementTally']['RulesElement']
+        tuples = [self.background(t) for t in rules if t['@type'] == 'Background']
+        return f'Backgrounds\n\n' + "\n".join(["- " + display(s) for s in tuples])
+
+        return str(items)
+
+
     def character_details(self) -> str:
 
         profs = [p[0] for p in self.rules('Proficiency')
@@ -642,6 +740,13 @@ class DnD4E:
                     ('Passive Insight', self.stats['Passive Insight']),
 
                 ] + [_pair(base, key) for key in "Age Height Weight".split()]
+
+        resistances = [(name.replace('resist:', '').strip().title(), str(value)) for name, value in self.stats.items()
+                       if
+                       name.startswith('resist:')]
+        if resistances:
+            value = ' • '.join(f"{a} ({b})" for a, b in resistances)
+            pairs.append(('Resistances', value))
 
         result = ''
         first = True
@@ -753,8 +858,7 @@ class DnD4E:
         second_line = "- Hits: **%d** [[---------]]  Bloodied: **%d**\n" % (hits, hits // 2)
 
         return '- ' + ' | '.join(first_line) + '\n' + second_line \
-               + "- [[---------------------------]]\n" \
-               + "- [[---------------------------]]\n"
+               + "- **Temps**: [[---------------------------]]\n"
 
     def power_cards(self) -> List[str]:
 
@@ -763,8 +867,11 @@ class DnD4E:
         powers = [_to_power(s) for s in self.character['PowerStats']['Power']]
         powers = [p for p in powers if not p.is_skippable()]
         powers.sort(key=lambda p: p.order())
-
         cards = [p.to_rst(power_mapping.get(p.name), self.make_replacements(p), self.rule_elements) for p in powers]
+
+        if self.character['Companions']:
+            companions = [Companion.make(k, v, self.rule_elements) for k, v in self.character['Companions'].items()]
+            cards += [r.to_rst() for r in companions]
 
         items = [Item.make(d, self.rule_elements) for d in self.character['LootTally']['loot']]
         items.sort(key=lambda x: -x.gold)
@@ -773,7 +880,6 @@ class DnD4E:
         return cards
 
     def to_rst(self) -> str:
-
 
         front_page = [
             ".. sheet:: quality=high image-mode=stretch width=8in height=11.5in",
@@ -788,23 +894,27 @@ class DnD4E:
             ".. section:: columns=1",
             self.hits(),
 
-            ".. section:: columns=3",
+            ".. section:: columns=3 equal",
             ".. image:: index=1 style=image image-width=2.5in",
             ".. block:: method=attributes style=attributes-blue title-style=attributes-title",
 
             self.stat_block(),
 
-            ".. block::   method=table style=skills-block",
-            self.skills(),
-            ".. block::   method=table style=default-block",
-            self.class_features(),
-            self.racial_features(),
-            self.feats(),
-
-            ".. section:: columns=3 equal",
-            ".. block:: style=default",
-
+            ".. block::   method=table style=skills-block\n\n" + self.skills(),
         ]
+
+        # Shortest first
+        class_features = ".. block::   method=table style=default-block\n\n" + self.class_features()
+        racial_features = ".. block::   method=table style=default-block\n\n" + self.racial_features()
+        backgrounds_features = ".. block::   method=table style=default-block\n\n" + self.character_backgrounds()
+        feats = ".. block::   method=table style=default-block\n\n" + self.feats()
+        front_page += sorted([class_features, racial_features, feats], key=len) + [backgrounds_features]
+
+
+        front_page += [
+            ".. block:: style=default",
+        ]
+
         return "\n\n\n".join(x for x in front_page if x) \
                + '\n\n\n' \
                + "\n\n\n".join(self.power_cards()) \
@@ -888,7 +998,12 @@ class DnD4E:
         journal = self.character['Journal']
         if journal:
             entries = journal['JournalEntry']
-            result = [self.journal_to_rst(j) for j in entries]
+            if isinstance(entries, Dict):
+                # Single entry
+                result = [self.journal_to_rst(entries)]
+            else:
+                # Multiple entries
+                result = [self.journal_to_rst(j) for j in entries]
             return [r for r in result if r]
         else:
             return []
@@ -953,12 +1068,14 @@ class DnD4E:
                  parent:power-block background:#fdd
                 orange
                  parent:power-block background:#efb261
+                purple
+                 parent:power-block background:#bff
                 image:
                   background:none border:none effect:rough effect-size=5
         """)
 
         mapping = {
-            'dragon':'Black Ops One',
+            'dragon': 'Black Ops One',
             'dwarf': 'Black Ops One',
             'eladrin': 'Elsie',
             'halfling': 'Henny Penny',
@@ -985,11 +1102,23 @@ class DnD4E:
         }
 
         r = self.racial_features().lower()
-        for k,v in mapping.items():
+        for k, v in mapping.items():
             if k in r:
                 base = base.replace('Almendra', v)
                 break
         return base
+
+    def background(self, t):
+        rule = self.rule_elements[t['@internal-id']]
+        source = '????'
+        description = '????'
+        for d in rule['specific']:
+            if d['@name'] == 'Common Knowledge':
+                description = d['#text'].replace('\n', ' ')
+            if d['@name'] == 'Campaign':
+                source = '*' + d['#text'] + '*'
+        return (rule['@name'], source, description)
+
 
 def read_dnd4e(f, rules: Dict) -> DnD4E:
     dict = xml_file_to_dict(f)

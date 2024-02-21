@@ -21,8 +21,18 @@ class TestCommon(TestCase):
     def test_rules_reading(self):
         self.assertEqual(37568, len(self.rules))
 
+    def test_Crivers(self):
+        self.process('Jim - Crivers 7')
+
+    def test_Davars(self):
+        self.process('Josh - Davars 7')
+
+    def test_Roisin_New(self):
+        self.process('Suzanne - roisin 7')
+
+
     def test_nine(self):
-        self.process('Nine-3')
+        self.process('nine-4')
 
     def test_roisin(self):
         self.process('roisin-3')
